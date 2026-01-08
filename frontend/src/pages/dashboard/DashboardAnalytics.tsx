@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Star, TrendingUp, Crown, Sparkles, Users, Coins } from 'lucide-react';
+import { Trophy, Star, TrendingUp, Crown, Sparkles, Users, Coins, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { affiliateDashboardService, TopAffiliate, WeeklyHistory } from '../../services/affiliateDashboardService';
 import { useWallet } from '../../contexts/WalletContext';
@@ -70,6 +70,135 @@ function TierIcon({ tier }: { tier: number }) {
 
   const Icon = config.icon;
   return <Icon className="w-4 h-4" style={{ color: config.color }} />;
+}
+
+interface ChartDataPoint {
+  label: string;
+  value: number;
+}
+
+function GrowthChart({
+  data,
+  color,
+  valueFormatter,
+}: {
+  data: ChartDataPoint[];
+  color: string;
+  valueFormatter: (value: number) => string;
+}) {
+  const maxValue = Math.max(...data.map((d) => d.value), 1);
+  const minValue = Math.min(...data.map((d) => d.value));
+  const range = maxValue - minValue || 1;
+
+  const points = data.map((d, i) => {
+    const x = (i / Math.max(data.length - 1, 1)) * 100;
+    const y = 100 - ((d.value - minValue) / range) * 80 - 10;
+    return { x, y, ...d };
+  });
+
+  const pathD = points.length > 1
+    ? `M ${points[0].x} ${points[0].y} ` +
+      points.slice(1).map((p) => `L ${p.x} ${p.y}`).join(' ')
+    : '';
+
+  const areaD = points.length > 1
+    ? `${pathD} L ${points[points.length - 1].x} 100 L ${points[0].x} 100 Z`
+    : '';
+
+  const lastValue = points[points.length - 1]?.value || 0;
+  const prevValue = points[points.length - 2]?.value || 0;
+  const change = prevValue ? ((lastValue - prevValue) / prevValue) * 100 : 0;
+  const isPositive = change >= 0;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-2xl font-bold font-mono" style={{ color }}>
+            {valueFormatter(lastValue)}
+          </p>
+          <p className="text-xs text-zinc-500 font-mono">current_week</p>
+        </div>
+        {points.length > 1 && (
+          <div
+            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-mono ${
+              isPositive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+            }`}
+          >
+            {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+            {Math.abs(change).toFixed(1)}%
+          </div>
+        )}
+      </div>
+
+      <div className="relative h-32">
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="w-full h-full"
+        >
+          <defs>
+            <linearGradient id={`gradient-${color.replace('#', '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {[0, 25, 50, 75, 100].map((y) => (
+            <line
+              key={y}
+              x1="0"
+              y1={y}
+              x2="100"
+              y2={y}
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="0.5"
+            />
+          ))}
+
+          {areaD && (
+            <path
+              d={areaD}
+              fill={`url(#gradient-${color.replace('#', '')})`}
+            />
+          )}
+
+          {pathD && (
+            <motion.path
+              d={pathD}
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 1, ease: 'easeOut' }}
+            />
+          )}
+
+          {points.map((point, i) => (
+            <motion.circle
+              key={i}
+              cx={point.x}
+              cy={point.y}
+              r="2"
+              fill={color}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.5 + i * 0.1 }}
+            />
+          ))}
+        </svg>
+
+        <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[10px] text-zinc-600 font-mono">
+          {points.map((point, i) => (
+            <span key={i}>{point.label}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function RankBadge({ rank }: { rank: number }) {
@@ -263,8 +392,52 @@ export function DashboardAnalytics() {
         </TerminalCard>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <TerminalCard title="earnings_growth" color="#b347ff" delay={0.15}>
+          {loading ? (
+            <div className="h-40 animate-pulse bg-zinc-800/50 rounded-lg" />
+          ) : weeklyHistory.length === 0 ? (
+            <div className="text-center py-8">
+              <TrendingUp className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
+              <p className="text-zinc-500 font-mono">no_data_yet</p>
+              <p className="text-zinc-600 text-sm font-mono mt-1">earnings_will_appear_here</p>
+            </div>
+          ) : (
+            <GrowthChart
+              data={[...weeklyHistory].reverse().map((w) => ({
+                label: `W${w.weekNumber}`,
+                value: Number(w.earnedLamports) / 1e9,
+              }))}
+              color="#b347ff"
+              valueFormatter={(v) => `${v.toFixed(4)} SOL`}
+            />
+          )}
+        </TerminalCard>
+
+        <TerminalCard title="referrals_growth" color="#2fffe2" delay={0.2}>
+          {loading ? (
+            <div className="h-40 animate-pulse bg-zinc-800/50 rounded-lg" />
+          ) : weeklyHistory.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
+              <p className="text-zinc-500 font-mono">no_data_yet</p>
+              <p className="text-zinc-600 text-sm font-mono mt-1">referrals_will_appear_here</p>
+            </div>
+          ) : (
+            <GrowthChart
+              data={[...weeklyHistory].reverse().map((w) => ({
+                label: `W${w.weekNumber}`,
+                value: w.referralCount,
+              }))}
+              color="#2fffe2"
+              valueFormatter={(v) => `${v} refs`}
+            />
+          )}
+        </TerminalCard>
+      </div>
+
       <div className="mt-6">
-        <TerminalCard title="performance_metrics" color="#ff4ecd" delay={0.2}>
+        <TerminalCard title="performance_metrics" color="#ff4ecd" delay={0.25}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               {

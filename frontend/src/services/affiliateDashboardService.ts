@@ -27,6 +27,16 @@ export interface TopAffiliate {
   weeklyReferrals: number;
 }
 
+export interface TopReferral {
+  rank: number;
+  walletAddress: string;
+  joinedAt: string;
+  totalTickets: number;
+  totalSpentLamports: number;
+  commissionGeneratedLamports: number;
+  isValidated: boolean;
+}
+
 export interface WeeklyHistory {
   weekNumber: number;
   weekStartDate: string;
@@ -117,6 +127,31 @@ class AffiliateDashboardService {
       }));
     } catch (error) {
       console.error('Error fetching top affiliates:', error);
+      return [];
+    }
+  }
+
+  async getTopReferrals(walletAddress: string, limit: number = 10): Promise<TopReferral[]> {
+    try {
+      const { data, error } = await supabase.rpc('get_affiliate_top_referrals', {
+        p_wallet: walletAddress,
+        p_limit: limit,
+      });
+
+      if (error) throw error;
+      if (!data) return [];
+
+      return data.map((row: Record<string, unknown>) => ({
+        rank: Number(row.rank),
+        walletAddress: String(row.wallet_address),
+        joinedAt: String(row.joined_at),
+        totalTickets: Number(row.total_tickets),
+        totalSpentLamports: Number(row.total_spent_lamports),
+        commissionGeneratedLamports: Number(row.commission_generated_lamports),
+        isValidated: Boolean(row.is_validated),
+      }));
+    } catch (error) {
+      console.error('Error fetching top referrals:', error);
       return [];
     }
   }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Star, TrendingUp, Crown, Sparkles, Users, Coins, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Trophy, Star, TrendingUp, Users, Coins, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { affiliateDashboardService, TopAffiliate, WeeklyHistory } from '../../services/affiliateDashboardService';
+import { affiliateDashboardService, TopReferral, WeeklyHistory } from '../../services/affiliateDashboardService';
 import { useWallet } from '../../contexts/WalletContext';
 
 function TerminalCard({
@@ -60,17 +60,6 @@ function SkeletonRow() {
   );
 }
 
-function TierIcon({ tier }: { tier: number }) {
-  const config = {
-    1: { icon: Star, color: '#3b82f6' },
-    2: { icon: TrendingUp, color: '#f59e0b' },
-    3: { icon: Crown, color: '#8b5cf6' },
-    4: { icon: Sparkles, color: '#eab308' },
-  }[tier] || { icon: Star, color: '#3b82f6' };
-
-  const Icon = config.icon;
-  return <Icon className="w-4 h-4" style={{ color: config.color }} />;
-}
 
 interface ChartDataPoint {
   label: string;
@@ -225,7 +214,7 @@ function RankBadge({ rank }: { rank: number }) {
 export function DashboardAnalytics() {
   const navigate = useNavigate();
   const { publicKey: walletAddress, connected } = useWallet();
-  const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
+  const [topReferrals, setTopReferrals] = useState<TopReferral[]>([]);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -236,12 +225,13 @@ export function DashboardAnalytics() {
   }, [connected, navigate]);
 
   const loadData = useCallback(async () => {
+    if (!walletAddress) return;
     setLoading(true);
-    const [affiliates, history] = await Promise.all([
-      affiliateDashboardService.getTopAffiliates(10),
-      walletAddress ? affiliateDashboardService.getWeeklyHistory(walletAddress, 8) : Promise.resolve([]),
+    const [referrals, history] = await Promise.all([
+      affiliateDashboardService.getTopReferrals(walletAddress, 10),
+      affiliateDashboardService.getWeeklyHistory(walletAddress, 8),
     ]);
-    setTopAffiliates(affiliates);
+    setTopReferrals(referrals);
     setWeeklyHistory(history);
     setLoading(false);
   }, [walletAddress]);
@@ -257,66 +247,61 @@ export function DashboardAnalytics() {
   return (
     <DashboardLayout walletAddress={walletAddress || undefined}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TerminalCard title="top_referrers_ranking" color="#b347ff" delay={0}>
+        <TerminalCard title="my_top_referrals" color="#b347ff" delay={0}>
           {loading ? (
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
                 <SkeletonRow key={i} />
               ))}
             </div>
-          ) : topAffiliates.length === 0 ? (
+          ) : topReferrals.length === 0 ? (
             <div className="text-center py-8">
-              <Trophy className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
-              <p className="text-zinc-500 font-mono">no_rankings_yet</p>
-              <p className="text-zinc-600 text-sm font-mono mt-1">be_the_first_to_rank</p>
+              <Users className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
+              <p className="text-zinc-500 font-mono">no_referrals_yet</p>
+              <p className="text-zinc-600 text-sm font-mono mt-1">share_your_link_to_earn</p>
             </div>
           ) : (
             <div className="space-y-1">
-              {topAffiliates.map((affiliate, index) => {
-                const isCurrentUser = affiliate.walletAddress === walletAddress;
-                return (
-                  <motion.div
-                    key={affiliate.walletAddress}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className={`
-                      flex items-center gap-3 p-3 rounded-lg transition-all
-                      ${isCurrentUser ? 'bg-cyan-500/10 border border-cyan-500/30' : 'hover:bg-zinc-800/50'}
-                    `}
-                  >
-                    <RankBadge rank={affiliate.rank} />
+              {topReferrals.map((referral, index) => (
+                <motion.div
+                  key={referral.walletAddress}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className="flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-zinc-800/50"
+                >
+                  <RankBadge rank={referral.rank} />
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm text-white truncate">
-                          {affiliateDashboardService.shortenWallet(affiliate.walletAddress)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm text-white truncate">
+                        {affiliateDashboardService.shortenWallet(referral.walletAddress)}
+                      </span>
+                      {referral.isValidated && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono">
+                          ACTIVE
                         </span>
-                        {isCurrentUser && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 font-mono">
-                            YOU
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <TierIcon tier={affiliate.tier} />
-                        <span className="text-xs text-zinc-500 font-mono">{affiliate.tierLabel}</span>
-                      </div>
+                      )}
                     </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-zinc-500 font-mono">
+                        {referral.totalTickets} tickets
+                      </span>
+                    </div>
+                  </div>
 
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 text-emerald-400 font-mono text-sm">
-                        <Users className="w-3.5 h-3.5" />
-                        <span>{affiliate.totalReferrals}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-purple-500 font-mono text-xs mt-1">
-                        <Coins className="w-3 h-3" />
-                        <span>{affiliateDashboardService.formatSOLValue(affiliate.totalEarnedLamports)}</span>
-                      </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 text-emerald-400 font-mono text-sm">
+                      <Coins className="w-3.5 h-3.5" />
+                      <span>{affiliateDashboardService.formatSOLValue(referral.totalSpentLamports)}</span>
                     </div>
-                  </motion.div>
-                );
-              })}
+                    <div className="flex items-center gap-1 text-purple-500 font-mono text-xs mt-1">
+                      <TrendingUp className="w-3 h-3" />
+                      <span>+{affiliateDashboardService.formatSOLValue(referral.commissionGeneratedLamports)}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           )}
         </TerminalCard>
@@ -437,36 +422,34 @@ export function DashboardAnalytics() {
       </div>
 
       <div className="mt-6">
-        <TerminalCard title="performance_metrics" color="#ff4ecd" delay={0.25}>
+        <TerminalCard title="referral_metrics" color="#ff4ecd" delay={0.25}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               {
                 label: 'total_referrals',
-                value: topAffiliates.reduce((sum, a) => sum + Number(a.totalReferrals), 0),
+                value: topReferrals.length,
                 icon: Users,
                 color: '#2fffe2',
               },
               {
-                label: 'active_affiliates',
-                value: topAffiliates.length,
+                label: 'active_users',
+                value: topReferrals.filter(r => r.isValidated).length,
                 icon: Star,
                 color: '#3ecbff',
               },
               {
-                label: 'total_distributed',
+                label: 'total_spent',
                 value: affiliateDashboardService.formatSOLValue(
-                  topAffiliates.reduce((sum, a) => sum + Number(a.totalEarnedLamports), 0)
+                  topReferrals.reduce((sum, r) => sum + Number(r.totalSpentLamports), 0)
                 ) + ' SOL',
                 icon: Coins,
                 color: '#b347ff',
               },
               {
-                label: 'avg_per_affiliate',
-                value: topAffiliates.length > 0
-                  ? affiliateDashboardService.formatSOLValue(
-                      topAffiliates.reduce((sum, a) => sum + Number(a.totalEarnedLamports), 0) / topAffiliates.length
-                    ) + ' SOL'
-                  : '0 SOL',
+                label: 'commission_earned',
+                value: affiliateDashboardService.formatSOLValue(
+                  topReferrals.reduce((sum, r) => sum + Number(r.commissionGeneratedLamports), 0)
+                ) + ' SOL',
                 icon: TrendingUp,
                 color: '#ff4ecd',
               },

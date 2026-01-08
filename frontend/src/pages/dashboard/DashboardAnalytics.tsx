@@ -38,7 +38,7 @@ function TerminalCard({
       >
         <div className="flex gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-          <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+          <span className="w-2.5 h-2.5 rounded-full bg-purple-500/80" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
         </div>
         <span style={{ color }}>{title}</span>
@@ -180,7 +180,7 @@ export function DashboardAnalytics() {
                         <Users className="w-3.5 h-3.5" />
                         <span>{affiliate.totalReferrals}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-yellow-400 font-mono text-xs mt-1">
+                      <div className="flex items-center gap-1 text-purple-500 font-mono text-xs mt-1">
                         <Coins className="w-3 h-3" />
                         <span>{affiliateDashboardService.formatSOLValue(affiliate.totalEarnedLamports)}</span>
                       </div>
@@ -235,7 +235,7 @@ export function DashboardAnalytics() {
                         <span className="font-mono text-sm text-emerald-400">{week.referralCount}</span>
                       </td>
                       <td className="py-3 px-2 text-right">
-                        <span className="font-mono text-sm text-yellow-400">
+                        <span className="font-mono text-sm text-purple-500">
                           {affiliateDashboardService.formatLamportsToSOL(week.earnedLamports)} SOL
                         </span>
                       </td>

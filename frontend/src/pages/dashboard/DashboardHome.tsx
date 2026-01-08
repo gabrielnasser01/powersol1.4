@@ -38,7 +38,7 @@ function TerminalCard({
       >
         <div className="flex gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-          <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+          <span className="w-2.5 h-2.5 rounded-full bg-purple-500/80" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
         </div>
         <span style={{ color }}>{title}</span>
@@ -295,9 +295,9 @@ export function DashboardHome() {
               <div className="flex items-center gap-3">
                 <div
                   className="w-12 h-12 rounded-lg flex items-center justify-center"
-                  style={{ background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.3)' }}
+                  style={{ background: 'rgba(179, 71, 255, 0.1)', border: '1px solid rgba(179, 71, 255, 0.3)' }}
                 >
-                  <Coins className="w-6 h-6 text-yellow-400" />
+                  <Coins className="w-6 h-6 text-purple-500" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white font-mono">
@@ -307,7 +307,7 @@ export function DashboardHome() {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-yellow-400 font-mono">
+                <span className="text-purple-500 font-mono">
                   {affiliateDashboardService.formatSOLValue(stats?.totalEarnedLamports || 0)} SOL
                 </span>
                 <span className="text-zinc-500 font-mono">total_earned</span>
@@ -377,10 +377,10 @@ export function DashboardHome() {
 
                 <div
                   className="p-3 rounded-lg"
-                  style={{ background: 'rgba(251, 191, 36, 0.05)', border: '1px solid rgba(251, 191, 36, 0.2)' }}
+                  style={{ background: 'rgba(179, 71, 255, 0.05)', border: '1px solid rgba(179, 71, 255, 0.2)' }}
                 >
                   <p className="text-xs text-zinc-500 font-mono mb-1">pending_release</p>
-                  <p className="text-xl font-bold text-yellow-400 font-mono">
+                  <p className="text-xl font-bold text-purple-500 font-mono">
                     {affiliateDashboardService.formatLamportsToSOL(
                       (stats?.weeklyEarnedLamports || 0) - (stats?.pendingClaimableLamports || 0)
                     )}

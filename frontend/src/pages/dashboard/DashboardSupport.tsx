@@ -37,7 +37,7 @@ function TerminalCard({
       >
         <div className="flex gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-          <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+          <span className="w-2.5 h-2.5 rounded-full bg-purple-500/80" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
         </div>
         <span style={{ color }}>{title}</span>
@@ -228,24 +228,24 @@ export function DashboardSupport() {
         transition={{ duration: 0.5, delay: 0.5 }}
         className="mt-6"
       >
-        <TerminalCard title="security_notice" color="#fbbf24" delay={0.5}>
+        <TerminalCard title="security_notice" color="#b347ff" delay={0.5}>
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-lg bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
-              <Shield className="w-6 h-6 text-yellow-400" />
+            <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              <Shield className="w-6 h-6 text-purple-500" />
             </div>
             <div>
               <h3 className="font-mono font-bold text-white mb-2">Stay Safe</h3>
               <ul className="space-y-2 text-sm text-zinc-400 font-mono">
                 <li className="flex items-start gap-2">
-                  <span className="text-yellow-400">-</span>
+                  <span className="text-purple-500">-</span>
                   <span>PowerSOL team will NEVER ask for your private keys or seed phrase</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-yellow-400">-</span>
+                  <span className="text-purple-500">-</span>
                   <span>Always verify you're on the official powersol.io domain</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-yellow-400">-</span>
+                  <span className="text-purple-500">-</span>
                   <span>Report suspicious activity to security@powersol.io</span>
                 </li>
               </ul>

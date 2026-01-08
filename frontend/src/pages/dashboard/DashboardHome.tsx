@@ -3,8 +3,9 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Users, Ticket, Coins, Clock, TrendingUp, Star, Crown, Sparkles } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { affiliateDashboardService, DashboardStats } from '../../services/affiliateDashboardService';
+import { affiliateDashboardService, DashboardStats, TopAffiliate } from '../../services/affiliateDashboardService';
 import { useWallet } from '../../contexts/WalletContext';
+import { Trophy } from 'lucide-react';
 
 function TerminalCard({
   title,
@@ -156,6 +157,7 @@ export function DashboardHome() {
   const navigate = useNavigate();
   const { publicKey: walletAddress, connected } = useWallet();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -167,8 +169,12 @@ export function DashboardHome() {
   const loadStats = useCallback(async () => {
     if (!walletAddress) return;
     setLoading(true);
-    const data = await affiliateDashboardService.getDashboardStats(walletAddress);
+    const [data, affiliates] = await Promise.all([
+      affiliateDashboardService.getDashboardStats(walletAddress),
+      affiliateDashboardService.getTopAffiliates(10),
+    ]);
     setStats(data);
+    setTopAffiliates(affiliates);
     setLoading(false);
   }, [walletAddress]);
 
@@ -401,6 +407,127 @@ export function DashboardHome() {
                   <TierBadge tier={stats?.tier || 1} label={stats?.tierLabel || 'Starter'} />
                 </div>
               </div>
+            </div>
+          )}
+        </TerminalCard>
+      </div>
+
+      <div className="mt-6">
+        <TerminalCard title="global_affiliate_ranking" color="#ff4ecd" delay={0.6}>
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 py-3 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-zinc-800" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-zinc-800 rounded w-3/4" />
+                    <div className="h-3 bg-zinc-800 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : topAffiliates.length === 0 ? (
+            <div className="text-center py-8">
+              <Trophy className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
+              <p className="text-zinc-500 font-mono">no_rankings_yet</p>
+              <p className="text-zinc-600 text-sm font-mono mt-1">be_the_first_to_rank</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-xs text-zinc-500 font-mono border-b border-zinc-800">
+                    <th className="text-left py-3 px-2">#</th>
+                    <th className="text-left py-3 px-2">WALLET</th>
+                    <th className="text-center py-3 px-2">TIER</th>
+                    <th className="text-center py-3 px-2">VALID_REFS</th>
+                    <th className="text-right py-3 px-2">TOTAL_EARNED</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topAffiliates.map((affiliate, index) => {
+                    const isCurrentUser = affiliate.walletAddress === walletAddress;
+                    const rankColors = {
+                      1: { bg: 'linear-gradient(135deg, #fbbf24, #f59e0b)', text: '#000' },
+                      2: { bg: 'linear-gradient(135deg, #94a3b8, #64748b)', text: '#000' },
+                      3: { bg: 'linear-gradient(135deg, #cd7f32, #b87333)', text: '#000' },
+                    }[affiliate.rank] || { bg: 'rgba(62, 203, 255, 0.2)', text: '#3ecbff' };
+
+                    return (
+                      <motion.tr
+                        key={affiliate.walletAddress}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`border-b border-zinc-800/50 hover:bg-zinc-800/30 ${
+                          isCurrentUser ? 'bg-cyan-500/10' : ''
+                        }`}
+                      >
+                        <td className="py-3 px-2">
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center font-mono text-xs font-bold"
+                            style={{
+                              background: rankColors.bg,
+                              color: rankColors.text,
+                              boxShadow: affiliate.rank <= 3 ? `0 0 10px ${rankColors.bg}40` : 'none',
+                            }}
+                          >
+                            {affiliate.rank <= 3 ? <Trophy className="w-3.5 h-3.5" /> : affiliate.rank}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm text-white">
+                              {affiliateDashboardService.shortenWallet(affiliate.walletAddress)}
+                            </span>
+                            {isCurrentUser && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 font-mono">
+                                YOU
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <span
+                            className="text-xs px-2 py-1 rounded-full font-mono"
+                            style={{
+                              background: `${
+                                affiliate.tier === 4
+                                  ? '#eab308'
+                                  : affiliate.tier === 3
+                                  ? '#8b5cf6'
+                                  : affiliate.tier === 2
+                                  ? '#f59e0b'
+                                  : '#3b82f6'
+                              }20`,
+                              color:
+                                affiliate.tier === 4
+                                  ? '#eab308'
+                                  : affiliate.tier === 3
+                                  ? '#8b5cf6'
+                                  : affiliate.tier === 2
+                                  ? '#f59e0b'
+                                  : '#3b82f6',
+                            }}
+                          >
+                            {affiliate.tierLabel}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <span className="font-mono text-sm text-emerald-400">
+                            {affiliate.totalReferrals}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-right">
+                          <span className="font-mono text-sm text-purple-500">
+                            {affiliateDashboardService.formatSOLValue(affiliate.totalEarnedLamports)} SOL
+                          </span>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </TerminalCard>

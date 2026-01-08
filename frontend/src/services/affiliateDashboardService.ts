@@ -46,26 +46,19 @@ export interface ApplicationStatus {
 class AffiliateDashboardService {
   async checkApplicationStatus(walletAddress: string): Promise<ApplicationStatus> {
     try {
-      console.log('[AffiliateDashboard] Checking status for wallet:', walletAddress);
-
       const { data, error } = await supabase
         .from('affiliate_applications')
         .select('status, created_at')
         .eq('wallet_address', walletAddress)
         .maybeSingle();
 
-      console.log('[AffiliateDashboard] Query result:', { data, error });
-
       if (error) throw error;
 
-      const result = {
+      return {
         hasApplied: !!data,
         status: data?.status || null,
         appliedAt: data?.created_at || null,
       };
-
-      console.log('[AffiliateDashboard] Returning status:', result);
-      return result;
     } catch (error) {
       console.error('Error checking application status:', error);
       return { hasApplied: false, status: null, appliedAt: null };

@@ -95,7 +95,7 @@ function RankBadge({ rank }: { rank: number }) {
 
 export function DashboardAnalytics() {
   const navigate = useNavigate();
-  const { walletAddress, connected } = useWallet();
+  const { publicKey: walletAddress, connected } = useWallet();
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyHistory[]>([]);
   const [loading, setLoading] = useState(true);

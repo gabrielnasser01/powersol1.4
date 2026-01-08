@@ -52,7 +52,7 @@ const stats = [
 
 export function Affiliates() {
   const navigate = useNavigate();
-  const { walletAddress, connected } = useWallet();
+  const { publicKey: walletAddress, connected } = useWallet();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -83,18 +83,12 @@ export function Affiliates() {
   useMagnetic(dashboardButtonRef);
 
   const checkApplicationStatus = useCallback(async () => {
-    console.log('[Affiliates] checkApplicationStatus called, walletAddress:', walletAddress);
-    if (!walletAddress) {
-      console.log('[Affiliates] No wallet address, skipping check');
-      return;
-    }
+    if (!walletAddress) return;
     const status = await affiliateDashboardService.checkApplicationStatus(walletAddress);
-    console.log('[Affiliates] Got status:', status);
     setApplicationStatus(status);
   }, [walletAddress]);
 
   useEffect(() => {
-    console.log('[Affiliates] useEffect triggered, connected:', connected, 'walletAddress:', walletAddress);
     checkApplicationStatus();
   }, [checkApplicationStatus]);
 

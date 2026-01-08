@@ -117,7 +117,7 @@ const faqItems = [
 
 export function DashboardSupport() {
   const navigate = useNavigate();
-  const { walletAddress, connected } = useWallet();
+  const { publicKey: walletAddress, connected } = useWallet();
 
   useEffect(() => {
     if (!connected) {

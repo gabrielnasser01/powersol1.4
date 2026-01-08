@@ -154,7 +154,7 @@ function TierBadge({ tier, label }: { tier: number; label: string }) {
 
 export function DashboardHome() {
   const navigate = useNavigate();
-  const { walletAddress, connected } = useWallet();
+  const { publicKey: walletAddress, connected } = useWallet();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -217,6 +217,8 @@ export function DashboardAnalytics() {
   const [topReferrals, setTopReferrals] = useState<TopReferral[]>([]);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tier, setTier] = useState<number>(1);
+  const [tierChecked, setTierChecked] = useState(false);
 
   useEffect(() => {
     if (!connected) {
@@ -224,8 +226,22 @@ export function DashboardAnalytics() {
     }
   }, [connected, navigate]);
 
+  useEffect(() => {
+    async function checkTier() {
+      if (!walletAddress) return;
+      const stats = await affiliateDashboardService.getDashboardStats(walletAddress);
+      const userTier = stats?.tier || 1;
+      setTier(userTier);
+      setTierChecked(true);
+      if (userTier < 3) {
+        navigate('/dashboard');
+      }
+    }
+    checkTier();
+  }, [walletAddress, navigate]);
+
   const loadData = useCallback(async () => {
-    if (!walletAddress) return;
+    if (!walletAddress || tier < 3) return;
     setLoading(true);
     const [referrals, history] = await Promise.all([
       affiliateDashboardService.getTopReferrals(walletAddress, 10),
@@ -234,18 +250,20 @@ export function DashboardAnalytics() {
     setTopReferrals(referrals);
     setWeeklyHistory(history);
     setLoading(false);
-  }, [walletAddress]);
+  }, [walletAddress, tier]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (tierChecked && tier >= 3) {
+      loadData();
+    }
+  }, [loadData, tierChecked, tier]);
 
-  if (!connected) {
+  if (!connected || !tierChecked || tier < 3) {
     return null;
   }
 
   return (
-    <DashboardLayout walletAddress={walletAddress || undefined}>
+    <DashboardLayout walletAddress={walletAddress || undefined} tier={tier}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TerminalCard title="my_top_referrals" color="#b347ff" delay={0}>
           {loading ? (

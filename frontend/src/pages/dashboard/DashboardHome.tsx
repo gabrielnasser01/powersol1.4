@@ -191,7 +191,7 @@ export function DashboardHome() {
     : 0;
 
   return (
-    <DashboardLayout walletAddress={walletAddress || undefined}>
+    <DashboardLayout walletAddress={walletAddress || undefined} tier={stats?.tier || 1}>
       <style>{`
         @keyframes shimmer {
           0% { background-position: -200% 0; }

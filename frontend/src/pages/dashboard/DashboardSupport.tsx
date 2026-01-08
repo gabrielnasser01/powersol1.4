@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Send, Mail, FileText, ExternalLink, HelpCircle, BookOpen, Shield } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { useWallet } from '../../contexts/WalletContext';
+import { affiliateDashboardService } from '../../services/affiliateDashboardService';
 
 function TerminalCard({
   title,
@@ -118,6 +119,7 @@ const faqItems = [
 export function DashboardSupport() {
   const navigate = useNavigate();
   const { publicKey: walletAddress, connected } = useWallet();
+  const [tier, setTier] = useState<number>(1);
 
   useEffect(() => {
     if (!connected) {
@@ -125,12 +127,21 @@ export function DashboardSupport() {
     }
   }, [connected, navigate]);
 
+  useEffect(() => {
+    async function loadTier() {
+      if (!walletAddress) return;
+      const stats = await affiliateDashboardService.getDashboardStats(walletAddress);
+      setTier(stats?.tier || 1);
+    }
+    loadTier();
+  }, [walletAddress]);
+
   if (!connected) {
     return null;
   }
 
   return (
-    <DashboardLayout walletAddress={walletAddress || undefined}>
+    <DashboardLayout walletAddress={walletAddress || undefined} tier={tier}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <SupportButton
           icon={MessageCircle}

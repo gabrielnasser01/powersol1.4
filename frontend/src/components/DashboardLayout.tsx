@@ -1,20 +1,28 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, BarChart3, HeadphonesIcon, ChevronLeft } from 'lucide-react';
+import { LayoutDashboard, BarChart3, HeadphonesIcon, ChevronLeft, Lock } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   walletAddress?: string;
+  tier?: number;
 }
 
-const navItems = [
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  minTier?: number;
+}
+
+const navItems: NavItem[] = [
   { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { path: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: '/dashboard/analytics', label: 'Analytics', icon: BarChart3, minTier: 3 },
   { path: '/dashboard/support', label: 'Support', icon: HeadphonesIcon },
 ];
 
-export function DashboardLayout({ children, walletAddress }: DashboardLayoutProps) {
+export function DashboardLayout({ children, walletAddress, tier = 1 }: DashboardLayoutProps) {
   const location = useLocation();
 
   return (
@@ -77,6 +85,24 @@ export function DashboardLayout({ children, walletAddress }: DashboardLayoutProp
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            const isLocked = item.minTier !== undefined && tier < item.minTier;
+
+            if (isLocked) {
+              return (
+                <div
+                  key={item.path}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-mono text-sm border border-zinc-800 bg-zinc-900/50 text-zinc-600 whitespace-nowrap cursor-not-allowed relative group"
+                  title={`Requires Silver tier or higher`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                  <Lock className="w-3 h-3 ml-1" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-800 text-zinc-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Silver+ only
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <NavLink

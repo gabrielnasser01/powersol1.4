@@ -1,0 +1,8 @@
+[Esta seria a imagem do link do Imgur - como não posso baixar diretamente do link, vou criar um placeholder]
+
+Nota: Para adicionar a imagem real do Imgur (https://imgur.com/zA2BXe5), você precisará:
+1. Baixar a imagem do link
+2. Salvar como "imgur-trophy.png" na pasta public/
+3. A imagem estará disponível via "/imgur-trophy.png" no projeto
+
+A estrutura está pronta para receber a imagem!

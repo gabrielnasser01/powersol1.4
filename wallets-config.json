@@ -1,0 +1,96 @@
+{
+  "generated_at": "2026-01-04",
+  "network": "devnet",
+  "wallets": {
+    "authority": {
+      "name": "AUTHORITY",
+      "address": "FGtgtA1StYTCpd5genQLvFJhNkZnv8LvxcxCzJWGJ522",
+      "purpose": "Backend signing authority",
+      "has_private_key": true,
+      "needs_funding": true,
+      "recommended_balance": "2-5 SOL"
+    },
+    "treasury": {
+      "name": "TREASURY",
+      "address": "55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1",
+      "purpose": "30% of ticket sales",
+      "has_private_key": true,
+      "needs_funding": true,
+      "percentage": "30%",
+      "recommended_balance": "1-2 SOL"
+    },
+    "affiliates": {
+      "name": "AFFILIATES_POOL",
+      "address": "8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf",
+      "purpose": "Affiliate commissions pool",
+      "has_private_key": true,
+      "needs_funding": true,
+      "percentage": "up to 30%",
+      "recommended_balance": "1-2 SOL"
+    },
+    "delta": {
+      "name": "DELTA",
+      "address": "2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU",
+      "purpose": "Difference when affiliates < 30%",
+      "has_private_key": true,
+      "needs_funding": true,
+      "percentage": "variable (30% - affiliates%)",
+      "recommended_balance": "1-2 SOL"
+    },
+    "lottery_tri_daily": {
+      "name": "LOTTERY_TRI_DAILY",
+      "address": "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx",
+      "purpose": "Prize pool - draws every 3 days",
+      "has_private_key": true,
+      "needs_funding": true,
+      "lottery_type": "tri_daily",
+      "recommended_balance": "0.5-1 SOL"
+    },
+    "lottery_weekly": {
+      "name": "LOTTERY_WEEKLY",
+      "address": "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
+      "purpose": "Weekly lottery prize pool",
+      "has_private_key": true,
+      "needs_funding": true,
+      "lottery_type": "weekly",
+      "recommended_balance": "0.5-1 SOL"
+    },
+    "lottery_mega": {
+      "name": "LOTTERY_MEGA",
+      "address": "nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C",
+      "purpose": "Mega lottery prize pool",
+      "has_private_key": true,
+      "needs_funding": true,
+      "lottery_type": "mega",
+      "recommended_balance": "0.5-1 SOL"
+    },
+    "special_event": {
+      "name": "SPECIAL_EVENT",
+      "address": "AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk",
+      "purpose": "Special events (Halloween, Christmas, etc)",
+      "has_private_key": true,
+      "needs_funding": true,
+      "lottery_type": "special",
+      "recommended_balance": "0.5-1 SOL"
+    }
+  },
+  "distribution_example": {
+    "ticket_price": "1 SOL",
+    "breakdown": {
+      "treasury": "0.30 SOL (30%)",
+      "affiliates": "0.20 SOL (example: 20%)",
+      "delta": "0.10 SOL (30% - 20%)",
+      "prize_pool": "0.40 SOL (40%)"
+    }
+  },
+  "explorer_links": {
+    "devnet": "https://explorer.solana.com/?cluster=devnet",
+    "mainnet": "https://explorer.solana.com/"
+  },
+  "important_notes": [
+    "TODAS as 8 carteiras tem chaves privadas",
+    "O backend pode enviar premios de TODAS as carteiras de loteria",
+    "NUNCA compartilhe as private keys",
+    "Transfira SOL para TODAS as 8 carteiras (gas fees)"
+  ]
+}

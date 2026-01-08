@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Supabase Missions</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Testing Supabase Missions</h1>
+  <div id="output"></div>
+
+  <script>
+    const supabaseUrl = 'https://xdcfwggwoutumhkcpkej.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkY2Z3Z2d3b3V0dW1oa2Nwa2VqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyMTMwNTksImV4cCI6MjA3ODc4OTA1OX0.oepi42XDyj6btCQA77dnWoWmhksH6f1OvUHjjzFXB7w';
+
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+    const output = document.getElementById('output');
+
+    async function loadMissions() {
+      output.innerHTML = '<p>Loading missions...</p>';
+
+      try {
+        const { data, error } = await supabase
+          .from('missions')
+          .select('*')
+          .eq('is_active', true)
+          .order('mission_type');
+
+        if (error) {
+          output.innerHTML = `<p style="color: red">Error: ${JSON.stringify(error)}</p>`;
+          return;
+        }
+
+        const byType = {
+          daily: data.filter(m => m.mission_type === 'daily'),
+          weekly: data.filter(m => m.mission_type === 'weekly'),
+          social: data.filter(m => m.mission_type === 'social'),
+          activity: data.filter(m => m.mission_type === 'activity'),
+        };
+
+        output.innerHTML = `
+          <h2>Total Missions: ${data.length}</h2>
+          <h3>Daily: ${byType.daily.length}</h3>
+          <ul>${byType.daily.map(m => `<li>${m.name} - ${m.power_points} PP</li>`).join('')}</ul>
+
+          <h3>Weekly: ${byType.weekly.length}</h3>
+          <ul>${byType.weekly.map(m => `<li>${m.name} - ${m.power_points} PP</li>`).join('')}</ul>
+
+          <h3>Social: ${byType.social.length}</h3>
+          <ul>${byType.social.map(m => `<li>${m.name} - ${m.power_points} PP</li>`).join('')}</ul>
+
+          <h3>Activity: ${byType.activity.length}</h3>
+          <ul>${byType.activity.map(m => `<li>${m.name} - ${m.power_points} PP</li>`).join('')}</ul>
+        `;
+      } catch (err) {
+        output.innerHTML = `<p style="color: red">Exception: ${err.message}</p>`;
+      }
+    }
+
+    loadMissions();
+  </script>
+</body>
+</html>

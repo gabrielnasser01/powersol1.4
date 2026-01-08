@@ -1,0 +1,76 @@
+🎯 Gerando 7 Wallets para PowerSOL...
+
+═══════════════════════════════════════════════════════════════
+
+1. AUTHORITY
+   Public Key: ENmCwrkbbXVaBF7GWTZFLaVstx6ECHLUCUyh5oBfK7jj
+   Private Key (Array): [177,39,59,6,87,...] (64 bytes)
+   Private Key (Base64): sSc7Blc5n2DFp70gfTC9Avf2Cu2rz6v+9ct6KYvj...
+
+2. TREASURY
+   Public Key: J3qrMtB2HqKt2yUfAqdjwCdmyh64mz83nNwjLqLCA7F7
+   Private Key (Array): [207,201,140,26,176,...] (64 bytes)
+   Private Key (Base64): z8mMGrCLt5y2MTLGMLFbtmODkVbO5SyhGrPHcXAL...
+
+3. AFFILIATES_POOL
+   Public Key: 75CxzSpUZZ1tPSiUw5t52TiD6gWjjjMXTyKDMxYcm7TZ
+   Private Key (Array): [183,131,197,146,101,...] (64 bytes)
+   Private Key (Base64): t4PFkmXyQYm4CQWGFanjsyOLgPtaW6NHOqW7ALnv...
+
+4. DELTA
+   Public Key: 8HbdZvq48nDxUqxUjDAuZQh4UW9XU9v9eFWauJijSKoq
+   Private Key (Array): [178,138,217,175,212,...] (64 bytes)
+   Private Key (Base64): sorZr9SyyIhfBnfgQEcpaqS99fZW6bPT5tfodzkB...
+
+5. LOTTERY_DAILY
+   Public Key: 6nSBZPqTGoXFVonxo5egzWQtUT35CvBAobceTJrgzPac
+
+6. LOTTERY_WEEKLY
+   Public Key: D61syQgdUK8rZAAECnBVN5MQCSmZKJFCrJ8uPoMwhKaD
+
+7. LOTTERY_MEGA
+   Public Key: FJQPHRctz44gh7C1zUehhbkiY7YdGX5yo49JDAgUsHUg
+
+═══════════════════════════════════════════════════════════════
+
+📋 ADICIONE NO SEU .env:
+
+# ═══════════════════════════════════════════════════════════
+# PowerSOL Wallets Configuration
+# ═══════════════════════════════════════════════════════════
+
+# AUTHORITY (Backend Authority - PRIVATE)
+SOLANA_AUTHORITY_PUBLIC=ENmCwrkbbXVaBF7GWTZFLaVstx6ECHLUCUyh5oBfK7jj
+SOLANA_AUTHORITY_PRIVATE='[177,39,59,6,87,57,159,96,197,167,189,32,125,48,189,2,247,246,10,237,171,207,171,254,245,203,122,41,139,227,230,162,198,187,28,98,65,214,65,175,199,226,77,142,238,224,197,202,22,113,34,162,3,144,145,17,47,43,145,20,68,150,45,118]'
+
+# TREASURY (Backend Authority - PRIVATE)
+SOLANA_TREASURY_PUBLIC=J3qrMtB2HqKt2yUfAqdjwCdmyh64mz83nNwjLqLCA7F7
+SOLANA_TREASURY_PRIVATE='[207,201,140,26,176,139,183,156,182,49,50,198,48,177,91,182,99,131,145,86,206,229,44,161,26,179,199,113,112,11,20,234,253,81,19,77,235,48,69,182,144,202,69,74,28,84,207,23,51,35,131,131,95,144,254,60,95,128,93,69,118,210,189,130]'
+
+# AFFILIATES_POOL (Backend Authority - PRIVATE)
+SOLANA_AFFILIATES_POOL_PUBLIC=75CxzSpUZZ1tPSiUw5t52TiD6gWjjjMXTyKDMxYcm7TZ
+SOLANA_AFFILIATES_POOL_PRIVATE='[183,131,197,146,101,242,65,137,184,9,5,134,21,169,227,179,35,139,128,251,90,91,163,71,58,165,187,0,185,239,139,29,90,57,249,92,22,109,139,20,172,198,239,103,184,85,99,143,47,226,247,28,183,56,142,221,184,110,96,193,112,3,245,12]'
+
+# DELTA (Backend Authority - PRIVATE)
+SOLANA_DELTA_PUBLIC=8HbdZvq48nDxUqxUjDAuZQh4UW9XU9v9eFWauJijSKoq
+SOLANA_DELTA_PRIVATE='[178,138,217,175,212,178,200,136,95,6,119,224,64,71,41,106,164,189,245,246,86,233,179,211,230,215,232,119,57,1,6,186,108,66,66,27,193,58,213,47,214,16,74,142,201,177,196,16,84,77,41,61,205,124,100,100,131,168,243,176,58,92,255,140]'
+
+# LOTTERY_DAILY (Public Pool)
+SOLANA_LOTTERY_DAILY=6nSBZPqTGoXFVonxo5egzWQtUT35CvBAobceTJrgzPac
+
+# LOTTERY_WEEKLY (Public Pool)
+SOLANA_LOTTERY_WEEKLY=D61syQgdUK8rZAAECnBVN5MQCSmZKJFCrJ8uPoMwhKaD
+
+# LOTTERY_MEGA (Public Pool)
+SOLANA_LOTTERY_MEGA=FJQPHRctz44gh7C1zUehhbkiY7YdGX5yo49JDAgUsHUg
+
+# ═══════════════════════════════════════════════════════════
+
+✅ Wallets salvas em: /tmp/cc-agent/56464174/project/powersol-backend/wallets-generated.json
+
+⚠️  IMPORTANTE:
+1. Copie as variáveis acima para seu .env
+2. NUNCA compartilhe as PRIVATE KEYS (AUTHORITY, TREASURY, AFFILIATES, DELTA)
+3. Transfira SOL para essas 4 carteiras (para gas fees)
+4. As carteiras de loteria são apenas endereços públicos
+

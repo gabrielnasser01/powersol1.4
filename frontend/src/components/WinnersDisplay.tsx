@@ -1,0 +1,177 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { winnersStorage } from '../store/persist';
+import { theme } from '../theme';
+import { solToUsd } from '../chain/adapter';
+
+interface WinnersDisplayProps {
+  title?: string;
+  accentColor?: string;
+  lotteryType: 'tri-daily' | 'halloween' | 'jackpot' | 'grand-prize';
+}
+
+export function WinnersDisplay({
+  title = 'Winners',
+  accentColor = theme.colors.neonPink,
+  lotteryType
+}: WinnersDisplayProps) {
+  const [winners, setWinners] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadWinners = () => {
+      const allWinners = winnersStorage.get();
+
+      if (allWinners.length === 0) {
+        setWinners([]);
+        return;
+      }
+
+      const lastDrawId = allWinners[0].drawId;
+      const lastDrawWinners = allWinners.filter(w => w.drawId === lastDrawId);
+
+      let filteredWinners = lastDrawWinners;
+
+      switch (lotteryType) {
+        case 'jackpot':
+          filteredWinners = lastDrawWinners.slice(0, 100);
+          break;
+        case 'grand-prize':
+          filteredWinners = lastDrawWinners.slice(0, 3);
+          break;
+        case 'tri-daily':
+        case 'halloween':
+        default:
+          filteredWinners = lastDrawWinners;
+          break;
+      }
+
+      setWinners(filteredWinners);
+    };
+
+    loadWinners();
+    const interval = setInterval(loadWinners, 5000);
+
+    return () => clearInterval(interval);
+  }, [lotteryType]);
+
+  const sortedWinners = winners.sort((a, b) => b.prizeSol - a.prizeSol);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay: 0.8 }}
+      className="max-w-4xl mx-auto"
+    >
+      <div className="flex items-center justify-center space-x-3 mb-8">
+        <div
+          className="p-3 rounded-xl"
+          style={{
+            background: `linear-gradient(135deg, ${accentColor}20, ${accentColor}10)`,
+            border: `1px solid ${accentColor}40`,
+          }}
+        >
+          <img
+            src="https://i.imgur.com/F5w1guM.png"
+            alt="Trophy"
+            className="w-6 h-6 object-contain"
+            style={{
+              filter: `brightness(1.2) contrast(1.1) drop-shadow(0 0 8px ${accentColor}60)`,
+            }}
+          />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold" style={{ color: theme.colors.text, fontFamily: 'Orbitron, monospace' }}>
+            {title}
+          </h2>
+        </div>
+      </div>
+      <div
+        className="p-6 rounded-2xl border"
+        style={{
+          background: theme.gradients.card,
+          borderColor: accentColor,
+          boxShadow: `0 0 30px ${accentColor}20`,
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <div className="space-y-4">
+          {winners.length > 0 ? (
+            <>
+              {sortedWinners.map((winner, index) => (
+                <motion.div
+                  key={`${winner.drawId}-${winner.maskedPk}-${index}`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="flex items-center justify-between p-4 rounded-lg"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 flex items-center justify-center">
+                      <img
+                        src={index === 0 ? "https://i.imgur.com/jF1YzEF.png" : index === 1 ? "https://i.imgur.com/8WfHMkU.png" : index === 2 ? "https://i.imgur.com/r6hiZta.png" : "https://i.imgur.com/oNzelCb.png"}
+                        alt={`${index + 1}º lugar`}
+                        className="w-8 h-8 object-contain"
+                        style={{
+                          filter: `brightness(1.2) contrast(1.1) drop-shadow(0 0 8px ${accentColor}60)`,
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <div className="font-mono text-sm" style={{ color: theme.colors.text }}>
+                        {winner.maskedPk}
+                      </div>
+                      <div className="text-xs text-zinc-400">
+                        {new Date(winner.timestamp).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="flex flex-col items-end space-y-1">
+                      <motion.img
+                        src="https://i.imgur.com/eE1m8fp.png"
+                        alt="Solana Coin"
+                        className="w-8 h-8 rounded-full object-cover"
+                        animate={{
+                          rotate: [0, 360],
+                        }}
+                        transition={{
+                          duration: 8,
+                          repeat: Infinity,
+                          ease: 'linear',
+                        }}
+                      />
+                      <div className="font-bold" style={{ color: theme.colors.neonCyan }}>
+                        {winner.prizeSol.toFixed(2)} SOL
+                      </div>
+                    </div>
+                    <div className="text-xs text-zinc-400">
+                      ≈ ${solToUsd(winner.prizeSol).toFixed(2)}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </>
+          ) : (
+            <div className="text-center py-8 text-zinc-400">
+              <img
+                src="https://i.imgur.com/T3PVktI.png"
+                alt="PWRS Ticket"
+                className="w-8 h-8 object-contain mx-auto mb-4"
+                style={{
+                  filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(62, 203, 255, 0.6))',
+                }}
+              />
+              <p>No recent winners yet. Be the first!</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}

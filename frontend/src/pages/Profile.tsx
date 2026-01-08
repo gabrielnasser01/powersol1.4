@@ -1,25 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, X, Ticket, Gift, Users } from 'lucide-react';
+import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { userStorage, userStatsStorage, ticketsStorage } from '../store/persist';
+import { userStorage, userStatsStorage } from '../store/persist';
 import { ticketStorage, MockTicket } from '../store/ticketStorage';
 import { prizeService, Prize } from '../services/prizeService';
 import { affiliateDashboardService, DashboardStats } from '../services/affiliateDashboardService';
 import { supabase } from '../lib/supabase';
 import { useWallet } from '../contexts/WalletContext';
+import { useNotifications } from '../hooks/useNotifications';
 
 export function Profile() {
   const navigate = useNavigate();
   const { publicKey: walletPublicKey, connected } = useWallet();
+  const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
   const [userStats, setUserStats] = useState(userStatsStorage.get());
   const [personalInfo, setPersonalInfo] = useState({
     displayName: 'Demo User',
     email: 'demo@powersol.app',
     location: 'United States',
-    pushNotifications: true,
   });
+  const [togglingNotifications, setTogglingNotifications] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
@@ -1084,29 +1086,61 @@ export function Profile() {
                       className="flex items-center justify-between p-2 sm:p-3 rounded-lg"
                       style={{
                         background: 'rgba(0, 0, 0, 0.6)',
-                        border: '1px solid rgba(179, 71, 255, 0.3)',
+                        border: `1px solid ${notificationsEnabled ? 'rgba(0, 255, 136, 0.3)' : 'rgba(179, 71, 255, 0.3)'}`,
                       }}
                     >
                       <div className="flex items-center space-x-2">
-                        <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: '#b347ff' }} />
-                        <span className="font-mono text-xs sm:text-sm" style={{ color: '#fff' }}>
-                          PUSH_NOTIFICATIONS
-                        </span>
+                        {notificationsEnabled ? (
+                          <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: '#00ff88' }} />
+                        ) : (
+                          <BellOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: '#b347ff' }} />
+                        )}
+                        <div>
+                          <span className="font-mono text-xs sm:text-sm block" style={{ color: '#fff' }}>
+                            PUSH_NOTIFICATIONS
+                          </span>
+                          <span className="font-mono text-[10px] block" style={{ color: notificationsEnabled ? '#00ff88' : '#888' }}>
+                            {notificationsEnabled ? 'Ativo - receba alertas de premios' : 'Desativado'}
+                          </span>
+                        </div>
                       </div>
                       <button
-                        onClick={() => setPersonalInfo({ ...personalInfo, pushNotifications: !personalInfo.pushNotifications })}
+                        onClick={async () => {
+                          if (togglingNotifications) return;
+                          setTogglingNotifications(true);
+                          try {
+                            if (notificationsEnabled) {
+                              disableNotifications();
+                            } else {
+                              await enableNotifications();
+                            }
+                          } finally {
+                            setTogglingNotifications(false);
+                          }
+                        }}
+                        disabled={togglingNotifications}
                         className="relative w-12 h-6 rounded-full transition-all duration-300"
                         style={{
-                          background: personalInfo.pushNotifications ? '#b347ff' : 'rgba(100, 100, 100, 0.5)',
+                          background: notificationsEnabled ? '#00ff88' : 'rgba(100, 100, 100, 0.5)',
                         }}
                       >
                         <motion.div
-                          className="absolute top-1 w-4 h-4 rounded-full bg-white"
+                          className="absolute top-1 w-4 h-4 rounded-full bg-white flex items-center justify-center"
                           animate={{
-                            left: personalInfo.pushNotifications ? '26px' : '4px'
+                            left: notificationsEnabled ? '26px' : '4px'
                           }}
                           transition={transition30fps}
-                        />
+                        >
+                          {togglingNotifications ? (
+                            <motion.div
+                              className="w-2 h-2 border border-zinc-400 border-t-transparent rounded-full"
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                            />
+                          ) : notificationsEnabled ? (
+                            <Check className="w-2.5 h-2.5 text-emerald-500" />
+                          ) : null}
+                        </motion.div>
                       </button>
                     </div>
                   </div>

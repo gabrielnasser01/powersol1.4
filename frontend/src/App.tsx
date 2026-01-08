@@ -6,6 +6,7 @@ import { preloadCriticalResources } from './utils/performance';
 import { WalletProvider } from './contexts/WalletContext';
 import { initAffiliateTracking } from './utils/affiliateTracking';
 import { solPriceService } from './services/solPriceService';
+import { notificationService } from './services/notificationService';
 
 function App() {
   useSpotifyOptimizations();
@@ -15,6 +16,7 @@ function App() {
       initializeStorage();
       preloadCriticalResources();
       initAffiliateTracking();
+      notificationService.init();
       const stopPriceRefresh = solPriceService.startAutoRefresh(60000);
       return () => stopPriceRefresh();
     } catch (error) {

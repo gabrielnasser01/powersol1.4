@@ -92,12 +92,21 @@ export function Affiliates() {
     checkApplicationStatus();
   }, [checkApplicationStatus]);
 
-  const canAccessDashboard = applicationStatus.hasApplied && applicationStatus.status !== 'rejected';
+  const canAccessDashboard = connected && applicationStatus.hasApplied && applicationStatus.status !== 'rejected';
+  const needsWalletConnection = !connected;
+  const needsApplication = connected && !applicationStatus.hasApplied;
 
   const handleDashboardClick = () => {
     if (canAccessDashboard) {
       navigate('/dashboard');
     }
+  };
+
+  const getDashboardButtonText = () => {
+    if (needsWalletConnection) return '(connect wallet)';
+    if (needsApplication) return '(apply first)';
+    if (applicationStatus.status === 'rejected') return '(rejected)';
+    return '';
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -120,9 +129,11 @@ export function Affiliates() {
     setSubmitStatus('idle');
     setErrorMessage('');
 
+    const walletToUse = walletAddress || formData.wallet;
+
     try {
       await apiClient.submitAffiliateApplication({
-        wallet_address: formData.wallet,
+        wallet_address: walletToUse,
         full_name: formData.name,
         email: formData.email,
         country: formData.country || undefined,
@@ -132,6 +143,13 @@ export function Affiliates() {
       });
 
       setSubmitStatus('success');
+
+      setApplicationStatus({
+        hasApplied: true,
+        status: 'pending',
+        appliedAt: new Date().toISOString(),
+      });
+
       setTimeout(() => {
         setShowForm(false);
         setSubmitStatus('idle');
@@ -341,7 +359,7 @@ export function Affiliates() {
               )}
               <span>ACCESS_DASHBOARD</span>
               {!canAccessDashboard && (
-                <span className="text-xs ml-2 opacity-70">(apply first)</span>
+                <span className="text-xs ml-2 opacity-70">{getDashboardButtonText()}</span>
               )}
             </motion.button>
           </motion.div>

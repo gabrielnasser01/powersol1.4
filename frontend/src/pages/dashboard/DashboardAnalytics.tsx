@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Trophy, Star, TrendingUp, Crown, Sparkles, Users, Coins } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { affiliateDashboardService, TopAffiliate, WeeklyHistory } from '../../services/affiliateDashboardService';
@@ -93,10 +94,17 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 export function DashboardAnalytics() {
-  const { walletAddress } = useWallet();
+  const navigate = useNavigate();
+  const { walletAddress, connected } = useWallet();
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyHistory[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!connected) {
+      navigate('/affiliates');
+    }
+  }, [connected, navigate]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -112,6 +120,10 @@ export function DashboardAnalytics() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  if (!connected) {
+    return null;
+  }
 
   return (
     <DashboardLayout walletAddress={walletAddress || undefined}>

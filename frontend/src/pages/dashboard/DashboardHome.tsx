@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Users, Ticket, Coins, Clock, TrendingUp, Star, Crown, Sparkles } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { affiliateDashboardService, DashboardStats } from '../../services/affiliateDashboardService';
@@ -152,9 +153,16 @@ function TierBadge({ tier, label }: { tier: number; label: string }) {
 }
 
 export function DashboardHome() {
-  const { walletAddress } = useWallet();
+  const navigate = useNavigate();
+  const { walletAddress, connected } = useWallet();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!connected) {
+      navigate('/affiliates');
+    }
+  }, [connected, navigate]);
 
   const loadStats = useCallback(async () => {
     if (!walletAddress) return;
@@ -167,6 +175,10 @@ export function DashboardHome() {
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  if (!connected) {
+    return null;
+  }
 
   const tierProgress = stats
     ? affiliateDashboardService.getTierProgress(stats.totalReferrals, stats.tier)

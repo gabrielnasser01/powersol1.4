@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Send, Mail, FileText, ExternalLink, HelpCircle, BookOpen, Shield } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { useWallet } from '../../contexts/WalletContext';
@@ -115,7 +116,18 @@ const faqItems = [
 ];
 
 export function DashboardSupport() {
-  const { walletAddress } = useWallet();
+  const navigate = useNavigate();
+  const { walletAddress, connected } = useWallet();
+
+  useEffect(() => {
+    if (!connected) {
+      navigate('/affiliates');
+    }
+  }, [connected, navigate]);
+
+  if (!connected) {
+    return null;
+  }
 
   return (
     <DashboardLayout walletAddress={walletAddress || undefined}>

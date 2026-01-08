@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { userStorage, userStatsStorage, ticketsStorage } from '../store/persist';
 import { ticketStorage, MockTicket } from '../store/ticketStorage';
 import { prizeService, Prize } from '../services/prizeService';
-import { affiliateService, AffiliateDashboard } from '../services/affiliateService';
+import { affiliateDashboardService, DashboardStats } from '../services/affiliateDashboardService';
 import { supabase } from '../lib/supabase';
 import { useWallet } from '../contexts/WalletContext';
 
@@ -24,7 +24,7 @@ export function Profile() {
   const [showTicketsModal, setShowTicketsModal] = useState(false);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [claimingPrize, setClaimingPrize] = useState<number | null>(null);
-  const [affiliateData, setAffiliateData] = useState<AffiliateDashboard | null>(null);
+  const [affiliateStats, setAffiliateStats] = useState<DashboardStats | null>(null);
   const [loadingAffiliate, setLoadingAffiliate] = useState(false);
   const [claimingAffiliate, setClaimingAffiliate] = useState(false);
   const [scanlinePosition, setScanlinePosition] = useState(0);
@@ -115,8 +115,8 @@ export function Profile() {
 
     setLoadingAffiliate(true);
     try {
-      const dashboard = await affiliateService.getDashboard();
-      setAffiliateData(dashboard);
+      const stats = await affiliateDashboardService.getDashboardStats(walletPublicKey);
+      setAffiliateStats(stats);
     } catch (error) {
       console.error('Failed to load affiliate data:', error);
     } finally {
@@ -138,7 +138,7 @@ export function Profile() {
       });
       setUserPrizes([]);
       setTotalPrizeAmount(0);
-      setAffiliateData(null);
+      setAffiliateStats(null);
       setUserTickets([]);
       setTotalTickets(0);
     }
@@ -336,13 +336,13 @@ export function Profile() {
   };
 
   const handleClaimAffiliate = async () => {
-    if (!user.publicKey || !affiliateData) {
+    if (!user.publicKey || !affiliateStats) {
       alert('Please connect your wallet first');
       return;
     }
 
-    const pendingEarnings = affiliateData.affiliate.pending_earnings;
-    if (pendingEarnings <= 0) {
+    const pendingLamports = affiliateStats.pendingClaimableLamports;
+    if (pendingLamports <= 0) {
       alert('No rewards available to claim');
       return;
     }
@@ -350,13 +350,7 @@ export function Profile() {
     setClaimingAffiliate(true);
 
     try {
-      const amountSOL = affiliateService.lamportsToSOL(pendingEarnings);
-
-      const result = await affiliateService.claimRewards(amountSOL, async (tx) => {
-        return tx;
-      });
-
-      alert(`Rewards claimed successfully! Transaction: ${result.signature}`);
+      alert('Claim functionality coming soon. Please use the Affiliate Dashboard to claim rewards.');
       await loadAffiliateData();
     } catch (error) {
       console.error('Failed to claim affiliate rewards:', error);
@@ -366,20 +360,22 @@ export function Profile() {
     }
   };
 
-  const affiliateLevel = affiliateData?.stats.tier || 1;
-  const validReferrals = affiliateData?.stats.totalReferrals || 0;
-  const affiliateRewards = affiliateData?.affiliate.pending_earnings
-    ? affiliateService.lamportsToSOL(affiliateData.affiliate.pending_earnings) * 100
-    : 0;
+  const affiliateLevel = affiliateStats?.tier || 1;
+  const affiliateTierLabel = affiliateStats?.tierLabel || 'Starter';
+  const validReferrals = affiliateStats?.totalReferrals || 0;
+  const commissionRate = affiliateStats?.commissionRate || 0.05;
+  const affiliateRewardsLamports = affiliateStats?.pendingClaimableLamports || 0;
+  const affiliateRewardsSOL = affiliateRewardsLamports / 1_000_000_000;
 
   const getNextLevelReferrals = () => {
-    const levels = [0, 100, 1000, 5000, 10000, 20000];
-    return levels[affiliateLevel] || 100;
+    if (affiliateLevel >= 4) return 5000;
+    if (affiliateLevel === 3) return 5000;
+    if (affiliateLevel === 2) return 1000;
+    return 100;
   };
 
   const getLevelProgress = () => {
-    const nextLevel = getNextLevelReferrals();
-    return Math.min((validReferrals / nextLevel) * 100, 100);
+    return affiliateDashboardService.getTierProgress(validReferrals, affiliateLevel);
   };
 
   // User can access profile data even when wallet is disconnected
@@ -863,7 +859,7 @@ export function Profile() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-mono font-bold text-xs sm:text-base" style={{ color: '#fff' }}>
-                        {affiliateLevel === 1 ? 'STARTER' : affiliateLevel === 2 ? 'BRONZE' : affiliateLevel === 3 ? 'SILVER' : 'GOLD'} {affiliateLevel}
+                        {affiliateTierLabel.toUpperCase()} ({(commissionRate * 100).toFixed(0)}%)
                       </h3>
                       <p className="font-mono text-[10px] sm:text-xs" style={{ color: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7' }}>
                         {validReferrals} VALID REFERRALS
@@ -920,36 +916,36 @@ export function Profile() {
                   >
                     <div className="flex items-center space-x-1.5 sm:space-x-2">
                       <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7' }} />
-                      <span className="font-mono text-[10px] sm:text-xs" style={{ color: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7' }}>AVAILABLE</span>
+                      <span className="font-mono text-[10px] sm:text-xs" style={{ color: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7' }}>CLAIMABLE</span>
                     </div>
                     <span className="font-mono font-bold text-base sm:text-lg" style={{ color: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7' }}>
-                      ${affiliateRewards.toFixed(2)}
+                      {affiliateRewardsSOL.toFixed(4)} SOL
                     </span>
                   </div>
 
                   {/* Claim Button */}
                   <motion.button
                     onClick={handleClaimAffiliate}
-                    disabled={claimingAffiliate || affiliateRewards === 0}
+                    disabled={claimingAffiliate || affiliateRewardsLamports === 0}
                     className="w-full py-2.5 sm:py-3 rounded-lg font-mono text-xs sm:text-sm font-bold relative overflow-hidden"
                     style={{
-                      background: affiliateRewards > 0
+                      background: affiliateRewardsLamports > 0
                         ? (affiliateLevel === 1 ? 'linear-gradient(135deg, #1e3a8a, #3b82f6)' : affiliateLevel === 2 ? 'linear-gradient(135deg, #ff1493, #ff69b4)' : affiliateLevel === 3 ? 'linear-gradient(135deg, #00bfff, #2fffea)' : 'linear-gradient(135deg, #9333ea, #a855f7)')
                         : 'rgba(100, 100, 100, 0.3)',
-                      border: affiliateRewards > 0
+                      border: affiliateRewardsLamports > 0
                         ? (affiliateLevel === 1 ? '2px solid #3b82f6' : affiliateLevel === 2 ? '2px solid #ff1493' : affiliateLevel === 3 ? '2px solid #2fffea' : '2px solid #a855f7')
                         : '1px solid rgba(100, 100, 100, 0.5)',
-                      color: affiliateRewards > 0 ? '#fff' : '#666',
-                      boxShadow: affiliateRewards > 0
+                      color: affiliateRewardsLamports > 0 ? '#fff' : '#666',
+                      boxShadow: affiliateRewardsLamports > 0
                         ? (affiliateLevel === 1 ? '0 0 20px rgba(59, 130, 246, 0.4)' : affiliateLevel === 2 ? '0 0 20px rgba(255, 20, 147, 0.4)' : affiliateLevel === 3 ? '0 0 20px rgba(47, 255, 234, 0.4)' : '0 0 20px rgba(168, 85, 247, 0.4)')
                         : 'none',
-                      cursor: affiliateRewards > 0 ? 'pointer' : 'not-allowed',
+                      cursor: affiliateRewardsLamports > 0 ? 'pointer' : 'not-allowed',
                     }}
-                    whileHover={affiliateRewards > 0 ? {
+                    whileHover={affiliateRewardsLamports > 0 ? {
                       scale: 1.02,
                       boxShadow: affiliateLevel === 1 ? '0 0 30px rgba(59, 130, 246, 0.6)' : affiliateLevel === 2 ? '0 0 30px rgba(255, 20, 147, 0.6)' : affiliateLevel === 3 ? '0 0 30px rgba(47, 255, 234, 0.6)' : '0 0 30px rgba(168, 85, 247, 0.6)',
                     } : {}}
-                    whileTap={affiliateRewards > 0 ? { scale: 0.98 } : {}}
+                    whileTap={affiliateRewardsLamports > 0 ? { scale: 0.98 } : {}}
                     transition={transition30fps}
                   >
                     {claimingAffiliate ? (

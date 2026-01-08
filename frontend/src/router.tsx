@@ -17,6 +17,7 @@ import { Missions } from './pages/Missions';
 import { Privacy } from './pages/Privacy';
 import { AffiliateDashboard } from './pages/AffiliateDashboard';
 import { AffiliateDashboardLevel3 } from './pages/AffiliateDashboardLevel3';
+import { DashboardHome, DashboardAnalytics, DashboardSupport } from './pages/dashboard';
 
 export function AppRouter() {
   return (
@@ -38,6 +39,9 @@ export function AppRouter() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/affiliate-dashboard" element={<AffiliateDashboard />} />
           <Route path="/affiliate-dashboard-level3" element={<AffiliateDashboardLevel3 />} />
+          <Route path="/dashboard" element={<DashboardHome />} />
+          <Route path="/dashboard/analytics" element={<DashboardAnalytics />} />
+          <Route path="/dashboard/support" element={<DashboardSupport />} />
         </Routes>
         <Footer />
         <BackToTop />

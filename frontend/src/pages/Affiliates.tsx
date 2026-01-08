@@ -1,9 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, TrendingUp, DollarSign, Crown, Star, Copy, Check, ExternalLink, ArrowRight, Sparkles, Loader } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, TrendingUp, DollarSign, Crown, Star, Copy, Check, ExternalLink, ArrowRight, Sparkles, Loader, LayoutDashboard, Lock } from 'lucide-react';
 import { theme } from '../theme';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { apiClient } from '../services/api';
+import { affiliateDashboardService, ApplicationStatus } from '../services/affiliateDashboardService';
+import { useWallet } from '../contexts/WalletContext';
 
 const affiliateTiers = [
   { 
@@ -48,6 +51,8 @@ const stats = [
 ];
 
 export function Affiliates() {
+  const navigate = useNavigate();
+  const { walletAddress, connected } = useWallet();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -63,12 +68,37 @@ export function Affiliates() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus>({
+    hasApplied: false,
+    status: null,
+    appliedAt: null,
+  });
   const spanRef = useRef<HTMLSpanElement>(null);
   const ctaButtonRef = useRef<HTMLButtonElement>(null);
   const applyButtonRef = useRef<HTMLButtonElement>(null);
+  const dashboardButtonRef = useRef<HTMLButtonElement>(null);
 
   useMagnetic(ctaButtonRef);
   useMagnetic(applyButtonRef);
+  useMagnetic(dashboardButtonRef);
+
+  const checkApplicationStatus = useCallback(async () => {
+    if (!walletAddress) return;
+    const status = await affiliateDashboardService.checkApplicationStatus(walletAddress);
+    setApplicationStatus(status);
+  }, [walletAddress]);
+
+  useEffect(() => {
+    checkApplicationStatus();
+  }, [checkApplicationStatus]);
+
+  const canAccessDashboard = applicationStatus.hasApplied && applicationStatus.status !== 'rejected';
+
+  const handleDashboardClick = () => {
+    if (canAccessDashboard) {
+      navigate('/dashboard');
+    }
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -262,7 +292,7 @@ export function Affiliates() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
               }}
-              whileHover={{ 
+              whileHover={{
                 background: 'rgba(255, 255, 255, 0.1)',
                 scale: 1.02,
               }}
@@ -270,6 +300,49 @@ export function Affiliates() {
             >
               {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
               <span>{copied ? 'COPIED!' : 'COPY_AFFILIATE_LINK'}</span>
+            </motion.button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="flex justify-center"
+          >
+            <motion.button
+              ref={dashboardButtonRef}
+              onClick={handleDashboardClick}
+              disabled={!canAccessDashboard}
+              className={`
+                px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 border font-mono
+                ${!canAccessDashboard ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              `}
+              style={{
+                background: canAccessDashboard
+                  ? 'linear-gradient(135deg, rgba(62, 203, 255, 0.2), rgba(47, 255, 226, 0.1))'
+                  : 'rgba(255, 255, 255, 0.02)',
+                borderColor: canAccessDashboard ? 'rgba(62, 203, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)',
+                color: canAccessDashboard ? '#3ecbff' : 'rgba(255, 255, 255, 0.3)',
+                backdropFilter: 'blur(10px)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                boxShadow: canAccessDashboard ? '0 0 20px rgba(62, 203, 255, 0.2)' : 'none',
+              }}
+              whileHover={canAccessDashboard ? {
+                scale: 1.02,
+                boxShadow: '0 0 30px rgba(62, 203, 255, 0.4)',
+              } : {}}
+              whileTap={canAccessDashboard ? { scale: 0.98 } : {}}
+            >
+              {canAccessDashboard ? (
+                <LayoutDashboard className="w-5 h-5" />
+              ) : (
+                <Lock className="w-5 h-5" />
+              )}
+              <span>ACCESS_DASHBOARD</span>
+              {!canAccessDashboard && (
+                <span className="text-xs ml-2 opacity-70">(apply first)</span>
+              )}
             </motion.button>
           </motion.div>
         </motion.div>

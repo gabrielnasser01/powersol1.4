@@ -83,12 +83,18 @@ export function Affiliates() {
   useMagnetic(dashboardButtonRef);
 
   const checkApplicationStatus = useCallback(async () => {
-    if (!walletAddress) return;
+    console.log('[Affiliates] checkApplicationStatus called, walletAddress:', walletAddress);
+    if (!walletAddress) {
+      console.log('[Affiliates] No wallet address, skipping check');
+      return;
+    }
     const status = await affiliateDashboardService.checkApplicationStatus(walletAddress);
+    console.log('[Affiliates] Got status:', status);
     setApplicationStatus(status);
   }, [walletAddress]);
 
   useEffect(() => {
+    console.log('[Affiliates] useEffect triggered, connected:', connected, 'walletAddress:', walletAddress);
     checkApplicationStatus();
   }, [checkApplicationStatus]);
 

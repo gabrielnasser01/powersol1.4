@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, ExternalLink, Users, DollarSign, TrendingUp, Calendar, MousePointer, CreditCard, Wallet, BarChart3, LineChart, Activity, ArrowLeft } from 'lucide-react';
-import { theme } from '../theme';
+import { Copy, Check, ExternalLink, Users, DollarSign, MousePointer, CreditCard, Wallet, BarChart3, LineChart, ArrowLeft } from 'lucide-react';
 import { userStorage } from '../store/persist';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/api';
@@ -103,10 +102,10 @@ export function AffiliateDashboard() {
   const maxSignups = Math.max(...stats.dailyData.map(d => d.signups));
 
   return (
-    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden">
+    <div className="min-h-screen pt-16 sm:pt-20 pb-16 sm:pb-20 relative overflow-hidden">
       {/* Terminal Matrix Background */}
       <div className="absolute inset-0">
-        <div 
+        <div
           className="absolute inset-0"
           style={{
             background: `
@@ -117,9 +116,9 @@ export function AffiliateDashboard() {
             backgroundSize: '20px 20px, 20px 20px, 100% 100%',
           }}
         />
-        
+
         {/* Terminal scanner effect */}
-        <div 
+        <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background: `
@@ -134,8 +133,8 @@ export function AffiliateDashboard() {
             animation: 'terminalScan 4s linear infinite',
           }}
         />
-        
-        <style jsx>{`
+
+        <style>{`
           @keyframes terminalScan {
             0% { transform: translateY(-100%); }
             100% { transform: translateY(100%); }
@@ -143,11 +142,11 @@ export function AffiliateDashboard() {
         `}</style>
       </div>
 
-      <div className="container mx-auto px-6 relative z-10">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 relative z-10 max-w-7xl">
         {/* Back Button */}
         <motion.button
           onClick={() => navigate('/profile')}
-          className="mb-8 flex items-center space-x-2 px-4 py-2 rounded-lg font-mono transition-all duration-300"
+          className="mb-4 sm:mb-8 flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-lg font-mono text-sm sm:text-base transition-all duration-300"
           style={{
             background: 'rgba(255, 20, 147, 0.2)',
             border: '1px solid rgba(255, 20, 147, 0.4)',
@@ -156,8 +155,8 @@ export function AffiliateDashboard() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Voltar ao Perfil</span>
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span>Voltar</span>
         </motion.button>
 
         {/* Header */}
@@ -165,11 +164,11 @@ export function AffiliateDashboard() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16"
+          className="text-center mb-8 sm:mb-12 md:mb-16"
         >
-          <h1 
-            className="text-4xl md:text-6xl font-bold mb-6 font-mono"
-            style={{ 
+          <h1
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-6 font-mono px-2"
+            style={{
               background: 'linear-gradient(135deg, #ff1493 0%, #b347ff 50%, #ff1493 100%)',
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
@@ -177,10 +176,10 @@ export function AffiliateDashboard() {
               textShadow: '0 0 40px rgba(255, 20, 147, 0.5)',
             }}
           >
-            {'>'} AFFILIATE_DASHBOARD.EXE
+            <span className="hidden sm:inline">{'>'} </span>AFFILIATE_DASHBOARD<span className="hidden md:inline">.EXE</span>
           </h1>
-          <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-mono">
-            [INITIALIZING...] Dashboard Premium de Afiliados - Nível {userLevel} • {commissionRate}% Comissão
+          <p className="text-sm sm:text-base md:text-lg text-zinc-400 max-w-2xl mx-auto font-mono px-4">
+            Dashboard de Afiliados - Nivel {stats.currentTier} - {stats.commissionRate}% Comissao
           </p>
         </motion.div>
 
@@ -189,7 +188,7 @@ export function AffiliateDashboard() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="mb-12 p-8 rounded-2xl border"
+          className="mb-6 sm:mb-8 md:mb-12 p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl border"
           style={{
             background: `
               linear-gradient(0deg, rgba(255, 20, 147, 0.08) 1px, transparent 1px),
@@ -202,14 +201,14 @@ export function AffiliateDashboard() {
             backdropFilter: 'blur(20px)',
           }}
         >
-          <h3 className="text-2xl font-bold mb-6 font-mono text-center" style={{ color: '#ffffff' }}>
-            Seu Link Premium de Afiliado
+          <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 font-mono text-center" style={{ color: '#ffffff' }}>
+            Seu Link de Afiliado
           </h3>
-          
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div 
-              className="flex-1 p-4 rounded-lg font-mono text-sm break-all"
-              style={{ 
+
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div
+              className="p-3 sm:p-4 rounded-lg font-mono text-xs sm:text-sm break-all"
+              style={{
                 background: 'rgba(0, 0, 0, 0.6)',
                 border: '1px solid rgba(255, 20, 147, 0.3)',
                 color: '#ff1493',
@@ -217,36 +216,36 @@ export function AffiliateDashboard() {
             >
               {affiliateLink}
             </div>
-            
-            <div className="flex gap-3">
+
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <motion.button
                 onClick={copyAffiliateLink}
-                className="px-6 py-4 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2"
+                className="flex-1 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2 text-sm sm:text-base"
                 style={{
                   background: 'rgba(255, 20, 147, 0.2)',
                   border: '1px solid rgba(255, 20, 147, 0.4)',
                   color: '#ff1493',
                 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                <span>{copied ? 'Copiado!' : 'Copiar Link'}</span>
+                {copied ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <Copy className="w-4 h-4 sm:w-5 sm:h-5" />}
+                <span>{copied ? 'Copiado!' : 'Copiar'}</span>
               </motion.button>
-              
+
               <motion.button
                 onClick={openLinkInNewTab}
-                className="px-6 py-4 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2"
+                className="flex-1 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2 text-sm sm:text-base"
                 style={{
                   background: 'linear-gradient(135deg, #ff1493, #b347ff)',
                   color: '#000',
                   boxShadow: '0 0 20px rgba(255, 20, 147, 0.4)',
                 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <ExternalLink className="w-5 h-5" />
-                <span>Abrir Nova Aba</span>
+                <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>Abrir</span>
               </motion.button>
             </div>
           </div>
@@ -257,29 +256,29 @@ export function AffiliateDashboard() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         >
-          <div className="flex justify-center space-x-4">
+          <div className="flex justify-start sm:justify-center overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 gap-2 sm:gap-4 scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-              
+
               return (
                 <motion.button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className="px-6 py-3 rounded-lg font-mono font-semibold transition-all duration-300 flex items-center space-x-2"
+                  className="px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-mono font-semibold transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap text-xs sm:text-sm flex-shrink-0"
                   style={{
                     background: isActive ? 'rgba(255, 20, 147, 0.3)' : 'rgba(0, 0, 0, 0.6)',
                     border: `1px solid ${isActive ? '#ff1493' : 'rgba(255, 255, 255, 0.1)'}`,
                     color: isActive ? '#ff1493' : '#ffffff',
                     boxShadow: isActive ? '0 0 20px rgba(255, 20, 147, 0.4)' : 'none',
                   }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{tab.label}</span>
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden xs:inline sm:inline">{tab.label}</span>
                 </motion.button>
               );
             })}
@@ -294,15 +293,15 @@ export function AffiliateDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-8"
+              className="space-y-4 sm:space-y-6 md:space-y-8"
             >
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                 {[
-                  { label: 'Total de Cliques', value: stats.totalClicks.toLocaleString(), icon: MousePointer, color: '#00bfff' },
-                  { label: 'Cadastros', value: stats.totalSignups.toString(), icon: Users, color: '#00ff88' },
-                  { label: 'Depósitos', value: stats.totalDeposits.toString(), icon: CreditCard, color: '#ff1493' },
-                  { label: 'Ganhos da Semana', value: `$${stats.weeklyEarnings.toFixed(2)}`, icon: DollarSign, color: '#b347ff' },
+                  { label: 'Cliques', labelFull: 'Total de Cliques', value: stats.totalClicks.toLocaleString(), icon: MousePointer, color: '#00bfff' },
+                  { label: 'Cadastros', labelFull: 'Cadastros', value: stats.totalSignups.toString(), icon: Users, color: '#00ff88' },
+                  { label: 'Depositos', labelFull: 'Depositos', value: stats.totalDeposits.toString(), icon: CreditCard, color: '#ff1493' },
+                  { label: 'Semana', labelFull: 'Ganhos da Semana', value: `$${stats.weeklyEarnings.toFixed(2)}`, icon: DollarSign, color: '#b347ff' },
                 ].map((stat, index) => {
                   const Icon = stat.icon;
                   return (
@@ -311,7 +310,7 @@ export function AffiliateDashboard() {
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.6, delay: index * 0.1 }}
-                      className="p-6 rounded-xl border text-center"
+                      className="p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl border text-center"
                       style={{
                         background: `
                           linear-gradient(0deg, ${stat.color}08 1px, transparent 1px),
@@ -324,20 +323,21 @@ export function AffiliateDashboard() {
                         backdropFilter: 'blur(20px)',
                       }}
                     >
-                      <div 
-                        className="w-16 h-16 rounded-xl mx-auto mb-4 flex items-center justify-center"
+                      <div
+                        className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-lg sm:rounded-xl mx-auto mb-2 sm:mb-3 md:mb-4 flex items-center justify-center"
                         style={{
                           background: `${stat.color}20`,
                           border: `1px solid ${stat.color}40`,
                         }}
                       >
-                        <Icon className="w-8 h-8" style={{ color: stat.color }} />
+                        <Icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8" style={{ color: stat.color }} />
                       </div>
-                      <div className="text-2xl font-bold mb-1" style={{ color: stat.color }}>
+                      <div className="text-lg sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1" style={{ color: stat.color }}>
                         {stat.value}
                       </div>
-                      <p className="text-sm text-zinc-400 font-mono">
-                        {stat.label}
+                      <p className="text-[10px] sm:text-xs md:text-sm text-zinc-400 font-mono">
+                        <span className="sm:hidden">{stat.label}</span>
+                        <span className="hidden sm:inline">{stat.labelFull}</span>
                       </p>
                     </motion.div>
                   );
@@ -345,8 +345,8 @@ export function AffiliateDashboard() {
               </div>
 
               {/* Weekly Summary */}
-              <div 
-                className="p-8 rounded-xl border"
+              <div
+                className="p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl border"
                 style={{
                   background: `
                     linear-gradient(0deg, rgba(255, 20, 147, 0.08) 1px, transparent 1px),
@@ -359,30 +359,30 @@ export function AffiliateDashboard() {
                   backdropFilter: 'blur(20px)',
                 }}
               >
-                <h4 className="text-2xl font-bold mb-6 font-mono text-center" style={{ color: '#ffffff' }}>
+                <h4 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 font-mono text-center" style={{ color: '#ffffff' }}>
                   Resumo da Semana
                 </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(0, 255, 136, 0.1)' }}>
-                    <div className="text-3xl font-bold mb-2" style={{ color: '#00ff88' }}>
+
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6">
+                  <div className="text-center p-2 sm:p-3 md:p-4 rounded-lg" style={{ background: 'rgba(0, 255, 136, 0.1)' }}>
+                    <div className="text-base sm:text-xl md:text-3xl font-bold mb-1 sm:mb-2" style={{ color: '#00ff88' }}>
                       ${stats.totalEarnings.toFixed(2)}
                     </div>
-                    <p className="text-sm text-zinc-400 font-mono">Total Acumulado</p>
+                    <p className="text-[10px] sm:text-xs md:text-sm text-zinc-400 font-mono">Total</p>
                   </div>
-                  
-                  <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(0, 191, 255, 0.1)' }}>
-                    <div className="text-3xl font-bold mb-2" style={{ color: '#00bfff' }}>
+
+                  <div className="text-center p-2 sm:p-3 md:p-4 rounded-lg" style={{ background: 'rgba(0, 191, 255, 0.1)' }}>
+                    <div className="text-base sm:text-xl md:text-3xl font-bold mb-1 sm:mb-2" style={{ color: '#00bfff' }}>
                       {stats.conversionRate}%
                     </div>
-                    <p className="text-sm text-zinc-400 font-mono">Taxa de Conversão</p>
+                    <p className="text-[10px] sm:text-xs md:text-sm text-zinc-400 font-mono">Conversao</p>
                   </div>
-                  
-                  <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(255, 20, 147, 0.1)' }}>
-                    <div className="text-3xl font-bold mb-2" style={{ color: '#ff1493' }}>
-                      {commissionRate}%
+
+                  <div className="text-center p-2 sm:p-3 md:p-4 rounded-lg" style={{ background: 'rgba(255, 20, 147, 0.1)' }}>
+                    <div className="text-base sm:text-xl md:text-3xl font-bold mb-1 sm:mb-2" style={{ color: '#ff1493' }}>
+                      {stats.commissionRate}%
                     </div>
-                    <p className="text-sm text-zinc-400 font-mono">Sua Comissão</p>
+                    <p className="text-[10px] sm:text-xs md:text-sm text-zinc-400 font-mono">Comissao</p>
                   </div>
                 </div>
               </div>
@@ -395,15 +395,15 @@ export function AffiliateDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-8"
+              className="space-y-4 sm:space-y-6 md:space-y-8"
             >
-              <h4 className="text-2xl font-bold font-mono text-center" style={{ color: '#ffffff' }}>
-                Gráfico de Performance (Últimos 7 dias)
+              <h4 className="text-lg sm:text-xl md:text-2xl font-bold font-mono text-center" style={{ color: '#ffffff' }}>
+                Performance (7 dias)
               </h4>
-              
+
               {/* Line Chart */}
-              <div 
-                className="p-8 rounded-xl border"
+              <div
+                className="p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl border"
                 style={{
                   background: `
                     linear-gradient(0deg, rgba(255, 20, 147, 0.08) 1px, transparent 1px),
@@ -416,11 +416,12 @@ export function AffiliateDashboard() {
                   backdropFilter: 'blur(20px)',
                 }}
               >
+                <p className="text-center text-zinc-400 font-mono text-sm">Grafico em breve</p>
               </div>
 
               {/* Daily breakdown table */}
-              <div 
-                className="p-8 rounded-xl border"
+              <div
+                className="p-3 sm:p-6 md:p-8 rounded-lg sm:rounded-xl border"
                 style={{
                   background: `
                     linear-gradient(0deg, rgba(255, 20, 147, 0.08) 1px, transparent 1px),
@@ -433,29 +434,35 @@ export function AffiliateDashboard() {
                   backdropFilter: 'blur(20px)',
                 }}
               >
-                <h5 className="text-xl font-bold mb-6 font-mono text-center" style={{ color: '#ffffff' }}>
-                  Detalhamento Diário
+                <h5 className="text-base sm:text-lg md:text-xl font-bold mb-4 sm:mb-6 font-mono text-center" style={{ color: '#ffffff' }}>
+                  Detalhamento Diario
                 </h5>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+
+                <div className="overflow-x-auto -mx-3 sm:mx-0">
+                  <table className="w-full text-xs sm:text-sm min-w-[400px]">
                     <thead>
                       <tr className="border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.2)' }}>
-                        <th className="text-left py-3 text-zinc-400 font-mono">Data</th>
-                        <th className="text-left py-3 text-zinc-400 font-mono">Cliques</th>
-                        <th className="text-left py-3 text-zinc-400 font-mono">Cadastros</th>
-                        <th className="text-left py-3 text-zinc-400 font-mono">Depósitos</th>
-                        <th className="text-left py-3 text-zinc-400 font-mono">Ganhos</th>
+                        <th className="text-left py-2 sm:py-3 px-2 text-zinc-400 font-mono">Data</th>
+                        <th className="text-left py-2 sm:py-3 px-2 text-zinc-400 font-mono">Cliques</th>
+                        <th className="text-left py-2 sm:py-3 px-2 text-zinc-400 font-mono">Signups</th>
+                        <th className="text-left py-2 sm:py-3 px-2 text-zinc-400 font-mono">Deps</th>
+                        <th className="text-left py-2 sm:py-3 px-2 text-zinc-400 font-mono">Ganhos</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {stats.dailyData.map((d, i) => (
+                      {stats.dailyData.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center text-zinc-500 font-mono">
+                            Sem dados ainda
+                          </td>
+                        </tr>
+                      ) : stats.dailyData.map((d, i) => (
                         <tr key={i} className="border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                          <td className="py-3 text-white font-mono">{d.date}</td>
-                          <td className="py-3 font-mono" style={{ color: '#00bfff' }}>{d.clicks}</td>
-                          <td className="py-3 font-mono" style={{ color: '#00ff88' }}>{d.signups}</td>
-                          <td className="py-3 font-mono" style={{ color: '#ff1493' }}>{d.deposits}</td>
-                          <td className="py-3 font-mono" style={{ color: '#b347ff' }}>${d.earnings.toFixed(2)}</td>
+                          <td className="py-2 sm:py-3 px-2 text-white font-mono">{d.date}</td>
+                          <td className="py-2 sm:py-3 px-2 font-mono" style={{ color: '#00bfff' }}>{d.clicks}</td>
+                          <td className="py-2 sm:py-3 px-2 font-mono" style={{ color: '#00ff88' }}>{d.signups}</td>
+                          <td className="py-2 sm:py-3 px-2 font-mono" style={{ color: '#ff1493' }}>{d.deposits}</td>
+                          <td className="py-2 sm:py-3 px-2 font-mono" style={{ color: '#b347ff' }}>${d.earnings.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -471,14 +478,14 @@ export function AffiliateDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-8"
+              className="space-y-4 sm:space-y-6 md:space-y-8"
             >
-              <h4 className="text-2xl font-bold font-mono text-center" style={{ color: '#ffffff' }}>
+              <h4 className="text-lg sm:text-xl md:text-2xl font-bold font-mono text-center" style={{ color: '#ffffff' }}>
                 Seus Referidos
               </h4>
-              
-              <div 
-                className="p-8 rounded-xl border"
+
+              <div
+                className="p-3 sm:p-6 md:p-8 rounded-lg sm:rounded-xl border"
                 style={{
                   background: `
                     linear-gradient(0deg, rgba(255, 20, 147, 0.08) 1px, transparent 1px),
@@ -491,51 +498,51 @@ export function AffiliateDashboard() {
                   backdropFilter: 'blur(20px)',
                 }}
               >
-                <div className="space-y-4">
-                  {[
-                    { wallet: '7xK...9mP', joinDate: '15/01/2024', deposits: 3, earnings: '$45.30' },
-                    { wallet: 'Bv2...4nQ', joinDate: '14/01/2024', deposits: 1, earnings: '$12.50' },
-                    { wallet: '3hM...7wR', joinDate: '13/01/2024', deposits: 5, earnings: '$78.90' },
-                    { wallet: 'Qp9...8sT', joinDate: '12/01/2024', deposits: 2, earnings: '$23.40' },
-                    { wallet: 'Lm4...6vY', joinDate: '11/01/2024', deposits: 4, earnings: '$56.70' },
-                  ].map((referral, index) => (
+                <div className="space-y-3 sm:space-y-4">
+                  {referrals.length === 0 ? (
+                    <div className="text-center py-8 sm:py-12">
+                      <Users className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 text-zinc-600" />
+                      <p className="text-sm sm:text-base text-zinc-400 font-mono">Nenhum referido ainda</p>
+                      <p className="text-xs sm:text-sm text-zinc-500 font-mono mt-2">Compartilhe seu link para comecar</p>
+                    </div>
+                  ) : referrals.map((referral, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="flex items-center justify-between p-6 rounded-lg"
+                      className="flex items-center justify-between p-3 sm:p-4 md:p-6 rounded-lg"
                       style={{
                         background: 'rgba(255, 255, 255, 0.02)',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                       }}
                     >
-                      <div className="flex items-center space-x-4">
-                        <div 
-                          className="w-12 h-12 rounded-lg flex items-center justify-center"
+                      <div className="flex items-center space-x-2 sm:space-x-4">
+                        <div
+                          className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{
                             background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.3), rgba(179, 71, 255, 0.2))',
                             border: '1px solid rgba(255, 20, 147, 0.4)',
                           }}
                         >
-                          <Wallet className="w-6 h-6" style={{ color: '#ff1493' }} />
+                          <Wallet className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" style={{ color: '#ff1493' }} />
                         </div>
-                        <div>
-                          <div className="font-mono text-lg" style={{ color: '#ffffff' }}>
-                            {referral.wallet}
+                        <div className="min-w-0">
+                          <div className="font-mono text-sm sm:text-base md:text-lg truncate" style={{ color: '#ffffff' }}>
+                            {referral.wallet_address?.slice(0, 4)}...{referral.wallet_address?.slice(-4)}
                           </div>
-                          <div className="text-sm text-zinc-400 font-mono">
-                            Entrou em {referral.joinDate}
+                          <div className="text-[10px] sm:text-xs md:text-sm text-zinc-400 font-mono">
+                            {new Date(referral.created_at).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="text-right">
-                        <div className="text-xl font-bold" style={{ color: '#00ff88' }}>
-                          {referral.earnings}
+
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <div className="text-sm sm:text-lg md:text-xl font-bold" style={{ color: '#00ff88' }}>
+                          {referral.tickets_bought || 0}
                         </div>
-                        <div className="text-sm text-zinc-400 font-mono">
-                          {referral.deposits} depósitos
+                        <div className="text-[10px] sm:text-xs md:text-sm text-zinc-400 font-mono">
+                          tickets
                         </div>
                       </div>
                     </motion.div>

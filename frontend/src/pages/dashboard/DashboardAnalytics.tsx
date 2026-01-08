@@ -128,7 +128,7 @@ export function DashboardAnalytics() {
   return (
     <DashboardLayout walletAddress={walletAddress || undefined}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TerminalCard title="top_referrers_ranking" color="#fbbf24" delay={0}>
+        <TerminalCard title="top_referrers_ranking" color="#b347ff" delay={0}>
           {loading ? (
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
@@ -285,7 +285,7 @@ export function DashboardAnalytics() {
                   topAffiliates.reduce((sum, a) => sum + Number(a.totalEarnedLamports), 0)
                 ) + ' SOL',
                 icon: Coins,
-                color: '#fbbf24',
+                color: '#b347ff',
               },
               {
                 label: 'avg_per_affiliate',

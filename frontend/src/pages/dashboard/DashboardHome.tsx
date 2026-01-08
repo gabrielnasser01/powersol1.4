@@ -287,7 +287,7 @@ export function DashboardHome() {
           )}
         </TerminalCard>
 
-        <TerminalCard title="weekly_earned" color="#fbbf24" delay={0.3}>
+        <TerminalCard title="weekly_earned" color="#b347ff" delay={0.3}>
           {loading ? (
             <SkeletonCard />
           ) : (

@@ -22,7 +22,7 @@ const faqs = [
   {
     id: 'how-winners',
     question: 'How are winners selected?',
-    answer: 'Winners are selected using Chainlink VRF (Verifiable Random Function), ensuring completely random and tamper-proof results. The process is fully transparent and verifiable on the blockchain.',
+    answer: 'Winners are selected using VRF (Verifiable Random Function), ensuring completely random and tamper-proof results. The process is fully transparent and verifiable on the blockchain.',
   },
   {
     id: 'prize-distribution',

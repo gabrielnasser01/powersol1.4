@@ -1,30 +1,42 @@
-export const logger = {
+const createLogger = (prefix: string) => ({
   info: (message: any, ...args: any[]) => {
     if (typeof message === 'object') {
-      console.log('[INFO]', JSON.stringify(message, null, 2), ...args);
+      console.log(`[${prefix}][INFO]`, JSON.stringify(message, null, 2), ...args);
     } else {
-      console.log(`[INFO] ${message}`, ...args);
+      console.log(`[${prefix}][INFO] ${message}`, ...args);
     }
   },
   error: (message: any, ...args: any[]) => {
     if (typeof message === 'object') {
-      console.error('[ERROR]', JSON.stringify(message, null, 2), ...args);
+      console.error(`[${prefix}][ERROR]`, JSON.stringify(message, null, 2), ...args);
     } else {
-      console.error(`[ERROR] ${message}`, ...args);
+      console.error(`[${prefix}][ERROR] ${message}`, ...args);
     }
   },
   warn: (message: any, ...args: any[]) => {
     if (typeof message === 'object') {
-      console.warn('[WARN]', JSON.stringify(message, null, 2), ...args);
+      console.warn(`[${prefix}][WARN]`, JSON.stringify(message, null, 2), ...args);
     } else {
-      console.warn(`[WARN] ${message}`, ...args);
+      console.warn(`[${prefix}][WARN] ${message}`, ...args);
     }
   },
   debug: (message: any, ...args: any[]) => {
     if (typeof message === 'object') {
-      console.debug('[DEBUG]', JSON.stringify(message, null, 2), ...args);
+      console.debug(`[${prefix}][DEBUG]`, JSON.stringify(message, null, 2), ...args);
     } else {
-      console.debug(`[DEBUG] ${message}`, ...args);
+      console.debug(`[${prefix}][DEBUG] ${message}`, ...args);
     }
   }
+});
+
+export const logger = createLogger('APP');
+
+export const loggers = {
+  solana: createLogger('SOLANA'),
+  lottery: createLogger('LOTTERY'),
+  claim: createLogger('CLAIM'),
+  affiliate: createLogger('AFFILIATE'),
+  vrf: createLogger('VRF'),
+  draw: createLogger('DRAW'),
+  api: createLogger('API'),
 };

@@ -1,0 +1,239 @@
+{
+  "version": "0.1.0",
+  "name": "powersol_claim",
+  "instructions": [
+    {
+      "name": "initializePrizePool",
+      "accounts": [
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "prizePool", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "lotteryType", "type": "u8" }
+      ]
+    },
+    {
+      "name": "initializeAffiliatePool",
+      "accounts": [
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "affiliatePool", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeAccumulator",
+      "accounts": [
+        { "name": "payer", "isMut": true, "isSigner": true },
+        { "name": "affiliate", "isMut": false, "isSigner": false },
+        { "name": "accumulator", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "depositToPrizePool",
+      "accounts": [
+        { "name": "depositor", "isMut": true, "isSigner": true },
+        { "name": "prizePool", "isMut": true, "isSigner": false },
+        { "name": "prizePoolVault", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "depositToAffiliatePool",
+      "accounts": [
+        { "name": "depositor", "isMut": true, "isSigner": true },
+        { "name": "affiliatePool", "isMut": true, "isSigner": false },
+        { "name": "affiliatePoolVault", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "accumulateAffiliateEarnings",
+      "accounts": [
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "affiliatePool", "isMut": true, "isSigner": false },
+        { "name": "accumulator", "isMut": true, "isSigner": false }
+      ],
+      "args": [
+        { "name": "amount", "type": "u64" },
+        { "name": "tier", "type": "u8" }
+      ]
+    },
+    {
+      "name": "setVrfCompleted",
+      "accounts": [
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "prizePool", "isMut": true, "isSigner": false }
+      ],
+      "args": [
+        { "name": "completed", "type": "bool" }
+      ]
+    },
+    {
+      "name": "claimLotteryPrize",
+      "accounts": [
+        { "name": "claimer", "isMut": true, "isSigner": true },
+        { "name": "prizePool", "isMut": true, "isSigner": false },
+        { "name": "prizePoolVault", "isMut": true, "isSigner": false },
+        { "name": "prizeClaim", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "amount", "type": "u64" },
+        { "name": "tier", "type": "u8" },
+        { "name": "lotteryRound", "type": "u64" }
+      ]
+    },
+    {
+      "name": "claimAffiliateRewards",
+      "accounts": [
+        { "name": "affiliate", "isMut": true, "isSigner": true },
+        { "name": "affiliatePool", "isMut": true, "isSigner": false },
+        { "name": "affiliatePoolVault", "isMut": true, "isSigner": false },
+        { "name": "accumulator", "isMut": true, "isSigner": false },
+        { "name": "affiliateClaim", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "amount", "type": "u64" },
+        { "name": "tier", "type": "u8" },
+        { "name": "weekNumber", "type": "u64" },
+        { "name": "referralCount", "type": "u32" }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "PrizePool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "authority", "type": "publicKey" },
+          { "name": "lotteryType", "type": "u8" },
+          { "name": "totalDeposited", "type": "u64" },
+          { "name": "totalClaimed", "type": "u64" },
+          { "name": "currentRound", "type": "u64" },
+          { "name": "vrfCompleted", "type": "bool" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "AffiliatePool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "authority", "type": "publicKey" },
+          { "name": "totalDeposited", "type": "u64" },
+          { "name": "totalClaimed", "type": "u64" },
+          { "name": "currentWeek", "type": "u64" },
+          { "name": "lastReleaseTimestamp", "type": "i64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "AffiliateAccumulator",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "affiliate", "type": "publicKey" },
+          { "name": "pendingAmount", "type": "u64" },
+          { "name": "tier", "type": "u8" },
+          { "name": "referralCount", "type": "u32" },
+          { "name": "weekNumber", "type": "u64" },
+          { "name": "lastUpdated", "type": "i64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "PrizeClaim",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "claimer", "type": "publicKey" },
+          { "name": "lotteryPool", "type": "publicKey" },
+          { "name": "lotteryRound", "type": "u64" },
+          { "name": "tier", "type": "u8" },
+          { "name": "amount", "type": "u64" },
+          { "name": "vrfVerified", "type": "bool" },
+          { "name": "claimedAt", "type": "i64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "AffiliateClaim",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "affiliate", "type": "publicKey" },
+          { "name": "amount", "type": "u64" },
+          { "name": "tier", "type": "u8" },
+          { "name": "weekNumber", "type": "u64" },
+          { "name": "referralCount", "type": "u32" },
+          { "name": "claimedAt", "type": "i64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "PrizeClaimEvent",
+      "fields": [
+        { "name": "claimer", "type": "publicKey", "index": false },
+        { "name": "lotteryType", "type": "u8", "index": false },
+        { "name": "lotteryRound", "type": "u64", "index": false },
+        { "name": "tier", "type": "u8", "index": false },
+        { "name": "amount", "type": "u64", "index": false },
+        { "name": "timestamp", "type": "i64", "index": false }
+      ]
+    },
+    {
+      "name": "AffiliateClaimEvent",
+      "fields": [
+        { "name": "affiliate", "type": "publicKey", "index": false },
+        { "name": "tier", "type": "u8", "index": false },
+        { "name": "amount", "type": "u64", "index": false },
+        { "name": "weekNumber", "type": "u64", "index": false },
+        { "name": "referralCount", "type": "u32", "index": false },
+        { "name": "timestamp", "type": "i64", "index": false }
+      ]
+    },
+    {
+      "name": "AffiliateEarningAccumulated",
+      "fields": [
+        { "name": "affiliate", "type": "publicKey", "index": false },
+        { "name": "amount", "type": "u64", "index": false },
+        { "name": "tier", "type": "u8", "index": false },
+        { "name": "weekNumber", "type": "u64", "index": false },
+        { "name": "totalPending", "type": "u64", "index": false },
+        { "name": "timestamp", "type": "i64", "index": false }
+      ]
+    }
+  ],
+  "errors": [
+    { "code": 6000, "name": "InvalidTier", "msg": "Invalid tier value" },
+    { "code": 6001, "name": "InvalidAmount", "msg": "Invalid amount" },
+    { "code": 6002, "name": "VrfNotCompleted", "msg": "VRF has not been completed" },
+    { "code": 6003, "name": "InsufficientFunds", "msg": "Insufficient funds in pool" },
+    { "code": 6004, "name": "ArithmeticOverflow", "msg": "Arithmetic overflow" },
+    { "code": 6005, "name": "ClaimNotYetAvailable", "msg": "Claim is not yet available" },
+    { "code": 6006, "name": "InsufficientPendingRewards", "msg": "Insufficient pending rewards" },
+    { "code": 6007, "name": "Unauthorized", "msg": "Unauthorized" }
+  ],
+  "metadata": {
+    "address": "DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK"
+  }
+}

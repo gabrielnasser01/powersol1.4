@@ -55,3 +55,41 @@ export class InternalError extends AppError {
     super(message, 500, false);
   }
 }
+
+export class AuthenticationError extends AppError {
+  constructor(message: string = 'Authentication failed') {
+    super(message, 401);
+  }
+}
+
+export class RateLimitError extends AppError {
+  constructor(message: string = 'Too many requests') {
+    super(message, 429);
+  }
+}
+
+export class BlockchainError extends AppError {
+  public readonly cause?: unknown;
+
+  constructor(message: string = 'Blockchain operation failed', cause?: unknown) {
+    super(message, 503);
+    this.cause = cause;
+  }
+}
+
+export function isAppError(error: unknown): error is AppError {
+  return error instanceof AppError;
+}
+
+export function formatError(error: unknown): { message: string; statusCode: number } {
+  if (isAppError(error)) {
+    return {
+      message: error.message,
+      statusCode: error.statusCode,
+    };
+  }
+  return {
+    message: 'Internal server error',
+    statusCode: 500,
+  };
+}

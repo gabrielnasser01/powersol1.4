@@ -174,3 +174,80 @@ export function getLotteryPDAForType(
       throw new Error(`Unknown lottery type: ${type}`);
   }
 }
+
+export function derivePrizePDA(
+  programId: PublicKey,
+  lotteryPubkey: PublicKey,
+  winner: PublicKey
+): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('prize_claim'),
+      winner.toBuffer(),
+      lotteryPubkey.toBuffer(),
+    ],
+    programId
+  );
+  return pda;
+}
+
+export function deriveLotteryPDA(
+  programId: PublicKey,
+  lotteryPubkey: PublicKey,
+  _month?: number,
+  _year?: number
+): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('lottery'), lotteryPubkey.toBuffer()],
+    programId
+  );
+  return pda;
+}
+
+export function deriveTicketPDA(
+  programId: PublicKey,
+  lotteryPubkey: PublicKey,
+  ticketNumber: number
+): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('ticket'),
+      lotteryPubkey.toBuffer(),
+      new anchor.BN(ticketNumber).toArrayLike(Buffer, 'le', 4),
+    ],
+    programId
+  );
+  return pda;
+}
+
+export function findPrizePoolPDA(
+  lotteryType: number,
+  programId: PublicKey
+): { publicKey: PublicKey; bump: number } {
+  const [publicKey, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from('prize_pool'), Buffer.from([lotteryType])],
+    programId
+  );
+  return { publicKey, bump };
+}
+
+export function findAffiliatePoolPDA(
+  programId: PublicKey
+): { publicKey: PublicKey; bump: number } {
+  const [publicKey, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from('affiliate_pool')],
+    programId
+  );
+  return { publicKey, bump };
+}
+
+export function findAccumulatorPDA(
+  affiliate: PublicKey,
+  programId: PublicKey
+): { publicKey: PublicKey; bump: number } {
+  const [publicKey, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from('accumulator'), affiliate.toBuffer()],
+    programId
+  );
+  return { publicKey, bump };
+}

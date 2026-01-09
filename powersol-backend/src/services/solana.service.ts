@@ -5,16 +5,29 @@ import {
   LAMPORTS_PER_SOL,
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
+import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
+import { readFileSync, existsSync } from 'fs';
+import { resolve } from 'path';
 import {
   getConnection,
   getAuthorityKeypair,
   getTreasuryPublicKey,
+  getAffiliatesPoolPublicKey,
   PROGRAM_IDS,
 } from '@config/solana.js';
-import { findLotteryPDA, findTicketPDA, findClaimPDA } from '../lib/anchor/pdas.js';
+import {
+  findTriDailyLotteryPDA,
+  findJackpotLotteryPDA,
+  findGrandPrizeLotteryPDA,
+  findXmasLotteryPDA,
+  findTicketPDA,
+  findClaimPDA,
+  findUserTicketsPDA,
+  LotteryType,
+  getLotteryPDAForType,
+} from '../lib/anchor/pdas.js';
 import { BlockchainError } from '@utils/errors.js';
 import { loggers } from '@utils/logger.js';
-import { retry } from '@utils/helpers.js';
 import type {
   TransactionResult,
   LotteryAccount,
@@ -27,6 +40,41 @@ export class SolanaService {
   private connection = getConnection();
   private authority = getAuthorityKeypair();
   private treasury = getTreasuryPublicKey();
+  private affiliatesPool = getAffiliatesPoolPublicKey();
+  private coreProgram: Program | null = null;
+  private claimProgram: Program | null = null;
+
+  constructor() {
+    this.initializePrograms();
+  }
+
+  private initializePrograms() {
+    try {
+      const wallet = new Wallet(this.authority);
+      const provider = new AnchorProvider(this.connection, wallet, { commitment: 'confirmed' });
+
+      const coreIdlPath = resolve(__dirname, '../../powersol-programs/idl/powersol_core.json');
+      const claimIdlPath = resolve(__dirname, '../../powersol-programs/idl/powersol_claim.json');
+
+      if (existsSync(coreIdlPath)) {
+        const coreIdl = JSON.parse(readFileSync(coreIdlPath, 'utf-8'));
+        this.coreProgram = new Program(coreIdl, PROGRAM_IDS.CORE, provider);
+        logger.info('Core program initialized');
+      } else {
+        logger.warn(`Core IDL not found at ${coreIdlPath}`);
+      }
+
+      if (existsSync(claimIdlPath)) {
+        const claimIdl = JSON.parse(readFileSync(claimIdlPath, 'utf-8'));
+        this.claimProgram = new Program(claimIdl, PROGRAM_IDS.CLAIM, provider);
+        logger.info('Claim program initialized');
+      } else {
+        logger.warn(`Claim IDL not found at ${claimIdlPath}`);
+      }
+    } catch (error) {
+      logger.error({ error }, 'Failed to initialize Anchor programs');
+    }
+  }
 
   async getBalance(publicKey: PublicKey): Promise<number> {
     try {
@@ -198,74 +246,261 @@ export class SolanaService {
     }
   }
 
-  async executeDraw(lotteryId: number, winningTicket: number): Promise<string> {
+  async executeDraw(
+    lotteryType: LotteryType,
+    params: { round?: number; month?: number; year?: number },
+    winningTickets: number[]
+  ): Promise<string> {
     try {
-      logger.info({ lotteryId, winningTicket }, 'Executing lottery draw');
+      if (!this.coreProgram) {
+        throw new BlockchainError('Core program not initialized');
+      }
 
-      const transaction = new Transaction();
+      const { publicKey: lotteryPda } = getLotteryPDAForType(lotteryType, params, PROGRAM_IDS.CORE);
 
-      const result = await this.sendTransaction(transaction);
+      logger.info({ lotteryType, params, winningTickets }, 'Executing lottery draw on-chain');
 
-      logger.info({ lotteryId, signature: result.signature }, 'Lottery draw executed');
+      const tx = await this.coreProgram.methods
+        .executeDraw(winningTickets)
+        .accounts({
+          lottery: lotteryPda,
+          authority: this.authority.publicKey,
+        })
+        .signers([this.authority])
+        .rpc();
 
-      return result.signature;
+      logger.info({ signature: tx, lotteryType }, 'Lottery draw executed on-chain');
+
+      return tx;
     } catch (error) {
-      logger.error({ error, lotteryId }, 'Failed to execute draw');
+      logger.error({ error, lotteryType, params }, 'Failed to execute draw');
       throw new BlockchainError('Failed to execute draw', error);
     }
   }
 
-  async getLotteryData(lotteryId: number): Promise<LotteryAccount | null> {
+  async getLotteryDataByType(
+    lotteryType: LotteryType,
+    params: { round?: number; month?: number; year?: number }
+  ): Promise<LotteryAccount | null> {
     try {
-      const { publicKey: lotteryPda } = findLotteryPDA(lotteryId, PROGRAM_IDS.CORE);
-
-      const accountInfo = await this.connection.getAccountInfo(lotteryPda);
-
-      if (!accountInfo) {
-        return null;
+      if (!this.coreProgram) {
+        throw new BlockchainError('Core program not initialized');
       }
 
+      const { publicKey: lotteryPda } = getLotteryPDAForType(lotteryType, params, PROGRAM_IDS.CORE);
+
+      const lotteryAccount = await this.coreProgram.account.lottery.fetch(lotteryPda);
+
       return {
-        authority: this.authority.publicKey,
-        lotteryId,
-        ticketPrice: BigInt(0),
-        maxTickets: 0,
-        currentTickets: 0,
-        drawTimestamp: BigInt(0),
-        isDrawn: false,
-        winningTicket: null,
-        treasury: this.treasury,
-        prizePool: BigInt(0),
+        authority: lotteryAccount.authority,
+        lotteryId: Number(lotteryAccount.lotteryId),
+        ticketPrice: BigInt(lotteryAccount.ticketPrice.toString()),
+        maxTickets: lotteryAccount.maxTickets,
+        currentTickets: lotteryAccount.currentTickets,
+        drawTimestamp: BigInt(lotteryAccount.drawTimestamp.toString()),
+        isDrawn: lotteryAccount.isDrawn,
+        winningTickets: lotteryAccount.winningTickets,
+        treasury: lotteryAccount.treasury,
+        affiliatesPool: lotteryAccount.affiliatesPool,
+        prizePool: BigInt(lotteryAccount.prizePool.toString()),
+        bump: lotteryAccount.bump,
       };
     } catch (error) {
-      logger.error({ error, lotteryId }, 'Failed to get lottery data');
+      logger.error({ error, lotteryType, params }, 'Failed to get lottery data');
+      return null;
+    }
+  }
+
+  async getLotteryAccountInfo(lotteryPda: PublicKey): Promise<LotteryAccount | null> {
+    try {
+      if (!this.coreProgram) {
+        throw new BlockchainError('Core program not initialized');
+      }
+
+      const lotteryAccount = await this.coreProgram.account.lottery.fetch(lotteryPda);
+
+      return {
+        authority: lotteryAccount.authority,
+        lotteryId: Number(lotteryAccount.lotteryId),
+        ticketPrice: BigInt(lotteryAccount.ticketPrice.toString()),
+        maxTickets: lotteryAccount.maxTickets,
+        currentTickets: lotteryAccount.currentTickets,
+        drawTimestamp: BigInt(lotteryAccount.drawTimestamp.toString()),
+        isDrawn: lotteryAccount.isDrawn,
+        winningTickets: lotteryAccount.winningTickets,
+        treasury: lotteryAccount.treasury,
+        affiliatesPool: lotteryAccount.affiliatesPool,
+        prizePool: BigInt(lotteryAccount.prizePool.toString()),
+        bump: lotteryAccount.bump,
+      };
+    } catch (error) {
+      logger.error({ error, lotteryPda: lotteryPda.toBase58() }, 'Failed to get lottery account');
       return null;
     }
   }
 
   async getTicketData(
-    lotteryId: number,
+    lotteryPda: PublicKey,
     ticketNumber: number
   ): Promise<TicketAccount | null> {
     try {
-      const { publicKey: ticketPda } = findTicketPDA(lotteryId, ticketNumber, PROGRAM_IDS.CORE);
-
-      const accountInfo = await this.connection.getAccountInfo(ticketPda);
-
-      if (!accountInfo) {
-        return null;
+      if (!this.coreProgram) {
+        throw new BlockchainError('Core program not initialized');
       }
 
+      const [ticketPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('ticket'),
+          lotteryPda.toBuffer(),
+          new BN(ticketNumber).toArrayLike(Buffer, 'le', 4),
+        ],
+        PROGRAM_IDS.CORE
+      );
+
+      const ticketAccount = await this.coreProgram.account.ticket.fetch(ticketPda);
+
       return {
-        owner: PublicKey.default,
-        lottery: PublicKey.default,
-        ticketNumber,
-        purchasedAt: BigInt(0),
+        owner: ticketAccount.owner,
+        lottery: ticketAccount.lottery,
+        ticketNumber: ticketAccount.ticketNumber,
+        purchasedAt: BigInt(ticketAccount.purchasedAt.toString()),
+        affiliateCode: ticketAccount.affiliateCode,
+        isWinner: ticketAccount.isWinner,
+        tier: ticketAccount.tier,
+        claimed: ticketAccount.claimed,
+        bump: ticketAccount.bump,
       };
     } catch (error) {
-      logger.error({ error, lotteryId, ticketNumber }, 'Failed to get ticket data');
+      logger.error({ error, lotteryPda: lotteryPda.toBase58(), ticketNumber }, 'Failed to get ticket data');
       return null;
     }
+  }
+
+  async initializeTriDailyLottery(
+    round: number,
+    ticketPrice: bigint,
+    maxTickets: number,
+    drawTimestamp: number
+  ): Promise<string> {
+    try {
+      if (!this.coreProgram) {
+        throw new BlockchainError('Core program not initialized');
+      }
+
+      const { publicKey: lotteryPda } = findTriDailyLotteryPDA(round, PROGRAM_IDS.CORE);
+
+      const tx = await this.coreProgram.methods
+        .initializeTriDailyLottery(
+          new BN(round),
+          new BN(ticketPrice.toString()),
+          maxTickets,
+          new BN(drawTimestamp)
+        )
+        .accounts({
+          lottery: lotteryPda,
+          authority: this.authority.publicKey,
+          treasury: this.treasury,
+          affiliatesPool: this.affiliatesPool,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([this.authority])
+        .rpc();
+
+      logger.info({ signature: tx, round }, 'Tri-daily lottery initialized on-chain');
+
+      return tx;
+    } catch (error) {
+      logger.error({ error, round }, 'Failed to initialize tri-daily lottery');
+      throw new BlockchainError('Failed to initialize tri-daily lottery', error);
+    }
+  }
+
+  async initializeJackpotLottery(
+    month: number,
+    year: number,
+    ticketPrice: bigint,
+    maxTickets: number,
+    drawTimestamp: number
+  ): Promise<string> {
+    try {
+      if (!this.coreProgram) {
+        throw new BlockchainError('Core program not initialized');
+      }
+
+      const { publicKey: lotteryPda } = findJackpotLotteryPDA(month, year, PROGRAM_IDS.CORE);
+
+      const tx = await this.coreProgram.methods
+        .initializeJackpotLottery(
+          month,
+          year,
+          new BN(ticketPrice.toString()),
+          maxTickets,
+          new BN(drawTimestamp)
+        )
+        .accounts({
+          lottery: lotteryPda,
+          authority: this.authority.publicKey,
+          treasury: this.treasury,
+          affiliatesPool: this.affiliatesPool,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([this.authority])
+        .rpc();
+
+      logger.info({ signature: tx, month, year }, 'Jackpot lottery initialized on-chain');
+
+      return tx;
+    } catch (error) {
+      logger.error({ error, month, year }, 'Failed to initialize jackpot lottery');
+      throw new BlockchainError('Failed to initialize jackpot lottery', error);
+    }
+  }
+
+  async initializeGrandPrizeLottery(
+    year: number,
+    ticketPrice: bigint,
+    maxTickets: number,
+    drawTimestamp: number
+  ): Promise<string> {
+    try {
+      if (!this.coreProgram) {
+        throw new BlockchainError('Core program not initialized');
+      }
+
+      const { publicKey: lotteryPda } = findGrandPrizeLotteryPDA(year, PROGRAM_IDS.CORE);
+
+      const tx = await this.coreProgram.methods
+        .initializeGrandPrizeLottery(
+          year,
+          new BN(ticketPrice.toString()),
+          maxTickets,
+          new BN(drawTimestamp)
+        )
+        .accounts({
+          lottery: lotteryPda,
+          authority: this.authority.publicKey,
+          treasury: this.treasury,
+          affiliatesPool: this.affiliatesPool,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([this.authority])
+        .rpc();
+
+      logger.info({ signature: tx, year }, 'Grand prize lottery initialized on-chain');
+
+      return tx;
+    } catch (error) {
+      logger.error({ error, year }, 'Failed to initialize grand prize lottery');
+      throw new BlockchainError('Failed to initialize grand prize lottery', error);
+    }
+  }
+
+  getCoreProgram(): Program | null {
+    return this.coreProgram;
+  }
+
+  getClaimProgram(): Program | null {
+    return this.claimProgram;
   }
 
   async getTransactionDetails(signature: string): Promise<any> {

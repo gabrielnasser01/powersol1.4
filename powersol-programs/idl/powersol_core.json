@@ -1,0 +1,184 @@
+{
+  "version": "0.1.0",
+  "name": "powersol_core",
+  "instructions": [
+    {
+      "name": "initializeTriDailyLottery",
+      "accounts": [
+        { "name": "lottery", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "treasury", "isMut": false, "isSigner": false },
+        { "name": "affiliatesPool", "isMut": false, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "round", "type": "u64" },
+        { "name": "ticketPrice", "type": "u64" },
+        { "name": "maxTickets", "type": "u32" },
+        { "name": "drawTimestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "initializeJackpotLottery",
+      "accounts": [
+        { "name": "lottery", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "treasury", "isMut": false, "isSigner": false },
+        { "name": "affiliatesPool", "isMut": false, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "month", "type": "u16" },
+        { "name": "year", "type": "u32" },
+        { "name": "ticketPrice", "type": "u64" },
+        { "name": "maxTickets", "type": "u32" },
+        { "name": "drawTimestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "initializeGrandPrizeLottery",
+      "accounts": [
+        { "name": "lottery", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "treasury", "isMut": false, "isSigner": false },
+        { "name": "affiliatesPool", "isMut": false, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "year", "type": "u32" },
+        { "name": "ticketPrice", "type": "u64" },
+        { "name": "maxTickets", "type": "u32" },
+        { "name": "drawTimestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "initializeXmasLottery",
+      "accounts": [
+        { "name": "lottery", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "treasury", "isMut": false, "isSigner": false },
+        { "name": "affiliatesPool", "isMut": false, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "year", "type": "u32" },
+        { "name": "ticketPrice", "type": "u64" },
+        { "name": "maxTickets", "type": "u32" },
+        { "name": "drawTimestamp", "type": "i64" }
+      ]
+    },
+    {
+      "name": "purchaseTicket",
+      "accounts": [
+        { "name": "buyer", "isMut": true, "isSigner": true },
+        { "name": "lottery", "isMut": true, "isSigner": false },
+        { "name": "ticket", "isMut": true, "isSigner": false },
+        { "name": "userTickets", "isMut": true, "isSigner": false },
+        { "name": "treasury", "isMut": true, "isSigner": false },
+        { "name": "affiliatesPool", "isMut": true, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "affiliateCode", "type": { "option": "string" } }
+      ]
+    },
+    {
+      "name": "executeDraw",
+      "accounts": [
+        { "name": "lottery", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": false, "isSigner": true }
+      ],
+      "args": [
+        { "name": "winningTickets", "type": { "vec": "u32" } }
+      ]
+    },
+    {
+      "name": "closeLottery",
+      "accounts": [
+        { "name": "lottery", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": true, "isSigner": true }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Lottery",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "authority", "type": "publicKey" },
+          { "name": "lotteryId", "type": "u64" },
+          { "name": "lotteryType", "type": { "defined": "LotteryType" } },
+          { "name": "ticketPrice", "type": "u64" },
+          { "name": "maxTickets", "type": "u32" },
+          { "name": "currentTickets", "type": "u32" },
+          { "name": "drawTimestamp", "type": "i64" },
+          { "name": "isDrawn", "type": "bool" },
+          { "name": "winningTickets", "type": { "vec": "u32" } },
+          { "name": "treasury", "type": "publicKey" },
+          { "name": "affiliatesPool", "type": "publicKey" },
+          { "name": "prizePool", "type": "u64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "Ticket",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "owner", "type": "publicKey" },
+          { "name": "lottery", "type": "publicKey" },
+          { "name": "ticketNumber", "type": "u32" },
+          { "name": "purchasedAt", "type": "i64" },
+          { "name": "affiliateCode", "type": { "option": "string" } },
+          { "name": "isWinner", "type": "bool" },
+          { "name": "tier", "type": { "option": "u8" } },
+          { "name": "claimed", "type": "bool" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "UserTickets",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "user", "type": "publicKey" },
+          { "name": "lottery", "type": "publicKey" },
+          { "name": "ticketNumbers", "type": { "vec": "u32" } },
+          { "name": "count", "type": "u32" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "LotteryType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "TriDaily", "fields": [{ "name": "round", "type": "u64" }] },
+          { "name": "Jackpot", "fields": [{ "name": "month", "type": "u16" }, { "name": "year", "type": "u32" }] },
+          { "name": "GrandPrize", "fields": [{ "name": "year", "type": "u32" }] },
+          { "name": "Xmas", "fields": [{ "name": "year", "type": "u32" }] }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    { "code": 6000, "name": "LotteryFull", "msg": "Lottery is full" },
+    { "code": 6001, "name": "LotteryExpired", "msg": "Lottery has expired" },
+    { "code": 6002, "name": "LotteryNotExpired", "msg": "Lottery has not expired yet" },
+    { "code": 6003, "name": "LotteryAlreadyDrawn", "msg": "Lottery has already been drawn" },
+    { "code": 6004, "name": "InvalidWinningTicket", "msg": "Invalid winning ticket number" },
+    { "code": 6005, "name": "ArithmeticOverflow", "msg": "Arithmetic overflow" },
+    { "code": 6006, "name": "TreasuryMismatch", "msg": "Treasury account mismatch" },
+    { "code": 6007, "name": "AffiliatesPoolMismatch", "msg": "Affiliates pool account mismatch" }
+  ],
+  "metadata": {
+    "address": "GqfdkAjpFJMZnzRaLrgeoBCr7exvSfqSib1wSJM49BxW"
+  }
+}

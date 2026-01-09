@@ -137,12 +137,17 @@ export function DailyMissions() {
     }
   };
 
-  const completeMissionAPI = async (missionKey: string) => {
-    if (!isConnected || !user.publicKey) return;
+  const completeMissionAPI = async (missionKey: string): Promise<boolean> => {
+    if (!isConnected || !user.publicKey) return false;
 
     try {
       const mission = missions.find(m => m.mission_key === missionKey);
-      if (!mission) return;
+      if (!mission) return false;
+
+      if (mission.user_progress?.completed) {
+        console.log('Mission already completed (local state)');
+        return false;
+      }
 
       const { data: existingProgress } = await supabase
         .from('user_mission_progress')
@@ -152,8 +157,13 @@ export function DailyMissions() {
         .maybeSingle();
 
       if (existingProgress?.completed) {
-        console.log('Mission already completed');
-        return;
+        console.log('Mission already completed (database)');
+        setMissions(prev => prev.map(m =>
+          m.id === mission.id
+            ? { ...m, user_progress: { completed: true, completed_at: existingProgress.completed_at, progress: {} } }
+            : m
+        ));
+        return false;
       }
 
       if (existingProgress) {
@@ -176,6 +186,12 @@ export function DailyMissions() {
           });
       }
 
+      setMissions(prev => prev.map(m =>
+        m.id === mission.id
+          ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: {} } }
+          : m
+      ));
+
       const result = await powerPointsService.addPoints(
         user.publicKey,
         mission.power_points,
@@ -187,7 +203,7 @@ export function DailyMissions() {
 
       if (!result.success) {
         console.error('Failed to add power points:', result.error);
-        return;
+        return true;
       }
 
       userStatsStorage.addMissionPoints(mission.power_points);
@@ -196,9 +212,10 @@ export function DailyMissions() {
       setShowReward({ amount: mission.power_points });
       setTimeout(() => setShowReward(null), 3000);
 
-      await loadMissions();
+      return true;
     } catch (error) {
       console.error('Failed to complete mission:', error);
+      return false;
     }
   };
 

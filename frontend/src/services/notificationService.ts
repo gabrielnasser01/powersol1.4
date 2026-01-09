@@ -11,20 +11,24 @@ interface NotificationPayload {
 class NotificationService {
   private swRegistration: ServiceWorkerRegistration | null = null;
   private checkInterval: ReturnType<typeof setInterval> | null = null;
+  private initialized = false;
 
   async init(): Promise<boolean> {
-    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+    if (!('Notification' in window)) {
       console.warn('Notifications not supported');
       return false;
     }
 
-    try {
-      this.swRegistration = await navigator.serviceWorker.register('/sw.js');
-      return true;
-    } catch (error) {
-      console.error('Service worker registration failed:', error);
-      return false;
+    if ('serviceWorker' in navigator) {
+      try {
+        this.swRegistration = await navigator.serviceWorker.register('/sw.js');
+      } catch (error) {
+        console.warn('Service worker not available, using fallback notifications');
+      }
     }
+
+    this.initialized = true;
+    return true;
   }
 
   async requestPermission(): Promise<boolean> {
@@ -67,20 +71,37 @@ class NotificationService {
       return;
     }
 
-    if (this.swRegistration) {
-      this.swRegistration.active?.postMessage({
-        type: 'SHOW_NOTIFICATION',
-        ...payload
-      });
-    } else {
-      new Notification(payload.title, {
+    if (this.swRegistration?.active) {
+      try {
+        this.swRegistration.active.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          ...payload
+        });
+        return;
+      } catch {
+        // fallback to native notification
+      }
+    }
+
+    try {
+      const notification = new Notification(payload.title, {
         body: payload.body,
         icon: '/img-moeda.png',
-        badge: '/img-moeda.png',
-        vibrate: [200, 100, 200, 100, 200],
         tag: 'powersol-claim',
-        renotify: true
-      } as NotificationOptions);
+        requireInteraction: true
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        if (payload.url) {
+          window.location.href = payload.url;
+        }
+        notification.close();
+      };
+
+      this.playNotificationSound();
+    } catch (error) {
+      console.warn('Failed to show notification:', error);
     }
   }
 

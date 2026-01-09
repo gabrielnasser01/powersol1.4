@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
 import { ValidationError } from '@utils/errors.js';
-import { logger } from '@utils/logger.js';
+import { loggers } from '@utils/logger.js';
+
+const logger = loggers.default;
 
 type ValidationTarget = 'body' | 'query' | 'params';
 
@@ -15,8 +17,16 @@ export function validate(schema: ZodSchema, target: ValidationTarget = 'body') {
     } catch (error) {
       if (error instanceof ZodError) {
         const messages = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+        const errorRecord: Record<string, string[]> = {};
+        error.errors.forEach((e) => {
+          const key = e.path.join('.') || 'root';
+          if (!errorRecord[key]) {
+            errorRecord[key] = [];
+          }
+          errorRecord[key].push(e.message);
+        });
         logger.warn({ errors: error.errors }, 'Validation failed');
-        next(new ValidationError(messages.join(', '), error.errors));
+        next(new ValidationError(messages.join(', '), errorRecord));
       } else {
         next(error);
       }

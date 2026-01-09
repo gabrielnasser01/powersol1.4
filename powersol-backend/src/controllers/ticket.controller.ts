@@ -24,13 +24,14 @@ export class TicketController {
     }
 
     const startTicketNumber = await ticketService.getNextTicketNumber(lotteryId);
+    const ticketPriceBigInt = BigInt(lottery.ticket_price || 0);
 
     const buyerPublicKey = new PublicKey(userWallet);
     const transaction = await solanaService.buildPurchaseTransaction(
       buyerPublicKey,
       lottery.lottery_id,
       startTicketNumber,
-      lottery.ticket_price
+      ticketPriceBigInt
     );
 
     const serializedTx = transaction.serialize({ requireAllSignatures: false }).toString('base64');
@@ -42,7 +43,7 @@ export class TicketController {
         lottery_id: lotteryId,
         ticket_number: startTicketNumber + i,
         quantity: 1,
-        purchase_price: lottery.ticket_price,
+        purchase_price: ticketPriceBigInt,
         tx_signature: 'pending',
       });
       createdTickets.push(ticket);

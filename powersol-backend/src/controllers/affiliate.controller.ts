@@ -4,7 +4,7 @@ import { affiliateService } from '@services/affiliate.service.js';
 import { solanaService } from '@services/solana.service.js';
 import { sendSuccess } from '@utils/response.js';
 import { ValidationError } from '@utils/errors.js';
-import { SOLToLamports } from '@utils/helpers.js';
+import { solToLamports } from '@utils/helpers.js';
 import type { AuthenticatedRequest } from '../types/api.types.js';
 
 export class AffiliateController {
@@ -47,9 +47,9 @@ export class AffiliateController {
       throw new ValidationError('Not an affiliate');
     }
 
-    const amountLamports = SOLToLamports(amount);
+    const amountLamports = solToLamports(amount);
 
-    if (amountLamports > affiliate.pending_earnings) {
+    if (amountLamports > BigInt(affiliate.pending_earnings || 0)) {
       throw new ValidationError('Insufficient balance');
     }
 

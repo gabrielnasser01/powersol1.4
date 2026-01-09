@@ -71,13 +71,13 @@ async function createNextJackpotLottery() {
 
     const { data: existing } = await supabaseAdmin
       .from('lotteries')
-      .select('id')
-      .eq('type', 'JACKPOT')
+      .select('id, metadata')
+      .eq('lottery_type', 'JACKPOT')
       .eq('is_drawn', false)
       .maybeSingle();
 
     if (existing) {
-      const metadata = existing.metadata as any;
+      const metadata = (existing as any).metadata;
       if (metadata?.month === nextMonth && metadata?.year === nextYear) {
         logger.info({ month: nextMonth, year: nextYear }, 'Next JACKPOT lottery already exists');
         return;

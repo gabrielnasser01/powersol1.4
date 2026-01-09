@@ -38,6 +38,16 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+export const authNonceQuerySchema = z.object({
+  wallet: walletAddressSchema,
+  referralCode: z.string().optional(),
+});
+
+export const authWalletBodySchema = z.object({
+  walletAddress: walletAddressSchema,
+  signature: signatureSchema,
+});
+
 export type ConnectWalletInput = z.infer<typeof connectWalletSchema>;
 export type PurchaseTicketInput = z.infer<typeof purchaseTicketSchema>;
 export type ClaimPrizeInput = z.infer<typeof claimPrizeSchema>;

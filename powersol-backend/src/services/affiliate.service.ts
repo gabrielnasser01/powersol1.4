@@ -336,7 +336,7 @@ export class AffiliateService {
   }
 
   async getValidatedReferralsCount(affiliateId: string): Promise<number> {
-    const { data, error } = await supabase
+    const { count, error } = await supabase
       .from('referrals')
       .select('id', { count: 'exact', head: true })
       .eq('referrer_affiliate_id', affiliateId)
@@ -347,7 +347,7 @@ export class AffiliateService {
       throw error;
     }
 
-    return data || 0;
+    return count || 0;
   }
 
   async getAffiliateTier(affiliateId: string): Promise<AffiliateTier> {

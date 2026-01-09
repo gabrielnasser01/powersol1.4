@@ -77,19 +77,50 @@ export class BlockchainError extends AppError {
   }
 }
 
+export class ExternalServiceError extends AppError {
+  public readonly service: string;
+  public readonly cause?: unknown;
+
+  constructor(service: string, message: string = 'External service error', cause?: unknown) {
+    super(`${service}: ${message}`, 502);
+    this.service = service;
+    this.cause = cause;
+  }
+}
+
 export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError;
 }
 
-export function formatError(error: unknown): { message: string; statusCode: number } {
+export interface FormattedError {
+  message: string;
+  statusCode: number;
+  code?: string;
+  details?: unknown;
+  stack?: string;
+}
+
+export function formatError(error: unknown): FormattedError {
   if (isAppError(error)) {
     return {
       message: error.message,
       statusCode: error.statusCode,
+      code: error.constructor.name,
+      details: (error as ValidationError).errors || (error as BlockchainError).cause,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    };
+  }
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      statusCode: 500,
+      code: 'INTERNAL_ERROR',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     };
   }
   return {
     message: 'Internal server error',
     statusCode: 500,
+    code: 'UNKNOWN_ERROR',
   };
 }

@@ -39,4 +39,9 @@ export const loggers = {
   vrf: createLogger('VRF'),
   draw: createLogger('DRAW'),
   api: createLogger('API'),
+  audit: createLogger('AUDIT'),
+  auth: createLogger('AUTH'),
+  mission: createLogger('MISSION'),
+  ticket: createLogger('TICKET'),
+  default: createLogger('APP'),
 };

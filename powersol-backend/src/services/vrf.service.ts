@@ -5,12 +5,29 @@ import { lotteryService } from './lottery.service.js';
 import { solanaService } from './solana.service.js';
 import { ExternalServiceError } from '@utils/errors.js';
 import { loggers } from '@utils/logger.js';
+import { LotteryType } from '../lib/anchor/pdas.js';
 import type { VRFProof } from '../types/lottery.types.js';
 
 const logger = loggers.vrf;
 
 export class VRFService {
   private connection = getConnection();
+
+  private getLotteryParams(lottery: any): { round?: number; month?: number; year?: number } {
+    const metadata = lottery.metadata || {};
+    switch (lottery.lottery_type) {
+      case LotteryType.TRI_DAILY:
+        return { round: metadata.round || lottery.lottery_id };
+      case LotteryType.JACKPOT:
+        return { month: metadata.month, year: metadata.year };
+      case LotteryType.GRAND_PRIZE:
+        return { year: metadata.year || new Date().getFullYear() + 1 };
+      case LotteryType.XMAS:
+        return { year: metadata.year || 2024 };
+      default:
+        return { round: lottery.lottery_id };
+    }
+  }
 
   async requestRandomness(lotteryId: string): Promise<string> {
     try {
@@ -59,9 +76,13 @@ export class VRFService {
 
       const winningTicket = await this.selectWinningTicket(lottery.id, randomness);
 
+      const lotteryType = lottery.lottery_type as LotteryType;
+      const params = this.getLotteryParams(lottery);
+
       const txSignature = await solanaService.executeDraw(
-        lottery.lottery_id,
-        winningTicket
+        lotteryType,
+        params,
+        [winningTicket]
       );
 
       await lotteryService.markAsDrawn(lottery.id, winningTicket, txSignature);

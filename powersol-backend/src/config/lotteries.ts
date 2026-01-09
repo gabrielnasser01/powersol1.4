@@ -30,6 +30,7 @@ export interface LotteryConfig {
   frequency: string;
   drawSchedule: string;
   revenueDistribution: RevenueDistribution;
+  prizeDistribution: RevenueDistribution;
   winnerTiers: WinnerTier[];
   winnersSelectionType: 'PERCENTAGE' | 'FIXED';
   totalWinnersPercentage?: number;
@@ -46,6 +47,11 @@ export const TRI_DAILY_CONFIG: LotteryConfig = {
   frequency: 'Every 3 days',
   drawSchedule: 'Every 3 days at 00:00 UTC',
   revenueDistribution: {
+    prizePool: 40,
+    treasury: 30,
+    affiliates: 30,
+  },
+  prizeDistribution: {
     prizePool: 40,
     treasury: 30,
     affiliates: 30,
@@ -105,6 +111,11 @@ export const JACKPOT_CONFIG: LotteryConfig = {
     treasury: 30,
     affiliates: 30,
   },
+  prizeDistribution: {
+    prizePool: 40,
+    treasury: 30,
+    affiliates: 30,
+  },
   winnersSelectionType: 'FIXED',
   totalWinnersFixed: 100,
   winnerTiers: [
@@ -160,6 +171,11 @@ export const GRAND_PRIZE_CONFIG: LotteryConfig = {
     treasury: 30,
     affiliates: 30,
   },
+  prizeDistribution: {
+    prizePool: 40,
+    treasury: 30,
+    affiliates: 30,
+  },
   winnersSelectionType: 'FIXED',
   totalWinnersFixed: 3,
   winnerTiers: [
@@ -199,6 +215,11 @@ export const XMAS_CONFIG: LotteryConfig = {
   frequency: 'Yearly',
   drawSchedule: 'December 25, 2024 at 00:00 UTC',
   revenueDistribution: {
+    prizePool: 40,
+    treasury: 30,
+    affiliates: 30,
+  },
+  prizeDistribution: {
     prizePool: 40,
     treasury: 30,
     affiliates: 30,

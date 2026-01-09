@@ -21,14 +21,14 @@ async function processReadyDraws() {
     for (const lottery of readyLotteries) {
       try {
         if (lottery.current_tickets === 0) {
-          logger.warn({ lotteryId: lottery.id, type: lottery.type }, 'Lottery has no tickets, skipping draw');
+          logger.warn({ lotteryId: lottery.id, type: lottery.lottery_type }, 'Lottery has no tickets, skipping draw');
           continue;
         }
 
         logger.info(
           {
             lotteryId: lottery.id,
-            type: lottery.type,
+            type: lottery.lottery_type,
             tickets: lottery.current_tickets,
           },
           'Initiating draw'
@@ -39,7 +39,7 @@ async function processReadyDraws() {
         logger.info(
           {
             lotteryId: lottery.id,
-            type: lottery.type,
+            type: lottery.lottery_type,
             requestId,
           },
           'VRF randomness requested'
@@ -49,7 +49,7 @@ async function processReadyDraws() {
           {
             error,
             lotteryId: lottery.id,
-            type: lottery.type,
+            type: lottery.lottery_type,
           },
           'Failed to process lottery draw'
         );

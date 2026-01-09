@@ -39,24 +39,26 @@ export class ClaimController {
       throw new ValidationError('Prize already claimed');
     }
 
+    const prizePoolBigInt = BigInt(lottery.prize_pool || 0);
+
     const claim = await claimService.createClaim({
       user_id: userId,
       ticket_id: ticketId,
-      amount: lottery.prize_pool,
+      amount: prizePoolBigInt,
       claim_type: 'PRIZE',
     });
 
     const claimerPublicKey = new PublicKey(userWallet);
     const { serializedTx, blockhash } = await solanaService.prepareClaimTransactionForUserSign(
       claimerPublicKey,
-      lottery.prize_pool
+      prizePoolBigInt
     );
 
     sendSuccess(res, {
       claimId: claim.id,
       serializedTx,
       blockhash,
-      amount: lottery.prize_pool,
+      amount: prizePoolBigInt.toString(),
     });
   }
 

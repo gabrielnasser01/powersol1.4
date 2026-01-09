@@ -129,7 +129,7 @@ export class AuthService {
         throw new NotFoundError('User');
       }
 
-      const message = generateAuthMessage(user.nonce);
+      const message = generateAuthMessage(walletAddress, user.nonce);
       const isValid = verifySignature(message, signature, walletAddress);
 
       if (!isValid) {

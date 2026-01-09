@@ -74,16 +74,15 @@ export class PrizeController {
         });
       }
 
-      const claim = await prizeClaimService.initiateClaim(prizeId, wallet);
-
-      const signature = await prizeClaimService.processClaim(claim.id);
+      const preparedTx = await prizeClaimService.initiateClaim(prizeId, wallet);
 
       res.json({
         success: true,
         data: {
-          claimId: claim.id,
-          signature,
-          message: 'Prize claimed successfully!'
+          claimId: preparedTx.claimId,
+          serializedTx: preparedTx.serializedTx,
+          blockhash: preparedTx.blockhash,
+          message: 'Transaction prepared. Please sign and submit.'
         }
       });
     } catch (error) {

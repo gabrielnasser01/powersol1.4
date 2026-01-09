@@ -1,5 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
-import { NotFoundError, ValidationError } from '../middleware/error.middleware.js';
+import { NotFoundError, ValidationError } from '@utils/errors.js';
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
 

@@ -177,7 +177,7 @@ export class SolanaLotteryService {
 
   getExpectedPrizeForType(lotteryType: LotteryType, totalSales: bigint): bigint {
     const config = getLotteryConfig(lotteryType);
-    return (totalSales * BigInt(config.prizeDistribution.winner)) / BigInt(100);
+    return (totalSales * BigInt(config.prizeDistribution.prizePool)) / BigInt(100);
   }
 
   getTreasuryShareForType(lotteryType: LotteryType, totalSales: bigint): bigint {

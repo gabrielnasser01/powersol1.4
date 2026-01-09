@@ -32,6 +32,7 @@ import type {
   TransactionResult,
   LotteryAccount,
   TicketAccount,
+  LotteryData,
 } from '../types/solana.types.js';
 
 const logger = loggers.solana;
@@ -88,10 +89,8 @@ export class SolanaService {
 
   async verifyTransaction(signature: string): Promise<boolean> {
     try {
-      const result = await retry(async () => {
-        const status = await this.connection.getSignatureStatus(signature);
-        return status.value;
-      });
+      const status = await this.connection.getSignatureStatus(signature);
+      const result = status.value;
 
       if (!result) {
         return false;
@@ -200,7 +199,10 @@ export class SolanaService {
     ticketPrice: bigint
   ): Promise<Transaction> {
     try {
-      const { publicKey: lotteryPda } = findLotteryPDA(lotteryId, PROGRAM_IDS.CORE);
+      const [lotteryPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('lottery'), Buffer.from([lotteryId])],
+        PROGRAM_IDS.CORE
+      );
       const { publicKey: ticketPda } = findTicketPDA(lotteryId, ticketNumber, PROGRAM_IDS.CORE);
 
       const transaction = new Transaction();
@@ -289,21 +291,21 @@ export class SolanaService {
 
       const { publicKey: lotteryPda } = getLotteryPDAForType(lotteryType, params, PROGRAM_IDS.CORE);
 
-      const lotteryAccount = await this.coreProgram.account.lottery.fetch(lotteryPda);
+      const lotteryAccount = await this.coreProgram.account.lottery.fetch(lotteryPda) as any;
 
       return {
-        authority: lotteryAccount.authority,
+        authority: lotteryAccount.authority as PublicKey,
         lotteryId: Number(lotteryAccount.lotteryId),
         ticketPrice: BigInt(lotteryAccount.ticketPrice.toString()),
-        maxTickets: lotteryAccount.maxTickets,
-        currentTickets: lotteryAccount.currentTickets,
+        maxTickets: Number(lotteryAccount.maxTickets),
+        currentTickets: Number(lotteryAccount.currentTickets),
         drawTimestamp: BigInt(lotteryAccount.drawTimestamp.toString()),
-        isDrawn: lotteryAccount.isDrawn,
-        winningTickets: lotteryAccount.winningTickets,
-        treasury: lotteryAccount.treasury,
-        affiliatesPool: lotteryAccount.affiliatesPool,
+        isDrawn: Boolean(lotteryAccount.isDrawn),
+        winningTickets: lotteryAccount.winningTickets as number[],
+        treasury: lotteryAccount.treasury as PublicKey,
+        affiliatesPool: lotteryAccount.affiliatesPool as PublicKey,
         prizePool: BigInt(lotteryAccount.prizePool.toString()),
-        bump: lotteryAccount.bump,
+        bump: Number(lotteryAccount.bump),
       };
     } catch (error) {
       logger.error({ error, lotteryType, params }, 'Failed to get lottery data');
@@ -317,21 +319,21 @@ export class SolanaService {
         throw new BlockchainError('Core program not initialized');
       }
 
-      const lotteryAccount = await this.coreProgram.account.lottery.fetch(lotteryPda);
+      const lotteryAccount = await this.coreProgram.account.lottery.fetch(lotteryPda) as any;
 
       return {
-        authority: lotteryAccount.authority,
+        authority: lotteryAccount.authority as PublicKey,
         lotteryId: Number(lotteryAccount.lotteryId),
         ticketPrice: BigInt(lotteryAccount.ticketPrice.toString()),
-        maxTickets: lotteryAccount.maxTickets,
-        currentTickets: lotteryAccount.currentTickets,
+        maxTickets: Number(lotteryAccount.maxTickets),
+        currentTickets: Number(lotteryAccount.currentTickets),
         drawTimestamp: BigInt(lotteryAccount.drawTimestamp.toString()),
-        isDrawn: lotteryAccount.isDrawn,
-        winningTickets: lotteryAccount.winningTickets,
-        treasury: lotteryAccount.treasury,
-        affiliatesPool: lotteryAccount.affiliatesPool,
+        isDrawn: Boolean(lotteryAccount.isDrawn),
+        winningTickets: lotteryAccount.winningTickets as number[],
+        treasury: lotteryAccount.treasury as PublicKey,
+        affiliatesPool: lotteryAccount.affiliatesPool as PublicKey,
         prizePool: BigInt(lotteryAccount.prizePool.toString()),
-        bump: lotteryAccount.bump,
+        bump: Number(lotteryAccount.bump),
       };
     } catch (error) {
       logger.error({ error, lotteryPda: lotteryPda.toBase58() }, 'Failed to get lottery account');
@@ -357,18 +359,18 @@ export class SolanaService {
         PROGRAM_IDS.CORE
       );
 
-      const ticketAccount = await this.coreProgram.account.ticket.fetch(ticketPda);
+      const ticketAccount = await this.coreProgram.account.ticket.fetch(ticketPda) as any;
 
       return {
-        owner: ticketAccount.owner,
-        lottery: ticketAccount.lottery,
-        ticketNumber: ticketAccount.ticketNumber,
+        owner: ticketAccount.owner as PublicKey,
+        lottery: ticketAccount.lottery as PublicKey,
+        ticketNumber: Number(ticketAccount.ticketNumber),
         purchasedAt: BigInt(ticketAccount.purchasedAt.toString()),
-        affiliateCode: ticketAccount.affiliateCode,
-        isWinner: ticketAccount.isWinner,
-        tier: ticketAccount.tier,
-        claimed: ticketAccount.claimed,
-        bump: ticketAccount.bump,
+        affiliateCode: ticketAccount.affiliateCode as string | null,
+        isWinner: Boolean(ticketAccount.isWinner),
+        tier: ticketAccount.tier as number | null,
+        claimed: Boolean(ticketAccount.claimed),
+        bump: Number(ticketAccount.bump),
       };
     } catch (error) {
       logger.error({ error, lotteryPda: lotteryPda.toBase58(), ticketNumber }, 'Failed to get ticket data');
@@ -501,6 +503,31 @@ export class SolanaService {
 
   getClaimProgram(): Program | null {
     return this.claimProgram;
+  }
+
+  async getLotteryData(onChainId: number): Promise<LotteryData | null> {
+    try {
+      if (!this.coreProgram) {
+        throw new BlockchainError('Core program not initialized');
+      }
+
+      const [lotteryPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('lottery'), Buffer.from([onChainId])],
+        PROGRAM_IDS.CORE
+      );
+
+      const lotteryAccount = await this.coreProgram.account.lottery.fetch(lotteryPda) as any;
+
+      return {
+        currentTickets: Number(lotteryAccount.currentTickets),
+        prizePool: BigInt(lotteryAccount.prizePool.toString()),
+        isDrawn: Boolean(lotteryAccount.isDrawn),
+        winningTicket: lotteryAccount.winningTickets?.length > 0 ? lotteryAccount.winningTickets[0] : null,
+      };
+    } catch (error) {
+      logger.error({ error, onChainId }, 'Failed to get lottery data');
+      return null;
+    }
   }
 
   async getTransactionDetails(signature: string): Promise<any> {

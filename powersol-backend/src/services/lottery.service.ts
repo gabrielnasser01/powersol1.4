@@ -50,6 +50,8 @@ export class LotteryService {
   }
 
   async getLotteryStats(lotteryId: string): Promise<LotteryStats> {
+    const lottery = await this.getLotteryById(lotteryId);
+
     const { data, error } = await supabase.rpc('get_lottery_stats', {
       p_lottery_id: lotteryId,
     });
@@ -59,16 +61,15 @@ export class LotteryService {
       throw error;
     }
 
-    if (!data || data.length === 0) {
-      throw new NotFoundError('Lottery stats');
-    }
-
-    const stats = data[0];
+    const stats = data?.[0] || {};
 
     return {
-      totalTickets: Number(stats.total_tickets),
-      uniquePlayers: Number(stats.unique_players),
-      prizePool: BigInt(stats.prize_pool),
+      totalTickets: Number(stats.total_tickets || lottery.current_tickets),
+      uniquePlayers: Number(stats.unique_players || 0),
+      prizePool: BigInt(stats.prize_pool || lottery.prize_pool || '0'),
+      ticketPrice: BigInt(lottery.ticket_price),
+      isDrawn: lottery.is_drawn,
+      winningTicket: lottery.winning_ticket,
       timeUntilDraw: stats.time_until_draw,
     };
   }

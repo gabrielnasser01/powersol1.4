@@ -11,25 +11,36 @@ export interface Affiliate {
 
 export interface Referral {
   id: string;
-  affiliate_id: string;
-  referred_user_id: string;
-  is_validated: boolean;
-  tickets_purchased: number;
-  total_spent: string;
-  created_at: string;
+  affiliate_id?: string;
+  referred_user_id?: string;
+  referred_user?: {
+    wallet_address: string;
+    username: string | null;
+  };
+  is_validated?: boolean;
+  tickets_purchased?: number;
+  tickets_bought?: number;
+  total_spent?: string;
+  commission_earned?: bigint | string;
+  created_at: string | Date;
 }
 
 export interface AffiliateStats {
   totalReferrals: number;
-  validatedReferrals: number;
-  totalEarned: string;
-  pendingEarnings: string;
-  currentTier: number;
-  commissionRate: number;
+  activeReferrals?: number;
+  validatedReferrals?: number;
+  totalEarned: string | bigint;
+  pendingEarnings: string | bigint;
+  tier?: number;
+  currentTier?: number;
+  commissionRate?: number;
+  referralCode?: string;
+  conversionRate?: number;
 }
 
 export interface AffiliateDashboard {
   affiliate: Affiliate;
   stats: AffiliateStats;
   recentReferrals: Referral[];
+  pendingWithdrawals?: unknown[];
 }

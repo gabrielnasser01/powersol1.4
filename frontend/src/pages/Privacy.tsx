@@ -33,7 +33,7 @@ export function Privacy() {
     {
       icon: FileText,
       title: 'Third-Party Services',
-      content: 'We use Solana blockchain (public), Chainlink VRF (randomness), and optional analytics services. These services have their own privacy policies.',
+      content: 'We use Solana blockchain (public), VRF (randomness), and optional analytics services. These services have their own privacy policies.',
     },
   ];
 

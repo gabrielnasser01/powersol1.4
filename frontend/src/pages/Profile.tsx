@@ -17,10 +17,11 @@ export function Profile() {
   const [user, setUser] = useState(userStorage.get());
   const [userStats, setUserStats] = useState(userStatsStorage.get());
   const [personalInfo, setPersonalInfo] = useState({
-    displayName: 'Demo User',
-    email: 'demo@powersol.app',
-    location: 'United States',
+    displayName: '',
+    email: '',
+    location: '',
   });
+  const [savingConfig, setSavingConfig] = useState(false);
   const [togglingNotifications, setTogglingNotifications] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
@@ -126,6 +127,56 @@ export function Profile() {
     }
   };
 
+  const loadUserProfile = async () => {
+    if (!walletPublicKey) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('display_name, email, location')
+        .eq('wallet_address', walletPublicKey)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setPersonalInfo({
+          displayName: data.display_name || '',
+          email: data.email || '',
+          location: data.location || '',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load user profile:', error);
+    }
+  };
+
+  const saveUserProfile = async () => {
+    if (!walletPublicKey) return;
+
+    setSavingConfig(true);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          display_name: personalInfo.displayName || null,
+          email: personalInfo.email || null,
+          location: personalInfo.location || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('wallet_address', walletPublicKey);
+
+      if (error) throw error;
+
+      alert('Configuracoes salvas com sucesso!');
+    } catch (error) {
+      console.error('Failed to save user profile:', error);
+      alert('Erro ao salvar configuracoes. Tente novamente.');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
   // Reset everything instantly when wallet disconnects
   useEffect(() => {
     if (!connected) {
@@ -143,6 +194,11 @@ export function Profile() {
       setAffiliateStats(null);
       setUserTickets([]);
       setTotalTickets(0);
+      setPersonalInfo({
+        displayName: '',
+        email: '',
+        location: '',
+      });
     }
   }, [connected]);
 
@@ -152,6 +208,7 @@ export function Profile() {
       loadPrizes();
       loadPowerPoints();
       loadAffiliateData();
+      loadUserProfile();
     }
   }, [walletPublicKey, isConnected]);
 
@@ -1148,18 +1205,17 @@ export function Profile() {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full p-3 rounded-lg font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300"
+                    disabled={savingConfig || !isConnected}
+                    className="w-full p-3 rounded-lg font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{
                       background: 'linear-gradient(135deg, rgba(179, 71, 255, 0.8), rgba(179, 71, 255, 0.6))',
                       border: '1px solid #b347ff',
                       color: '#fff',
                       boxShadow: '0 0 20px rgba(179, 71, 255, 0.3)',
                     }}
-                    onClick={() => {
-                      console.log('Saving user configuration:', personalInfo);
-                    }}
+                    onClick={saveUserProfile}
                   >
-                    Save Changes
+                    {savingConfig ? 'Salvando...' : 'Save Changes'}
                   </motion.button>
                 </div>
               </div>

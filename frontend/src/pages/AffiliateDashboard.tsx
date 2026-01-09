@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, ExternalLink, Users, DollarSign, MousePointer, CreditCard, Wallet, BarChart3, LineChart, ArrowLeft } from 'lucide-react';
 import { userStorage } from '../store/persist';
 import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../services/api';
+import { affiliateDashboardService, WeeklyHistory } from '../services/affiliateDashboardService';
 
 interface AffiliateStats {
   totalClicks: number;
@@ -55,23 +55,57 @@ export function AffiliateDashboard() {
       try {
         setLoading(true);
 
-        const statsData = await apiClient.getAffiliateStats(user.publicKey);
-        const referralsData = await apiClient.getAffiliateReferrals(user.publicKey);
+        const statsData = await affiliateDashboardService.getDashboardStats(user.publicKey);
+        const referralsData = await affiliateDashboardService.getTopReferrals(user.publicKey, 100);
+        const weeklyData = await affiliateDashboardService.getWeeklyHistory(user.publicKey, 7);
+
+        if (!statsData) {
+          setStats({
+            totalClicks: 0,
+            totalSignups: 0,
+            totalDeposits: 0,
+            weeklyEarnings: 0,
+            totalEarnings: 0,
+            conversionRate: 0,
+            referralCode: user.publicKey.slice(0, 8),
+            currentTier: 1,
+            commissionRate: 5,
+            dailyData: []
+          });
+          return;
+        }
+
+        const totalEarnedSOL = statsData.totalEarnedLamports / 1_000_000_000;
+        const weeklyEarnedSOL = statsData.weeklyEarnedLamports / 1_000_000_000;
+
+        const dailyData = weeklyData.map(week => ({
+          date: new Date(week.weekStartDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          clicks: 0,
+          signups: week.referralCount,
+          deposits: week.referralCount,
+          earnings: week.earnedLamports / 1_000_000_000
+        })).reverse();
 
         setStats({
-          totalClicks: statsData.totalClicks || 0,
-          totalSignups: statsData.totalReferrals || 0,
-          totalDeposits: statsData.validatedReferrals || 0,
-          weeklyEarnings: statsData.pendingEarnings || 0,
-          totalEarnings: statsData.totalEarned || 0,
-          conversionRate: statsData.conversionRate || 0,
-          referralCode: statsData.referralCode || '',
-          currentTier: statsData.currentTier || 1,
-          commissionRate: (statsData.commissionRate * 100) || 5,
-          dailyData: []
+          totalClicks: 0,
+          totalSignups: statsData.totalReferrals,
+          totalDeposits: statsData.totalReferrals,
+          weeklyEarnings: weeklyEarnedSOL,
+          totalEarnings: totalEarnedSOL,
+          conversionRate: statsData.totalReferrals > 0 ? (statsData.totalReferrals / (statsData.totalReferrals + 100)) * 100 : 0,
+          referralCode: user.publicKey.slice(0, 8),
+          currentTier: statsData.tier,
+          commissionRate: statsData.commissionRate * 100,
+          dailyData: dailyData
         });
 
-        setReferrals(referralsData || []);
+        setReferrals(referralsData.map(ref => ({
+          wallet: ref.walletAddress,
+          signupDate: new Date(ref.joinedAt).toLocaleDateString('pt-BR'),
+          totalSpent: ref.totalSpentLamports / 1_000_000_000,
+          commissionEarned: ref.commissionGeneratedLamports / 1_000_000_000,
+          status: ref.isValidated ? 'Ativo' : 'Pendente'
+        })));
       } catch (error) {
         console.error('Failed to fetch affiliate data:', error);
       } finally {
@@ -416,7 +450,68 @@ export function AffiliateDashboard() {
                   backdropFilter: 'blur(20px)',
                 }}
               >
-                <p className="text-center text-zinc-400 font-mono text-sm">Grafico em breve</p>
+                {stats.dailyData.length === 0 ? (
+                  <p className="text-center text-zinc-400 font-mono text-sm">Sem dados ainda</p>
+                ) : (
+                  <div className="w-full h-64 relative">
+                    <svg width="100%" height="100%" viewBox="0 0 600 200" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="earningsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="rgba(179, 71, 255, 0.3)" />
+                          <stop offset="100%" stopColor="rgba(179, 71, 255, 0)" />
+                        </linearGradient>
+                        <linearGradient id="signupsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="rgba(0, 255, 136, 0.3)" />
+                          <stop offset="100%" stopColor="rgba(0, 255, 136, 0)" />
+                        </linearGradient>
+                      </defs>
+
+                      {(() => {
+                        const maxEarnings = Math.max(...stats.dailyData.map(d => d.earnings), 0.001);
+                        const maxSignups = Math.max(...stats.dailyData.map(d => d.signups), 1);
+                        const points = stats.dailyData.length;
+                        const xStep = 600 / (points - 1 || 1);
+
+                        const earningsPath = stats.dailyData.map((d, i) => {
+                          const x = i * xStep;
+                          const y = 200 - (d.earnings / maxEarnings) * 180;
+                          return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+                        }).join(' ');
+
+                        const earningsArea = earningsPath + ` L ${(points - 1) * xStep} 200 L 0 200 Z`;
+
+                        const signupsPath = stats.dailyData.map((d, i) => {
+                          const x = i * xStep;
+                          const y = 200 - (d.signups / maxSignups) * 180;
+                          return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+                        }).join(' ');
+
+                        const signupsArea = signupsPath + ` L ${(points - 1) * xStep} 200 L 0 200 Z`;
+
+                        return (
+                          <>
+                            <path d={earningsArea} fill="url(#earningsGradient)" opacity="0.5" />
+                            <path d={earningsPath} stroke="#b347ff" strokeWidth="2" fill="none" />
+
+                            <path d={signupsArea} fill="url(#signupsGradient)" opacity="0.5" />
+                            <path d={signupsPath} stroke="#00ff88" strokeWidth="2" fill="none" />
+                          </>
+                        );
+                      })()}
+                    </svg>
+
+                    <div className="absolute top-2 right-2 flex gap-4 text-xs font-mono">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-full" style={{ background: '#00ff88' }} />
+                        <span style={{ color: '#00ff88' }}>Signups</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-full" style={{ background: '#b347ff' }} />
+                        <span style={{ color: '#b347ff' }}>Ganhos (SOL)</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Daily breakdown table */}

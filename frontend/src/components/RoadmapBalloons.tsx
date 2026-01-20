@@ -16,7 +16,7 @@ const roadmapItems = [
     id: 2,
     icon: Trophy,
     title: 'Phase 2',
-    description: 'Airdrop System, 2 More Traditional Lotteries, 3 Tier NFT Pack, Updates and Improvements',
+    description: 'Airdrop System, 2 More Traditional Lotteries, 3 Tier NFT Pack, on-chain vrf',
     status: 'upcoming',
     color: theme.colors.neonPink,
   },

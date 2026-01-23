@@ -271,7 +271,7 @@ export function Affiliates() {
               }}
             >
               30% COMMISSION
-            </span> and build crypto empire. dashboard access is granted after application.
+            </span> and build crypto empire. Dashboard access is granted after application.
           </motion.p>
 
           <motion.div

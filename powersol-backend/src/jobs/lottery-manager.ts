@@ -43,8 +43,8 @@ async function createNextTriDailyLottery() {
         draw_timestamp: nextDraw.toISOString(),
         metadata: {
           name: 'Tri-Daily Lottery',
-          description: 'Sorteio 3x por dia - 8h, 16h e 00h UTC',
-          frequency: '3x per day',
+          description: 'Sorteio a cada 3 dias - 00:00 UTC',
+          frequency: 'Every 3 days',
           round: nextRound,
         },
       })
@@ -91,7 +91,7 @@ async function createNextJackpotLottery() {
       .insert({
         lottery_id: nextYear * 100 + nextMonth,
         type: 'JACKPOT',
-        ticket_price: (0.5 * LAMPORTS_PER_SOL).toString(),
+        ticket_price: (0.2 * LAMPORTS_PER_SOL).toString(),
         max_tickets: 5000,
         draw_timestamp: nextDraw.toISOString(),
         metadata: {
@@ -127,19 +127,19 @@ async function ensureSpecialLotteries() {
 
     if (!xmas && new Date() < getXmasDrawTime()) {
       await supabaseAdmin.from('lotteries').insert({
-        lottery_id: 20241225,
+        lottery_id: 20260214,
         type: 'XMAS',
-        ticket_price: (0.75 * LAMPORTS_PER_SOL).toString(),
+        ticket_price: (0.2 * LAMPORTS_PER_SOL).toString(),
         max_tickets: 7500,
         draw_timestamp: getXmasDrawTime().toISOString(),
         metadata: {
-          name: 'Christmas Special 2024',
-          description: 'Sorteio especial de Natal',
+          name: "Valentine's Day Special 2026",
+          description: 'Sorteio especial Dia dos Namorados',
           frequency: 'Yearly',
-          year: 2024,
+          year: 2026,
         },
       });
-      logger.info('Created XMAS 2024 lottery');
+      logger.info('Created Valentines Day 2026 lottery');
     }
 
     const { data: grandPrize } = await supabaseAdmin
@@ -149,21 +149,22 @@ async function ensureSpecialLotteries() {
       .eq('is_drawn', false)
       .maybeSingle();
 
+    const grandPrizeYear = new Date().getUTCFullYear() + 1;
     if (!grandPrize && new Date() < getGrandPrizeDrawTime()) {
       await supabaseAdmin.from('lotteries').insert({
-        lottery_id: 20250101,
+        lottery_id: grandPrizeYear * 10000 + 101,
         type: 'GRAND_PRIZE',
-        ticket_price: (1.0 * LAMPORTS_PER_SOL).toString(),
+        ticket_price: (0.33 * LAMPORTS_PER_SOL).toString(),
         max_tickets: 10000,
         draw_timestamp: getGrandPrizeDrawTime().toISOString(),
         metadata: {
-          name: 'New Year Grand Prize 2025',
+          name: `New Year Grand Prize ${grandPrizeYear}`,
           description: 'Sorteio especial de Ano Novo',
           frequency: 'Yearly',
-          year: 2025,
+          year: grandPrizeYear,
         },
       });
-      logger.info('Created GRAND_PRIZE 2025 lottery');
+      logger.info({ year: grandPrizeYear }, 'Created GRAND_PRIZE lottery');
     }
   } catch (error) {
     logger.error({ error }, 'Error ensuring special lotteries');
@@ -193,7 +194,8 @@ export function startLotteryManager() {
 
   logger.info('Lottery Manager started successfully');
   logger.info('Schedules:');
-  logger.info('  - TRI-DAILY: Daily check at 23:00 UTC (creates every 3 days)');
-  logger.info('  - JACKPOT: Days 28-31 of each month at 00:00 UTC');
-  logger.info('  - SPECIAL: Daily check at 00:00 UTC');
+  logger.info('  - TRI-DAILY: Every 3 days at 00:00 UTC');
+  logger.info('  - JACKPOT: Last day of each month at 00:00 UTC');
+  logger.info('  - GRAND_PRIZE: January 1st at 00:00 UTC');
+  logger.info('  - VALENTINES: February 14, 2026 at 00:00 UTC');
 }

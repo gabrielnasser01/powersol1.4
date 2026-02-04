@@ -208,12 +208,12 @@ export const GRAND_PRIZE_CONFIG: LotteryConfig = {
 
 export const XMAS_CONFIG: LotteryConfig = {
   type: LotteryType.XMAS,
-  name: 'Christmas Special',
-  description: 'Sorteio especial de Natal 2024 com múltiplos vencedores',
+  name: "Valentine's Day Special",
+  description: 'Sorteio especial Dia dos Namorados 2026 com multiplos vencedores',
   ticketPrice: BigInt(0.2 * LAMPORTS_PER_SOL),
   maxTickets: 7500,
   frequency: 'Yearly',
-  drawSchedule: 'December 25, 2024 at 00:00 UTC',
+  drawSchedule: 'February 14, 2026 at 00:00 UTC',
   revenueDistribution: {
     prizePool: 40,
     treasury: 30,
@@ -259,10 +259,10 @@ export const XMAS_CONFIG: LotteryConfig = {
     },
   ],
   features: [
-    'Christmas special event',
+    "Valentine's Day special event",
     'Multiple winners (10% of tickets)',
     '5 prize tiers',
-    'Special Christmas NFTs',
+    "Special Valentine's NFTs",
   ],
 };
 
@@ -306,7 +306,7 @@ export function getGrandPrizeDrawTime(): Date {
 }
 
 export function getXmasDrawTime(): Date {
-  return new Date(Date.UTC(2024, 11, 25, 0, 0, 0, 0));
+  return new Date(Date.UTC(2026, 1, 14, 0, 0, 0, 0));
 }
 
 export function getDrawTimeForType(type: LotteryType): Date {

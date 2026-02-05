@@ -127,7 +127,17 @@ export const ticketStorage = {
 
       purchases.forEach(purchase => {
         const purchaseDate = new Date(purchase.created_at).toISOString().split('T')[0];
-        const drawDate = calculateDrawDate(purchase.lottery_type);
+
+        let normalizedLotteryType = purchase.lottery_type
+          .toLowerCase()
+          .replace(/_/g, '-')
+          .replace(/\s+/g, '-');
+
+        if (!['tri-daily', 'halloween', 'jackpot', 'grand-prize'].includes(normalizedLotteryType)) {
+          normalizedLotteryType = 'tri-daily';
+        }
+
+        const drawDate = calculateDrawDate(normalizedLotteryType);
 
         for (let i = 0; i < purchase.quantity; i++) {
           dbTickets.push({
@@ -135,7 +145,7 @@ export const ticketStorage = {
             number: generateTicketNumber(),
             purchaseDate,
             drawDate,
-            lotteryType: purchase.lottery_type,
+            lotteryType: normalizedLotteryType as 'tri-daily' | 'halloween' | 'jackpot' | 'grand-prize',
             status: 'active'
           });
         }

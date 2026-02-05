@@ -63,17 +63,54 @@ export function TicketPurchaseCard() {
     setQuantity(Math.max(1, Math.min(1000, quantity + delta)));
   };
 
+  const saveTicketPurchase = async (walletAddress: string, qty: number, sol: number, sig: string, affCode: string | null) => {
+    try {
+      const { data: purchaseData, error: insertError } = await supabase.from('ticket_purchases').insert({
+        wallet_address: walletAddress,
+        lottery_type: 'tri-daily',
+        quantity: qty,
+        total_sol: sol,
+        transaction_signature: sig,
+      }).select('id').single();
+
+      if (insertError) {
+        console.error('Failed to save ticket purchase:', insertError);
+        return null;
+      }
+
+      if (!affCode) {
+        const houseEarningsLamports = Math.floor(sol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
+        await supabase.from('house_earnings').insert({
+          ticket_purchase_id: purchaseData?.id || null,
+          wallet_address: walletAddress,
+          lottery_type: 'tri-daily',
+          amount_lamports: houseEarningsLamports,
+          transaction_signature: sig,
+        });
+      }
+
+      ticketStorage.add(qty, 'tri-daily');
+
+      return purchaseData;
+    } catch (error) {
+      console.error('Error saving ticket purchase:', error);
+      return null;
+    }
+  };
+
   const handlePurchase = async () => {
     if (!connected || !publicKey) return;
 
     setIsLoading(true);
     setError('');
 
+    const currentAffiliateCode = getActiveAffiliateCode();
+    let signature: string = '';
+    let ticketNumbers: number[] = [];
+    let transactionSucceeded = false;
+
     try {
       const wallet = getWalletAdapter();
-      let signature: string;
-      let ticketNumbers: number[] = [];
-      const currentAffiliateCode = getActiveAffiliateCode();
 
       if (wallet) {
         if (isOnChain) {
@@ -102,52 +139,45 @@ export function TicketPurchaseCard() {
           );
           signature = result.signature;
         }
+        transactionSucceeded = true;
       } else {
         signature = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        transactionSucceeded = true;
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Transaction failed';
+      setError(message);
+      console.error('Transaction failed:', err);
+      setIsLoading(false);
+      return;
+    }
 
+    if (transactionSucceeded && signature) {
       setTxId(signature);
 
-      const { data: purchaseData, error: insertError } = await supabase.from('ticket_purchases').insert({
-        wallet_address: publicKey,
-        lottery_type: 'tri-daily',
-        quantity: quantity,
-        total_sol: totalSol,
-        transaction_signature: signature,
-      }).select('id').single();
-
-      if (insertError) {
-        console.error('Failed to save ticket purchase:', insertError);
-      }
-
-      if (!currentAffiliateCode) {
-        const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-        await supabase.from('house_earnings').insert({
-          ticket_purchase_id: purchaseData?.id || null,
-          wallet_address: publicKey,
-          lottery_type: 'tri-daily',
-          amount_lamports: houseEarningsLamports,
-          transaction_signature: signature,
-        });
-      }
+      await saveTicketPurchase(publicKey, quantity, totalSol, signature, currentAffiliateCode);
 
       if (isOnChain && ticketNumbers.length > 0) {
-        const { data: userData } = await supabase
-          .from('blockchain_users')
-          .select('id')
-          .eq('wallet_address', publicKey)
-          .maybeSingle();
+        try {
+          const { data: userData } = await supabase
+            .from('blockchain_users')
+            .select('id')
+            .eq('wallet_address', publicKey)
+            .maybeSingle();
 
-        if (userData) {
-          for (const ticketNumber of ticketNumbers) {
-            await supabase.from('blockchain_tickets').insert({
-              user_id: userData.id,
-              lottery_id: currentRound,
-              ticket_number: ticketNumber,
-              purchase_timestamp: Math.floor(Date.now() / 1000),
-              transaction_signature: signature,
-            });
+          if (userData) {
+            for (const ticketNumber of ticketNumbers) {
+              await supabase.from('blockchain_tickets').insert({
+                user_id: userData.id,
+                lottery_id: currentRound,
+                ticket_number: ticketNumber,
+                purchase_timestamp: Math.floor(Date.now() / 1000),
+                transaction_signature: signature,
+              });
+            }
           }
+        } catch (error) {
+          console.error('Failed to save blockchain tickets:', error);
         }
       }
 
@@ -160,25 +190,17 @@ export function TicketPurchaseCard() {
       } catch {
       }
 
-      ticketStorage.add(quantity, 'tri-daily');
-
       window.dispatchEvent(new CustomEvent('ticketsPurchased', {
         detail: { quantity, signature, ticketNumbers, isOnChain, affiliateCode: currentAffiliateCode }
       }));
 
-      if (wallet) {
-        await refreshBalance();
-      }
+      await refreshBalance();
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 10000);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Purchase failed';
-      setError(message);
-      console.error('Purchase failed:', err);
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   return (

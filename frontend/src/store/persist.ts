@@ -368,40 +368,8 @@ function generateDailyMissions(): Mission[] {
   ];
 }
 
-// Initialize storage with seed data
+// Initialize storage (no seed data - all data comes from database)
 export function initializeStorage(): void {
-  const draws = drawsStorage.get();
-  if (draws.length === 0) {
-    const now = Date.now();
-    const seedDraws: Draw[] = [
-      {
-        id: 'tri-daily-001',
-        kind: 'tri-daily',
-        scheduledAt: now + 2 * 24 * 60 * 60 * 1000, // 2 days from now
-        poolSol: 1500,
-      },
-      {
-        id: 'monthly-001',
-        kind: 'monthly',
-        scheduledAt: now + 15 * 24 * 60 * 60 * 1000, // 15 days from now
-      },
-      {
-        id: 'halloween-2024',
-        kind: 'event:halloween',
-        scheduledAt: new Date('2024-10-31').getTime(),
-      },
-    ];
-    drawsStorage.set(seedDraws);
-  }
-
-  // Seed some winners
-  const winners = winnersStorage.get();
-  if (winners.length === 0) {
-    const seedWinners: Winner[] = [
-      { drawId: 'tri-daily-000', maskedPk: '7xK...9mP', prizeSol: 450, timestamp: Date.now() - 3000000 },
-      { drawId: 'tri-daily-000', maskedPk: 'Bv2...4nQ', prizeSol: 180, timestamp: Date.now() - 2000000 },
-      { drawId: 'tri-daily-000', maskedPk: '3hM...7wR', prizeSol: 90, timestamp: Date.now() - 1000000 },
-    ];
-    seedWinners.forEach(winner => winnersStorage.add(winner));
-  }
+  // Storage initialization without seed data
+  // All data is now fetched from the Supabase database
 }

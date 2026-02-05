@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { winnersStorage } from '../store/persist';
+import { winnersService, Winner } from '../services/winnersService';
 import { theme } from '../theme';
 import { solToUsd } from '../chain/adapter';
 
@@ -15,41 +15,41 @@ export function WinnersDisplay({
   accentColor = theme.colors.neonPink,
   lotteryType
 }: WinnersDisplayProps) {
-  const [winners, setWinners] = useState<any[]>([]);
+  const [winners, setWinners] = useState<Winner[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadWinners = () => {
-      const allWinners = winnersStorage.get();
+    const loadWinners = async () => {
+      setLoading(true);
+      try {
+        const data = await winnersService.getLatestRoundWinners(lotteryType);
 
-      if (allWinners.length === 0) {
-        setWinners([]);
-        return;
+        let filteredWinners = data;
+
+        switch (lotteryType) {
+          case 'jackpot':
+            filteredWinners = data.slice(0, 100);
+            break;
+          case 'grand-prize':
+            filteredWinners = data.slice(0, 3);
+            break;
+          case 'tri-daily':
+          case 'halloween':
+          default:
+            filteredWinners = data;
+            break;
+        }
+
+        setWinners(filteredWinners);
+      } catch (error) {
+        console.error('Error loading winners:', error);
+      } finally {
+        setLoading(false);
       }
-
-      const lastDrawId = allWinners[0].drawId;
-      const lastDrawWinners = allWinners.filter(w => w.drawId === lastDrawId);
-
-      let filteredWinners = lastDrawWinners;
-
-      switch (lotteryType) {
-        case 'jackpot':
-          filteredWinners = lastDrawWinners.slice(0, 100);
-          break;
-        case 'grand-prize':
-          filteredWinners = lastDrawWinners.slice(0, 3);
-          break;
-        case 'tri-daily':
-        case 'halloween':
-        default:
-          filteredWinners = lastDrawWinners;
-          break;
-      }
-
-      setWinners(filteredWinners);
     };
 
     loadWinners();
-    const interval = setInterval(loadWinners, 5000);
+    const interval = setInterval(loadWinners, 30000);
 
     return () => clearInterval(interval);
   }, [lotteryType]);
@@ -96,11 +96,16 @@ export function WinnersDisplay({
         }}
       >
         <div className="space-y-4">
-          {winners.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-zinc-400">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" style={{ borderColor: accentColor }}></div>
+              <p>Loading winners...</p>
+            </div>
+          ) : winners.length > 0 ? (
             <>
               {sortedWinners.map((winner, index) => (
                 <motion.div
-                  key={`${winner.drawId}-${winner.maskedPk}-${index}`}
+                  key={`${winner.id}-${index}`}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -123,10 +128,10 @@ export function WinnersDisplay({
                     </div>
                     <div>
                       <div className="font-mono text-sm" style={{ color: theme.colors.text }}>
-                        {winner.maskedPk}
+                        {winner.maskedWallet}
                       </div>
                       <div className="text-xs text-zinc-400">
-                        {new Date(winner.timestamp).toLocaleString()}
+                        Ticket #{winner.ticket_number} • {new Date(winner.timestamp).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -153,6 +158,11 @@ export function WinnersDisplay({
                     <div className="text-xs text-zinc-400">
                       ≈ ${solToUsd(winner.prizeSol).toFixed(2)}
                     </div>
+                    {winner.claimed && (
+                      <div className="text-xs text-green-400 mt-1">
+                        ✓ Claimed
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}

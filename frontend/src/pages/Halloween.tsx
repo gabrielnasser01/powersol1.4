@@ -35,7 +35,6 @@ export function Halloween() {
 
   const totalSol = HALLOWEEN_TICKET_PRICE_SOL * quantity;
   const totalUsd = solToUsd(totalSol);
-  const hasInsufficientBalance = isConnected && balance < totalSol;
 
   // Valentine's countdown
   useEffect(() => {
@@ -145,6 +144,11 @@ export function Halloween() {
 
   const handlePurchase = async () => {
     if (!isConnected || !publicKey) return;
+
+    if (balance < totalSol) {
+      setError(`Insufficient SOL balance. You need ${totalSol.toFixed(2)} SOL but only have ${balance.toFixed(4)} SOL.`);
+      return;
+    }
 
     setIsLoading(true);
     setError('');
@@ -720,8 +724,8 @@ export function Halloween() {
               )}
             </div>
 
-            {/* Insufficient Balance Warning */}
-            {hasInsufficientBalance && (
+            {/* Error Message */}
+            {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -732,12 +736,7 @@ export function Halloween() {
                 }}
               >
                 <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                <div>
-                  <p className="text-red-400 font-medium text-sm font-mono">Insufficient SOL Balance</p>
-                  <p className="text-red-300/70 text-xs mt-1 font-mono">
-                    You need {totalSol.toFixed(2)} SOL but only have {balance.toFixed(4)} SOL.
-                  </p>
-                </div>
+                <p className="text-red-400 text-sm font-mono">{error}</p>
               </motion.div>
             )}
 
@@ -745,28 +744,23 @@ export function Halloween() {
             <motion.button
               ref={buttonRef}
               onClick={handlePurchase}
-              disabled={!isConnected || isLoading || hasInsufficientBalance}
+              disabled={!isConnected || isLoading}
               className="w-full py-5 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
               style={{
-                background: isConnected && !hasInsufficientBalance ? 'linear-gradient(135deg, #FF69B4, #FF1493)' : 'rgba(170, 170, 170, 0.1)',
-                color: isConnected && !hasInsufficientBalance ? '#000' : '#aaaaaa',
-                boxShadow: isConnected && !hasInsufficientBalance ? '0 0 30px rgba(255, 105, 180, 0.5)' : 'none',
+                background: isConnected ? 'linear-gradient(135deg, #FF69B4, #FF1493)' : 'rgba(170, 170, 170, 0.1)',
+                color: isConnected ? '#000' : '#aaaaaa',
+                boxShadow: isConnected ? '0 0 30px rgba(255, 105, 180, 0.5)' : 'none',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 fontFamily: 'monospace',
               }}
-              whileHover={isConnected && !hasInsufficientBalance ? { scale: 1.02 } : {}}
-              whileTap={isConnected && !hasInsufficientBalance ? { scale: 0.98 } : {}}
+              whileHover={isConnected && !isLoading ? { scale: 1.02 } : {}}
+              whileTap={isConnected && !isLoading ? { scale: 0.98 } : {}}
             >
               {isLoading ? (
                 <>
                   <Loader className="w-5 h-5 animate-spin" />
                   <span>Processing...</span>
-                </>
-              ) : hasInsufficientBalance ? (
-                <>
-                  <AlertTriangle className="w-5 h-5" />
-                  <span>Insufficient SOL Balance</span>
                 </>
               ) : (
                 <>

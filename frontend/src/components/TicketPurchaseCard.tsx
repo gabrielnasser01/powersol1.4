@@ -128,10 +128,10 @@ export function TicketPurchaseCard() {
     let ticketNumbers: number[] = [];
     let transactionSucceeded = false;
 
-    const wallet = getWalletAdapter();
+    try {
+      const wallet = getWalletAdapter();
 
-    if (wallet) {
-      try {
+      if (wallet) {
         if (isOnChain) {
           const lotteryInfo: LotteryInfo = { type: 'tri-daily', round: currentRound };
 
@@ -159,14 +159,15 @@ export function TicketPurchaseCard() {
           signature = result.signature;
         }
         transactionSucceeded = true;
-      } catch (err) {
-        console.error('Transaction failed, using mock signature:', err);
-        signature = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        transactionSucceeded = true;
+      } else {
+        throw new Error('Wallet adapter not available');
       }
-    } else {
-      signature = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      transactionSucceeded = true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Transaction failed';
+      setError(message);
+      console.error('Transaction failed:', err);
+      setIsLoading(false);
+      return;
     }
 
     if (transactionSucceeded && signature) {

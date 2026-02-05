@@ -5,7 +5,7 @@ export interface MockTicket {
   number: string;
   purchaseDate: string;
   drawDate: string;
-  lotteryType: 'tri-daily' | 'halloween' | 'jackpot' | 'grand-prize';
+  lotteryType: 'tri-daily' | 'special-event' | 'jackpot' | 'grand-prize';
   status: 'active' | 'claimed' | 'expired';
 }
 
@@ -40,9 +40,8 @@ function calculateDrawDate(lotteryType: string): string {
     case 'tri-daily':
       now.setDate(now.getDate() + 3);
       break;
-    case 'halloween':
-      now.setMonth(9);
-      now.setDate(31);
+    case 'special-event':
+      now.setDate(now.getDate() + 7);
       break;
     case 'jackpot':
       now.setDate(now.getDate() + 15);
@@ -68,7 +67,7 @@ export const ticketStorage = {
     }
   },
 
-  add(quantity: number, lotteryType: 'tri-daily' | 'halloween' | 'jackpot' | 'grand-prize' = 'tri-daily'): MockTicket[] {
+  add(quantity: number, lotteryType: 'tri-daily' | 'special-event' | 'jackpot' | 'grand-prize' = 'tri-daily'): MockTicket[] {
     const tickets = this.getAll();
     const now = new Date().toISOString().split('T')[0];
     const drawDate = calculateDrawDate(lotteryType);
@@ -133,7 +132,11 @@ export const ticketStorage = {
           .replace(/_/g, '-')
           .replace(/\s+/g, '-');
 
-        if (!['tri-daily', 'halloween', 'jackpot', 'grand-prize'].includes(normalizedLotteryType)) {
+        if (normalizedLotteryType === 'halloween') {
+          normalizedLotteryType = 'special-event';
+        }
+
+        if (!['tri-daily', 'special-event', 'jackpot', 'grand-prize'].includes(normalizedLotteryType)) {
           normalizedLotteryType = 'tri-daily';
         }
 
@@ -145,7 +148,7 @@ export const ticketStorage = {
             number: generateTicketNumber(),
             purchaseDate,
             drawDate,
-            lotteryType: normalizedLotteryType as 'tri-daily' | 'halloween' | 'jackpot' | 'grand-prize',
+            lotteryType: normalizedLotteryType as 'tri-daily' | 'special-event' | 'jackpot' | 'grand-prize',
             status: 'active'
           });
         }

@@ -59,7 +59,7 @@ export function Profile() {
 
     const lotteryMap: Record<string, {lottery: string; color: string; tickets: MockTicket[]}> = {
       'tri-daily': { lottery: 'Tri-Daily Lottery', color: '#ff1493', tickets: [] },
-      'halloween': { lottery: 'Special Event', color: '#ff8c00', tickets: [] },
+      'special-event': { lottery: 'Special Event', color: '#ff8c00', tickets: [] },
       'jackpot': { lottery: 'Jackpot', color: '#00bfff', tickets: [] },
       'grand-prize': { lottery: 'Grand Prize', color: '#9ca3af', tickets: [] },
     };
@@ -1474,6 +1474,7 @@ export function Profile() {
                     {userPrizes.map((prize, index) => {
                       const lotteryColors: Record<string, string> = {
                         'tri-daily': '#ff1493',
+                        'special-event': '#ff8c00',
                         'halloween': '#ff8c00',
                         'jackpot': '#00bfff',
                         'grand-prize': '#9ca3af',

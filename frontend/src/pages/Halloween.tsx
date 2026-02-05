@@ -165,7 +165,7 @@ export function Halloween() {
         wallet,
         quantity,
         HALLOWEEN_TICKET_PRICE_SOL,
-        'halloween'
+        'special-event'
       );
       const signature = result.signature;
 
@@ -173,7 +173,7 @@ export function Halloween() {
 
       await supabase.from('ticket_purchases').insert({
         wallet_address: publicKey,
-        lottery_type: 'halloween',
+        lottery_type: 'special-event',
         quantity: quantity,
         total_sol: totalSol,
         transaction_signature: signature,
@@ -182,12 +182,12 @@ export function Halloween() {
       const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
       await supabase.from('house_earnings').insert({
         wallet_address: publicKey,
-        lottery_type: 'halloween',
+        lottery_type: 'special-event',
         amount_lamports: houseEarningsLamports,
         transaction_signature: signature,
       });
 
-      ticketsStorage.add(quantity, 'halloween');
+      ticketsStorage.add(quantity, 'special-event');
 
       window.dispatchEvent(new CustomEvent('ticketsPurchased', {
         detail: { quantity, signature }

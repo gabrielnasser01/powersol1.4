@@ -120,21 +120,20 @@ export function Jackpot() {
     try {
       const wallet = getWalletAdapter();
       console.log('[Jackpot] wallet adapter:', wallet);
-      let signature: string;
 
-      if (wallet) {
-        console.log('[Jackpot] Calling purchaseTicketsWithWallet...');
-        const result = await solanaService.purchaseTicketsWithWallet(
-          wallet,
-          depositAmount,
-          JACKPOT_TICKET_PRICE_SOL
-        );
-        signature = result.signature;
-        console.log('[Jackpot] Transaction successful:', signature);
-      } else {
-        console.log('[Jackpot] No wallet adapter, using mock signature');
-        signature = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (!wallet) {
+        setError('Wallet adapter not available. Please reconnect your wallet.');
+        return;
       }
+
+      console.log('[Jackpot] Calling purchaseTicketsWithWallet...');
+      const result = await solanaService.purchaseTicketsWithWallet(
+        wallet,
+        depositAmount,
+        JACKPOT_TICKET_PRICE_SOL
+      );
+      const signature = result.signature;
+      console.log('[Jackpot] Transaction successful:', signature);
 
       setTxId(signature);
 

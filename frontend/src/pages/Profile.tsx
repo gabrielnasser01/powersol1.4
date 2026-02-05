@@ -6,13 +6,15 @@ import { userStorage, userStatsStorage } from '../store/persist';
 import { ticketStorage, MockTicket } from '../store/ticketStorage';
 import { prizeService, Prize } from '../services/prizeService';
 import { affiliateDashboardService, DashboardStats } from '../services/affiliateDashboardService';
+import { claimService } from '../services/claimService';
 import { supabase } from '../lib/supabase';
 import { useWallet } from '../contexts/WalletContext';
 import { useNotifications } from '../hooks/useNotifications';
+import { Connection, clusterApiUrl } from '@solana/web3.js';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { publicKey: walletPublicKey, connected } = useWallet();
+  const { publicKey: walletPublicKey, connected, getWalletAdapter } = useWallet();
   const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
   const [userStats, setUserStats] = useState(userStatsStorage.get());
@@ -409,8 +411,27 @@ export function Profile() {
     setClaimingAffiliate(true);
 
     try {
-      alert('Claim functionality coming soon. Please use the Affiliate Dashboard to claim rewards.');
-      await loadAffiliateData();
+      const wallet = getWalletAdapter();
+      if (!wallet || !wallet.signTransaction) {
+        alert('Wallet adapter not available. Please reconnect your wallet.');
+        return;
+      }
+
+      const connection = new Connection(clusterApiUrl('mainnet-beta'), 'confirmed');
+
+      const result = await claimService.claimAllAvailableAffiliateRewards(
+        user.publicKey,
+        wallet.signTransaction.bind(wallet),
+        connection
+      );
+
+      if (result.success) {
+        const solAmount = claimService.lamportsToSol(result.totalAmount);
+        alert(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)!\n\nTransactions:\n${result.txSignatures.join('\n')}`);
+        await loadAffiliateData();
+      } else {
+        alert(`Failed to claim some rewards:\n${result.errors.join('\n')}`);
+      }
     } catch (error) {
       console.error('Failed to claim affiliate rewards:', error);
       alert(error instanceof Error ? error.message : 'Failed to claim rewards. Please try again.');

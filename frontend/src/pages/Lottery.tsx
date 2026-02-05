@@ -6,14 +6,32 @@ import { useNavigate } from 'react-router-dom';
 import { Countdown } from '../components/Countdown';
 import { TicketPurchaseCard } from '../components/TicketPurchaseCard';
 import { WinnersDisplay } from '../components/WinnersDisplay';
+import { statsService, LotteryStats } from '../services/statsService';
 
 export function Lottery() {
   const navigate = useNavigate();
+  const [lotteryStats, setLotteryStats] = useState<LotteryStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      setLoading(true);
+      const data = await statsService.getLotteryStats();
+      setLotteryStats(data);
+      setLoading(false);
+    };
+
+    loadStats();
+    const interval = setInterval(loadStats, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const stats = [
-    { label: 'Active Players', value: '12,847', icon: Users, color: theme.colors.neonBlue },
-    { label: 'Total Prizes', value: '$2.4M', icon: Trophy, color: theme.colors.neonCyan },
-    { label: 'Avg Win Time', value: '2.3s', icon: Clock, color: theme.colors.neonPink },
-    { label: 'Success Rate', value: '99.9%', icon: TrendingUp, color: theme.colors.neonPurple },
+    { label: 'Active Players', value: loading ? '...' : statsService.formatNumber(lotteryStats?.activePlayers || 0), icon: Users, color: theme.colors.neonBlue },
+    { label: 'Total Prizes', value: loading ? '...' : statsService.formatUSD(lotteryStats?.totalPrizesUSD || 0), icon: Trophy, color: theme.colors.neonCyan },
+    { label: 'Avg Win Time', value: lotteryStats?.averageWinTime || '2.3s', icon: Clock, color: theme.colors.neonPink },
+    { label: 'Success Rate', value: `${lotteryStats?.successRate || 99.9}%`, icon: TrendingUp, color: theme.colors.neonPurple },
   ];
 
   return (

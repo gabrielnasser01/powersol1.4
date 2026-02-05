@@ -119,18 +119,18 @@ export function GrandPrize() {
 
     try {
       const wallet = getWalletAdapter();
-      let signature: string;
 
-      if (wallet) {
-        const result = await solanaService.purchaseTicketsWithWallet(
-          wallet,
-          ticketAmount,
-          GRAND_PRIZE_TICKET_PRICE_SOL
-        );
-        signature = result.signature;
-      } else {
-        signature = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (!wallet) {
+        setError('Wallet adapter not available. Please reconnect your wallet.');
+        return;
       }
+
+      const result = await solanaService.purchaseTicketsWithWallet(
+        wallet,
+        ticketAmount,
+        GRAND_PRIZE_TICKET_PRICE_SOL
+      );
+      const signature = result.signature;
 
       setTxId(signature);
 

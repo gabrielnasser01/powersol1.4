@@ -2,11 +2,11 @@ import { Connection, PublicKey, Transaction, TransactionInstruction, SystemProgr
 import { Program, AnchorProvider, BN, Idl } from '@coral-xyz/anchor';
 import { WalletAdapter } from './solanaService';
 
-const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL;
 
-export const PROGRAM_ID = new PublicKey('GqfdkAjpFJMZnzRaLrgeoBCr7exvSfqSib1wSJM49BxW');
-export const TREASURY_WALLET = new PublicKey('55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1');
-export const AFFILIATES_POOL_WALLET = new PublicKey('8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf');
+export const PROGRAM_ID = new PublicKey(import.meta.env.VITE_PROGRAM_ID || 'GqfdkAjpFJMZnzRaLrgeoBCr7exvSfqSib1wSJM49BxW');
+export const TREASURY_WALLET = new PublicKey(import.meta.env.VITE_TREASURY_WALLET || '55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1');
+export const AFFILIATES_POOL_WALLET = new PublicKey(import.meta.env.VITE_AFFILIATES_POOL_WALLET || '8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf');
 
 export type LotteryType = 'tri-daily' | 'jackpot' | 'grand-prize' | 'xmas';
 

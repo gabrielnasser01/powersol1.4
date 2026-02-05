@@ -3,17 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Coins, Plus, Minus, Loader, Calendar, Users, TrendingUp, X, Zap, Shield, Crown } from 'lucide-react';
 import { theme } from '../theme';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { chainAdapter, formatSol, formatUsd, solToUsd } from '../chain/adapter';
+import { chainAdapter, formatSol, formatUsd, solToUsd, JACKPOT_TICKET_PRICE_SOL, LAMPORTS_PER_SOL, HOUSE_COMMISSION_RATE } from '../chain/adapter';
 import { ticketsStorage } from '../store/ticketStorage';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { WinnersDisplay } from '../components/WinnersDisplay';
 import { useWallet } from '../contexts/WalletContext';
 import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
-
-const JACKPOT_TICKET_PRICE_SOL = 0.2;
-const LAMPORTS_PER_SOL = 1_000_000_000;
-const HOUSE_COMMISSION_RATE = 0.30;
 
 export function Jackpot() {
   const navigate = useNavigate();
@@ -104,13 +100,13 @@ export function Jackpot() {
   };
 
   const handleDeposit = async () => {
-    console.log('[Jackpot] handleDeposit called');
-    console.log('[Jackpot] connected:', connected);
-    console.log('[Jackpot] publicKey:', publicKey);
-
     if (!connected || !publicKey) {
-      console.log('[Jackpot] Not connected or no publicKey, returning');
       setError('Please connect your wallet first');
+      return;
+    }
+
+    if (balance < totalSol) {
+      setError(`Insufficient SOL balance. You need ${totalSol.toFixed(2)} SOL but only have ${balance.toFixed(4)} SOL.`);
       return;
     }
 
@@ -119,21 +115,18 @@ export function Jackpot() {
 
     try {
       const wallet = getWalletAdapter();
-      console.log('[Jackpot] wallet adapter:', wallet);
 
       if (!wallet) {
         setError('Wallet adapter not available. Please reconnect your wallet.');
         return;
       }
 
-      console.log('[Jackpot] Calling purchaseTicketsWithWallet...');
       const result = await solanaService.purchaseTicketsWithWallet(
         wallet,
         depositAmount,
         JACKPOT_TICKET_PRICE_SOL
       );
       const signature = result.signature;
-      console.log('[Jackpot] Transaction successful:', signature);
 
       setTxId(signature);
 

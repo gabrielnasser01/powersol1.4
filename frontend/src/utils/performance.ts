@@ -111,12 +111,6 @@ export function useIntersectionObserver(
 
 // Preload critical resources
 export function preloadCriticalResources() {
-  // Temporarily disabled until images are properly loaded
-  try {
-    console.log('Preload skipped - images need to be restored');
-  } catch (error) {
-    console.error('Preload error:', error);
-  }
 }
 
 // Memory-efficient animation frame

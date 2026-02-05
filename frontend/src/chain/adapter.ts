@@ -7,12 +7,13 @@ import { walletBalanceService } from '../services/walletBalanceService';
 function getSolUsdRate(): number {
   return solPriceService.getPrice();
 }
-const LOTTERY_TICKET_PRICE_SOL = 0.1;
+
+export const LOTTERY_TICKET_PRICE_SOL = 0.1;
 export const HALLOWEEN_TICKET_PRICE_SOL = 0.2;
-const JACKPOT_TICKET_PRICE_SOL = 0.2;
-const GRAND_PRIZE_TICKET_PRICE_SOL = 0.3;
-const LAMPORTS_PER_SOL = 1_000_000_000;
-const HOUSE_COMMISSION_RATE = 0.30;
+export const JACKPOT_TICKET_PRICE_SOL = 0.2;
+export const GRAND_PRIZE_TICKET_PRICE_SOL = 0.33;
+export const LAMPORTS_PER_SOL = 1_000_000_000;
+export const HOUSE_COMMISSION_RATE = 0.30;
 
 export interface ChainAdapter {
   buyTickets(params: { amount: number; lotteryType?: string }): Promise<{ txId: string; success: boolean; transaction?: string }>;

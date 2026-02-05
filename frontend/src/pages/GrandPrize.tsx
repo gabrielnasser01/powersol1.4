@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Coins, Plus, Minus, Loader, Calendar, Users, TrendingUp, X, Crown, Star, AlertTriangle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { chainAdapter, formatSol, formatUsd, solToUsd } from '../chain/adapter';
+import { chainAdapter, formatSol, formatUsd, solToUsd, GRAND_PRIZE_TICKET_PRICE_SOL, LAMPORTS_PER_SOL, HOUSE_COMMISSION_RATE } from '../chain/adapter';
 import { ticketsStorage } from '../store/ticketStorage';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { theme } from '../theme';
@@ -12,10 +12,6 @@ import { WinnersDisplay } from '../components/WinnersDisplay';
 import { useWallet } from '../contexts/WalletContext';
 import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
-
-const GRAND_PRIZE_TICKET_PRICE_SOL = 0.33;
-const LAMPORTS_PER_SOL = 1_000_000_000;
-const HOUSE_COMMISSION_RATE = 0.30;
 
 export function GrandPrize() {
   const navigate = useNavigate();

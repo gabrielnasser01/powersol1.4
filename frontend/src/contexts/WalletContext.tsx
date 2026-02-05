@@ -153,7 +153,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await powerPointsService.claimDailyLogin(walletAddress);
       if (result.success && !result.alreadyClaimed && result.pointsEarned && result.pointsEarned > 0) {
-        console.log(`Daily login: +${result.pointsEarned} Power Points!`);
         userStatsStorage.addMissionPoints(result.pointsEarned);
         window.dispatchEvent(new CustomEvent('missionPointsChange'));
         window.dispatchEvent(new CustomEvent('dailyLoginClaimed', {

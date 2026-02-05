@@ -91,7 +91,6 @@ export function DailyMissions() {
   const loadMissions = async () => {
     try {
       setLoading(true);
-      console.log('🚀 Loading missions from Supabase...');
 
       const { data: missionsData, error } = await supabase
         .from('missions')
@@ -99,16 +98,11 @@ export function DailyMissions() {
         .eq('is_active', true)
         .order('mission_type');
 
-      console.log('📊 Missions loaded:', missionsData?.length || 0);
-      console.log('❌ Error:', error);
-
       if (error) {
-        console.error('Supabase error:', error);
         throw error;
       }
 
       if (user.publicKey && isConnected) {
-        console.log('👤 User connected, loading progress...');
         const missionsWithProgress = await Promise.all(
           (missionsData || []).map(async (mission) => {
             const { data: progressData } = await supabase
@@ -124,14 +118,11 @@ export function DailyMissions() {
             };
           })
         );
-        console.log('✅ Missions with progress:', missionsWithProgress.length);
         setMissions(missionsWithProgress);
       } else {
-        console.log('🔓 No user, showing public missions');
         setMissions(missionsData || []);
       }
-    } catch (error) {
-      console.error('❌ Failed to load missions:', error);
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -145,7 +136,6 @@ export function DailyMissions() {
       if (!mission) return false;
 
       if (mission.user_progress?.completed) {
-        console.log('Mission already completed (local state)');
         return false;
       }
 
@@ -157,7 +147,6 @@ export function DailyMissions() {
         .maybeSingle();
 
       if (existingProgress?.completed) {
-        console.log('Mission already completed (database)');
         setMissions(prev => prev.map(m =>
           m.id === mission.id
             ? { ...m, user_progress: { completed: true, completed_at: existingProgress.completed_at, progress: {} } }
@@ -337,17 +326,6 @@ export function DailyMissions() {
   const filteredMissions = missions.filter(m => m.mission_type === activeCategory);
   const completedCount = missions.filter(m => m.user_progress?.completed).length;
   const totalMissions = missions.length;
-
-  console.log('🎯 Active Category:', activeCategory);
-  console.log('📋 Total missions:', totalMissions);
-  console.log('🔍 Filtered missions:', filteredMissions.length);
-  console.log('✅ Completed:', completedCount);
-  console.log('📊 By Category:', {
-    daily: missions.filter(m => m.mission_type === 'daily').length,
-    weekly: missions.filter(m => m.mission_type === 'weekly').length,
-    social: missions.filter(m => m.mission_type === 'social').length,
-    activity: missions.filter(m => m.mission_type === 'activity').length,
-  });
 
   return (
     <section className="py-12 relative overflow-hidden">

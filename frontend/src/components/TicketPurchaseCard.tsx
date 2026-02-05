@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Minus, Loader, ExternalLink, AlertCircle, Link } from 'lucide-react';
 import { theme } from '../theme';
-import { formatSol, formatUsd, solToUsd } from '../chain/adapter';
+import { formatSol, formatUsd, solToUsd, LOTTERY_TICKET_PRICE_SOL, LAMPORTS_PER_SOL, HOUSE_COMMISSION_RATE } from '../chain/adapter';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { ticketStorage } from '../store/ticketStorage';
 import { useWallet } from '../contexts/WalletContext';
@@ -11,10 +11,6 @@ import { anchorService, LotteryInfo } from '../services/anchorService';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../services/api';
 import { getActiveAffiliateCode, initAffiliateTracking } from '../utils/affiliateTracking';
-
-const LOTTERY_TICKET_PRICE_SOL = 0.1;
-const LAMPORTS_PER_SOL = 1_000_000_000;
-const HOUSE_COMMISSION_RATE = 0.30;
 
 export function TicketPurchaseCard() {
   const { publicKey, connected, balance, getWalletAdapter, refreshBalance } = useWallet();
@@ -157,7 +153,6 @@ export function TicketPurchaseCard() {
           transaction_signature: signature,
         });
       } catch {
-        console.log('Mission recording skipped');
       }
 
       ticketStorage.add(quantity, 'tri-daily');

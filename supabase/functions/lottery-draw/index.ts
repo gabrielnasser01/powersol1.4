@@ -236,7 +236,6 @@ async function executeDraw(supabase: any, lottery: any) {
     .single();
 
   if (drawError) {
-    console.error("Error creating draw record:", drawError);
   }
 
   for (const winner of winners) {
@@ -247,7 +246,7 @@ async function executeDraw(supabase: any, lottery: any) {
         round,
         user_wallet: winner.wallet_address,
         ticket_number: winner.ticket_number,
-        prize_amount_lamports: BigInt(winner.prize_lamports),
+        prize_amount_lamports: Number(winner.prize_lamports),
         prize_position: `Tier ${winner.tier}`,
         lottery_type: lottery.lottery_type,
         draw_date: drawTimestamp,
@@ -255,7 +254,6 @@ async function executeDraw(supabase: any, lottery: any) {
       });
 
     if (prizeError) {
-      console.error("Error creating prize:", prizeError);
     }
   }
 
@@ -363,7 +361,6 @@ async function createNextLottery(supabase: any, lottery: any) {
     .single();
 
   if (error) {
-    console.error("Error creating next lottery:", error);
     return null;
   }
 

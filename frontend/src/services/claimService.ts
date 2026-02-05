@@ -1,7 +1,7 @@
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { supabase } from '../lib/supabase';
 
-const CLAIM_PROGRAM_ID = new PublicKey('DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK');
+const CLAIM_PROGRAM_ID = new PublicKey(import.meta.env.VITE_CLAIM_PROGRAM_ID || 'DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK');
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
 interface ClaimableAffiliateWeek {

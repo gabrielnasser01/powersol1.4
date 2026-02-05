@@ -1,6 +1,6 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL;
 const LOTTERY_WALLET = import.meta.env.VITE_LOTTERY_WALLET || '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
 
 export interface WalletAdapter {

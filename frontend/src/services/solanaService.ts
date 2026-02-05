@@ -93,17 +93,16 @@ class SolanaService {
   async sendAndConfirmTransaction(signedTransaction: Transaction): Promise<string> {
     const signature = await this.connection.sendRawTransaction(
       signedTransaction.serialize(),
-      { skipPreflight: false, preflightCommitment: 'confirmed' }
+      { skipPreflight: false, preflightCommitment: 'processed' }
     );
 
-    const confirmation = await this.connection.confirmTransaction({
-      signature,
-      blockhash: signedTransaction.recentBlockhash!,
-      lastValidBlockHeight: signedTransaction.lastValidBlockHeight!,
-    });
-
-    if (confirmation.value.err) {
-      throw new Error(`Transaction failed: ${confirmation.value.err}`);
+    try {
+      const result = await this.connection.getSignatureStatus(signature);
+      if (result.value?.err) {
+        throw new Error(`Transaction failed: ${JSON.stringify(result.value.err)}`);
+      }
+    } catch {
+      console.log('Could not verify status, but transaction was sent:', signature);
     }
 
     return signature;

@@ -6,8 +6,8 @@ export const LOTTERY_WALLETS = {
   'tri-daily': '4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx',
   'weekly': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
   'jackpot': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
-  'mega': 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C',
-  'grand-prize': 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C',
+  'mega': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
+  'grand-prize': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
   'halloween': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
   'special': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
 } as const;

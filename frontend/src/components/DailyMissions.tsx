@@ -258,7 +258,7 @@ export function DailyMissions() {
     }
 
     try {
-      const connection = new Connection('https://api.mainnet-beta.solana.com');
+      const connection = new Connection('https://api.devnet.solana.com');
 
       const transaction = new Transaction().add(
         SystemProgram.transfer({

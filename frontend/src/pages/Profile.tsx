@@ -417,7 +417,7 @@ export function Profile() {
         return;
       }
 
-      const connection = new Connection(clusterApiUrl('mainnet-beta'), 'confirmed');
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
       const result = await claimService.claimAllAvailableAffiliateRewards(
         user.publicKey,

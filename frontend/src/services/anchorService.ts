@@ -2,7 +2,7 @@ import { Connection, PublicKey, Transaction, TransactionInstruction, SystemProgr
 import { Program, AnchorProvider, BN, Idl } from '@coral-xyz/anchor';
 import { WalletAdapter } from './solanaService';
 
-const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL;
+const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
 export const PROGRAM_ID = new PublicKey(import.meta.env.VITE_PROGRAM_ID || 'GqfdkAjpFJMZnzRaLrgeoBCr7exvSfqSib1wSJM49BxW');
 export const TREASURY_WALLET = new PublicKey(import.meta.env.VITE_TREASURY_WALLET || '55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1');

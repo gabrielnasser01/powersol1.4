@@ -65,23 +65,42 @@ export function TicketPurchaseCard() {
 
   const saveTicketPurchase = async (walletAddress: string, qty: number, sol: number, sig: string, affCode: string | null) => {
     try {
-      const { data: purchaseData, error: insertError } = await supabase.from('ticket_purchases').insert({
+      const insertData = {
         wallet_address: walletAddress,
         lottery_type: 'tri-daily',
         quantity: qty,
         total_sol: sol,
         transaction_signature: sig,
-      }).select('id').single();
+      };
+
+      const { data: purchaseData, error: insertError } = await supabase
+        .from('ticket_purchases')
+        .insert(insertData)
+        .select('id')
+        .maybeSingle();
 
       if (insertError) {
         console.error('Failed to save ticket purchase:', insertError);
-        return null;
+
+        const { data: retryData, error: retryError } = await supabase
+          .from('ticket_purchases')
+          .insert(insertData)
+          .select('id')
+          .maybeSingle();
+
+        if (retryError) {
+          console.error('Retry also failed:', retryError);
+          return null;
+        }
+
+        ticketStorage.add(qty, 'tri-daily');
+        return retryData;
       }
 
-      if (!affCode) {
+      if (!affCode && purchaseData) {
         const houseEarningsLamports = Math.floor(sol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
         await supabase.from('house_earnings').insert({
-          ticket_purchase_id: purchaseData?.id || null,
+          ticket_purchase_id: purchaseData.id,
           wallet_address: walletAddress,
           lottery_type: 'tri-daily',
           amount_lamports: houseEarningsLamports,
@@ -186,8 +205,11 @@ export function TicketPurchaseCard() {
           lottery_type: 'tri_daily',
           ticket_count: quantity,
           transaction_signature: signature,
+          wallet_address: publicKey,
+          total_sol: totalSol,
         });
-      } catch {
+      } catch (missionErr) {
+        console.error('Mission update failed:', missionErr);
       }
 
       window.dispatchEvent(new CustomEvent('ticketsPurchased', {

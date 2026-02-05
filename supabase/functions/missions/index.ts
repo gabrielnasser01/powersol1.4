@@ -206,9 +206,144 @@ async function checkAndCompleteTicketMilestones(userId: string) {
   return completed;
 }
 
+async function completeMissionByWallet(walletAddress: string, missionKey: string, additionalData?: any) {
+  const supabase = getServiceClient();
+
+  const { data: mission } = await supabase
+    .from("missions")
+    .select("*")
+    .eq("mission_key", missionKey)
+    .maybeSingle();
+
+  if (!mission) {
+    throw new Error("Mission not found");
+  }
+
+  const { data: existing } = await supabase
+    .from("user_mission_progress")
+    .select("*")
+    .eq("wallet_address", walletAddress)
+    .eq("mission_id", mission.id)
+    .maybeSingle();
+
+  if (existing?.completed) {
+    if (mission.mission_type === "social" || mission.mission_type === "activity") {
+      throw new Error("Mission already completed");
+    }
+
+    const now = new Date();
+    const lastReset = new Date(existing.last_reset);
+    const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+
+    if (mission.mission_type === "daily" && hoursSinceReset < 24) {
+      throw new Error("Daily mission already completed today");
+    }
+
+    if (mission.mission_type === "weekly" && hoursSinceReset < 168) {
+      throw new Error("Weekly mission already completed this week");
+    }
+  }
+
+  const { error: upsertError } = await supabase
+    .from("user_mission_progress")
+    .upsert({
+      wallet_address: walletAddress,
+      mission_id: mission.id,
+      completed: true,
+      completed_at: new Date().toISOString(),
+      progress: additionalData || {},
+      last_reset: new Date().toISOString(),
+    }, {
+      onConflict: "wallet_address,mission_id",
+    });
+
+  if (upsertError) throw upsertError;
+
+  await supabase.rpc("increment_power_points_by_wallet", {
+    wallet_param: walletAddress,
+    points_param: mission.power_points,
+  });
+
+  return {
+    powerPoints: mission.power_points,
+    mission: mission.name,
+    missionKey: missionKey,
+  };
+}
+
+async function tryCompleteMissionByWallet(walletAddress: string, missionKey: string, additionalData?: any) {
+  try {
+    return await completeMissionByWallet(walletAddress, missionKey, additionalData);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function checkAndCompleteTicketMilestonesByWallet(walletAddress: string) {
+  const supabase = getServiceClient();
+  const completed: any[] = [];
+
+  const { data: totalTickets } = await supabase.rpc("get_user_total_tickets_by_wallet", {
+    wallet_param: walletAddress,
+  });
+
+  const { data: uniqueLotteries } = await supabase.rpc("get_user_unique_lottery_types_by_wallet", {
+    wallet_param: walletAddress,
+  });
+
+  const { data: weeklyTickets } = await supabase.rpc("get_user_weekly_tickets_by_wallet", {
+    wallet_param: walletAddress,
+  });
+
+  const { data: weeklyUniqueLotteries } = await supabase.rpc("get_user_weekly_unique_lotteries_by_wallet", {
+    wallet_param: walletAddress,
+  });
+
+  if (totalTickets >= 1) {
+    const result = await tryCompleteMissionByWallet(walletAddress, "activity_first_ticket");
+    if (result) completed.push(result);
+  }
+
+  if (totalTickets >= 10) {
+    const result = await tryCompleteMissionByWallet(walletAddress, "activity_10_tickets");
+    if (result) completed.push(result);
+
+    const result2 = await tryCompleteMissionByWallet(walletAddress, "activity_buy_10_tickets");
+    if (result2) completed.push(result2);
+  }
+
+  if (totalTickets >= 50) {
+    const result = await tryCompleteMissionByWallet(walletAddress, "activity_50_tickets");
+    if (result) completed.push(result);
+  }
+
+  if (totalTickets >= 100) {
+    const result = await tryCompleteMissionByWallet(walletAddress, "activity_100_tickets");
+    if (result) completed.push(result);
+  }
+
+  if (uniqueLotteries >= 4) {
+    const result = await tryCompleteMissionByWallet(walletAddress, "activity_buy_all_lotteries");
+    if (result) completed.push(result);
+  }
+
+  if (weeklyTickets >= 5) {
+    const result = await tryCompleteMissionByWallet(walletAddress, "weekly_5_tickets");
+    if (result) completed.push(result);
+  }
+
+  if (weeklyUniqueLotteries >= 2) {
+    const result = await tryCompleteMissionByWallet(walletAddress, "weekly_buy_2_different");
+    if (result) completed.push(result);
+  }
+
+  return completed;
+}
+
 async function recordTicketPurchase(userId: string, body: any) {
-  const { lottery_type, quantity, ticket_count, transaction_signature, total_sol, wallet_address } = body;
+  const { lottery_type, quantity, ticket_count, wallet_address } = body;
   const ticketQty = quantity || ticket_count || 1;
+  const walletAddr = wallet_address || userId;
 
   const powerPointsMap: Record<string, number> = {
     tri_daily: 10,
@@ -221,27 +356,14 @@ async function recordTicketPurchase(userId: string, body: any) {
 
   const supabase = getServiceClient();
 
-  const { error } = await supabase
-    .from("ticket_purchases")
-    .insert({
-      user_id: userId,
-      wallet_address: wallet_address || null,
-      lottery_type: lottery_type || "tri_daily",
-      quantity: ticketQty,
-      total_sol: total_sol || 0,
-      transaction_signature,
-    });
-
-  if (error) throw error;
-
-  await supabase.rpc("increment_power_points", {
-    user_id_param: userId,
+  await supabase.rpc("increment_power_points_by_wallet", {
+    wallet_param: walletAddr,
     points_param: powerPointsEarned,
   });
 
-  const dailyResult = await tryCompleteMission(userId, "daily_buy_ticket");
+  const dailyResult = await tryCompleteMissionByWallet(walletAddr, "daily_buy_ticket");
 
-  const milestoneResults = await checkAndCompleteTicketMilestones(userId);
+  const milestoneResults = await checkAndCompleteTicketMilestonesByWallet(walletAddr);
 
   const completedMissions = [dailyResult, ...milestoneResults].filter(Boolean);
 

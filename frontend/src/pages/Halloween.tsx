@@ -164,7 +164,8 @@ export function Halloween() {
       const result = await solanaService.purchaseTicketsWithWallet(
         wallet,
         quantity,
-        HALLOWEEN_TICKET_PRICE_SOL
+        HALLOWEEN_TICKET_PRICE_SOL,
+        'halloween'
       );
       const signature = result.signature;
 

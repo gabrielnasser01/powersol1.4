@@ -97,7 +97,8 @@ export function TicketPurchaseCard() {
           const result = await solanaService.purchaseTicketsWithWallet(
             wallet,
             quantity,
-            LOTTERY_TICKET_PRICE_SOL
+            LOTTERY_TICKET_PRICE_SOL,
+            'tri-daily'
           );
           signature = result.signature;
         }
@@ -107,13 +108,17 @@ export function TicketPurchaseCard() {
 
       setTxId(signature);
 
-      const { data: purchaseData } = await supabase.from('ticket_purchases').insert({
+      const { data: purchaseData, error: insertError } = await supabase.from('ticket_purchases').insert({
         wallet_address: publicKey,
         lottery_type: 'tri-daily',
         quantity: quantity,
         total_sol: totalSol,
         transaction_signature: signature,
       }).select('id').single();
+
+      if (insertError) {
+        console.error('Failed to save ticket purchase:', insertError);
+      }
 
       if (!currentAffiliateCode) {
         const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);

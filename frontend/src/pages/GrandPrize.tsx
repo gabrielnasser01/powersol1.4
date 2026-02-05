@@ -129,7 +129,8 @@ export function GrandPrize() {
       const result = await solanaService.purchaseTicketsWithWallet(
         wallet,
         ticketAmount,
-        GRAND_PRIZE_TICKET_PRICE_SOL
+        GRAND_PRIZE_TICKET_PRICE_SOL,
+        'grand-prize'
       );
       const signature = result.signature;
 

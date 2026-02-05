@@ -1,7 +1,13 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { LOTTERY_WALLETS } from './walletBalanceService';
 
 const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-const LOTTERY_WALLET = import.meta.env.VITE_LOTTERY_WALLET || '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
+
+function getLotteryWalletForType(lotteryType?: string): string {
+  const type = lotteryType || 'tri-daily';
+  const normalizedType = type.toLowerCase().replace('_', '-') as keyof typeof LOTTERY_WALLETS;
+  return LOTTERY_WALLETS[normalizedType] || LOTTERY_WALLETS['tri-daily'];
+}
 
 export interface WalletAdapter {
   publicKey: PublicKey | null;
@@ -33,10 +39,12 @@ class SolanaService {
 
   async createTicketPurchaseTransaction(
     buyerPublicKey: string,
-    amountSol: number
+    amountSol: number,
+    lotteryType?: string
   ): Promise<Transaction> {
     const buyer = new PublicKey(buyerPublicKey);
-    const lottery = new PublicKey(LOTTERY_WALLET);
+    const lotteryWallet = getLotteryWalletForType(lotteryType);
+    const lottery = new PublicKey(lotteryWallet);
     const lamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
     const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
@@ -104,7 +112,8 @@ class SolanaService {
   async purchaseTicketsWithWallet(
     wallet: WalletAdapter,
     quantity: number,
-    ticketPriceSol: number
+    ticketPriceSol: number,
+    lotteryType?: string
   ): Promise<{ signature: string; success: boolean }> {
     if (!wallet.publicKey || !wallet.connected) {
       throw new Error('Wallet not connected');
@@ -118,7 +127,7 @@ class SolanaService {
       throw new Error(`Insufficient balance. Need ${totalAmount.toFixed(4)} SOL plus fees, have ${balance.toFixed(4)} SOL`);
     }
 
-    const transaction = await this.createTicketPurchaseTransaction(buyerKey, totalAmount);
+    const transaction = await this.createTicketPurchaseTransaction(buyerKey, totalAmount, lotteryType);
     const signedTransaction = await wallet.signTransaction(transaction);
     const signature = await this.sendAndConfirmTransaction(signedTransaction);
 

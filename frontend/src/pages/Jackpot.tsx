@@ -124,7 +124,8 @@ export function Jackpot() {
       const result = await solanaService.purchaseTicketsWithWallet(
         wallet,
         depositAmount,
-        JACKPOT_TICKET_PRICE_SOL
+        JACKPOT_TICKET_PRICE_SOL,
+        'jackpot'
       );
       const signature = result.signature;
 

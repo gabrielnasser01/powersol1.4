@@ -70,7 +70,7 @@ class SolanaService {
     recipientWallet?: string
   ): Promise<Transaction> {
     const donor = new PublicKey(donorPublicKey);
-    const recipient = new PublicKey(recipientWallet || LOTTERY_WALLET);
+    const recipient = new PublicKey(recipientWallet || LOTTERY_WALLETS['tri-daily']);
     const lamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
     const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();

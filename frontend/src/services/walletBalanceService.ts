@@ -3,13 +3,13 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 
 export const LOTTERY_WALLETS = {
-  'tri-daily': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-  'weekly': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-  'jackpot': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-  'mega': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-  'grand-prize': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-  'halloween': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-  'special': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+  'tri-daily': '4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx',
+  'weekly': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
+  'jackpot': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
+  'mega': 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C',
+  'grand-prize': 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C',
+  'halloween': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
+  'special': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
 } as const;
 
 export type LotteryType = keyof typeof LOTTERY_WALLETS;

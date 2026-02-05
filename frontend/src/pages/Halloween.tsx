@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Skull, Zap, Shield, Trophy, Plus, Minus, Ticket, Loader, Calendar, Users, TrendingUp, Ghost, Crown } from 'lucide-react';
+import { Skull, Zap, Shield, Trophy, Plus, Minus, Ticket, Loader, Calendar, Users, TrendingUp, Ghost, Crown, AlertTriangle } from 'lucide-react';
 import { theme } from '../theme';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { chainAdapter, formatSol, formatUsd, solToUsd, HALLOWEEN_TICKET_PRICE_SOL } from '../chain/adapter';
@@ -17,7 +17,7 @@ const HOUSE_COMMISSION_RATE = 0.30;
 export function Halloween() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { publicKey, connected, getWalletAdapter, refreshBalance } = useWallet();
+  const { publicKey, connected, getWalletAdapter, refreshBalance, balance } = useWallet();
 
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,9 +35,9 @@ export function Halloween() {
 
   const totalSol = HALLOWEEN_TICKET_PRICE_SOL * quantity;
   const totalUsd = solToUsd(totalSol);
+  const hasInsufficientBalance = isConnected && balance < totalSol;
 
-
-  // Halloween countdown
+  // Valentine's countdown
   useEffect(() => {
     // Load both pool states
     const loadPoolState = async () => {
@@ -713,32 +713,60 @@ export function Halloween() {
                   {formatUsd(totalUsd)}
                 </div>
               </div>
-              <div className="text-xs text-gray-400/50 font-mono mt-1">
-                USD equivalent
-              </div>
+              {isConnected && (
+                <div className="text-xs text-gray-400/50 font-mono mt-2">
+                  Your balance: {balance.toFixed(4)} SOL
+                </div>
+              )}
             </div>
+
+            {/* Insufficient Balance Warning */}
+            {hasInsufficientBalance && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-4 rounded-xl flex items-center space-x-3"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                }}
+              >
+                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <div>
+                  <p className="text-red-400 font-medium text-sm font-mono">Insufficient SOL Balance</p>
+                  <p className="text-red-300/70 text-xs mt-1 font-mono">
+                    You need {totalSol.toFixed(2)} SOL but only have {balance.toFixed(4)} SOL.
+                  </p>
+                </div>
+              </motion.div>
+            )}
 
             {/* Purchase button */}
             <motion.button
               ref={buttonRef}
               onClick={handlePurchase}
-              disabled={!isConnected || isLoading}
+              disabled={!isConnected || isLoading || hasInsufficientBalance}
               className="w-full py-5 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
               style={{
-                background: isConnected ? 'linear-gradient(135deg, #FF69B4, #FF1493)' : 'rgba(170, 170, 170, 0.1)',
-                color: isConnected ? '#000' : '#aaaaaa',
-                boxShadow: isConnected ? '0 0 30px rgba(255, 105, 180, 0.5)' : 'none',
+                background: isConnected && !hasInsufficientBalance ? 'linear-gradient(135deg, #FF69B4, #FF1493)' : 'rgba(170, 170, 170, 0.1)',
+                color: isConnected && !hasInsufficientBalance ? '#000' : '#aaaaaa',
+                boxShadow: isConnected && !hasInsufficientBalance ? '0 0 30px rgba(255, 105, 180, 0.5)' : 'none',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 fontFamily: 'monospace',
               }}
-              whileHover={isConnected ? { scale: 1.02 } : {}}
-              whileTap={isConnected ? { scale: 0.98 } : {}}
+              whileHover={isConnected && !hasInsufficientBalance ? { scale: 1.02 } : {}}
+              whileTap={isConnected && !hasInsufficientBalance ? { scale: 0.98 } : {}}
             >
               {isLoading ? (
                 <>
                   <Loader className="w-5 h-5 animate-spin" />
                   <span>Processing...</span>
+                </>
+              ) : hasInsufficientBalance ? (
+                <>
+                  <AlertTriangle className="w-5 h-5" />
+                  <span>Insufficient SOL Balance</span>
                 </>
               ) : (
                 <>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Coins, Plus, Minus, Loader, Calendar, Users, TrendingUp, X, Crown, Star } from 'lucide-react';
+import { Trophy, Coins, Plus, Minus, Loader, Calendar, Users, TrendingUp, X, Crown, Star, AlertTriangle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { chainAdapter, formatSol, formatUsd, solToUsd } from '../chain/adapter';
 import { ticketsStorage } from '../store/ticketStorage';
@@ -20,7 +20,7 @@ const HOUSE_COMMISSION_RATE = 0.30;
 export function GrandPrize() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { publicKey, connected, getWalletAdapter, refreshBalance } = useWallet();
+  const { publicKey, connected, getWalletAdapter, refreshBalance, balance } = useWallet();
 
   const [showPurchaseModal, setShowPurchaseModal] = useOptimizedState(false);
   const [ticketAmount, setTicketAmount] = useOptimizedState(1);
@@ -56,6 +56,7 @@ export function GrandPrize() {
 
   const totalSol = GRAND_PRIZE_TICKET_PRICE_SOL * ticketAmount;
   const totalUsd = solToUsd(totalSol);
+  const hasInsufficientBalance = isConnected && balance < totalSol;
 
   const banners = [
     {
@@ -643,7 +644,7 @@ export function GrandPrize() {
                 </div>
 
                 {/* Total Cost */}
-                <div className="mb-6 p-4 rounded-xl text-center" style={{ 
+                <div className="mb-6 p-4 rounded-xl text-center" style={{
                   background: 'rgba(248, 249, 250, 0.1)',
                   border: '1px solid rgba(248, 249, 250, 0.3)'
                 }}>
@@ -656,30 +657,62 @@ export function GrandPrize() {
                   <div className="text-sm text-zinc-400">
                     ≈ ${totalUsd}
                   </div>
+                  {isConnected && (
+                    <div className="text-xs text-zinc-500 mt-2">
+                      Your balance: {balance.toFixed(4)} SOL
+                    </div>
+                  )}
                 </div>
+
+                {/* Insufficient Balance Warning */}
+                {hasInsufficientBalance && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 p-4 rounded-xl flex items-center space-x-3"
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                    }}
+                  >
+                    <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-red-400 font-medium text-sm">Insufficient SOL Balance</p>
+                      <p className="text-red-300/70 text-xs mt-1">
+                        You need {totalSol.toFixed(2)} SOL but only have {balance.toFixed(4)} SOL.
+                        Please add more SOL to your wallet.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Purchase Button */}
                 <motion.button
                   ref={purchaseButtonRef}
                   onClick={handlePurchase}
-                  disabled={!isConnected || isLoading}
+                  disabled={!isConnected || isLoading || hasInsufficientBalance}
                   className="w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
                   style={{
-                    background: isConnected ? 'linear-gradient(135deg, #f8f9fa, #e9ecef)' : 'rgba(255, 255, 255, 0.1)',
-                    color: isConnected ? '#000' : '#ffffff',
-                    boxShadow: isConnected ? '0 0 30px rgba(248, 249, 250, 0.5)' : 'none',
+                    background: isConnected && !hasInsufficientBalance ? 'linear-gradient(135deg, #f8f9fa, #e9ecef)' : 'rgba(255, 255, 255, 0.1)',
+                    color: isConnected && !hasInsufficientBalance ? '#000' : '#ffffff',
+                    boxShadow: isConnected && !hasInsufficientBalance ? '0 0 30px rgba(248, 249, 250, 0.5)' : 'none',
                   }}
-                  whileHover={isConnected && !isLoading ? { scale: 1.05 } : {}}
-                  whileTap={isConnected && !isLoading ? { scale: 0.95 } : {}}
+                  whileHover={isConnected && !isLoading && !hasInsufficientBalance ? { scale: 1.05 } : {}}
+                  whileTap={isConnected && !isLoading && !hasInsufficientBalance ? { scale: 0.95 } : {}}
                 >
                   {isLoading ? (
                     <>
                       <Loader className="w-6 h-6 animate-spin" />
                       <span>Processing...</span>
                     </>
+                  ) : hasInsufficientBalance ? (
+                    <>
+                      <AlertTriangle className="w-6 h-6" />
+                      <span>Insufficient SOL Balance</span>
+                    </>
                   ) : (
                     <>
-                      <img 
+                      <img
                         src="https://i.imgur.com/ixnV8ms.png"
                         alt="PWRS Ticket"
                         className="w-8 h-8 object-contain"

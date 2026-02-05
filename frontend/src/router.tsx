@@ -34,6 +34,7 @@ export function AppRouter() {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/halloween" element={<Halloween />} />
+          <Route path="/valentines" element={<Halloween />} />
           <Route path="/grand-prize" element={<GrandPrize />} />
           <Route path="/missions" element={<Missions />} />
           <Route path="/privacy" element={<Privacy />} />

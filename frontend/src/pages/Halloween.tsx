@@ -292,7 +292,7 @@ export function Halloween() {
             >
               <div className="w-full h-full flex items-center justify-center p-2">
                 <img
-                  src="https://i.imgur.com/iE2Hq9n.png"
+                  src="https://i.imgur.com/484ahmV.png"
                   alt="Valentine's Day"
                   className="w-full h-full object-contain"
                 />

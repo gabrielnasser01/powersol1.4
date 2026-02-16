@@ -522,7 +522,7 @@ export function Halloween() {
                     }}
                   >
                     <img
-                      src="https://i.imgur.com/484ahmV.png"
+                      src="https://i.imgur.com/XArHsvQ.png"
                       alt="Easter Egg"
                       className="w-full h-full object-contain"
                       style={{

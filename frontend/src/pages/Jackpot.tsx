@@ -248,30 +248,27 @@ export function Jackpot() {
               transition={{ duration: 0.6, delay: 0 }}
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 0 30px rgba(255, 0, 0, 0.6)',
+                boxShadow: '0 0 30px rgba(135, 206, 250, 0.6)',
               }}
               onClick={() => navigate('/halloween')}
               className="rounded-2xl border backdrop-blur-md cursor-pointer relative w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
-                background: 'linear-gradient(135deg, rgba(255, 0, 0, 0.2), rgba(220, 20, 60, 0.2))',
-                borderColor: 'rgba(255, 0, 0, 0.4)',
-                boxShadow: '0 0 20px rgba(255, 0, 0, 0.3)',
+                background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.35), rgba(135, 206, 250, 0.3))',
+                borderColor: 'rgba(135, 206, 250, 0.5)',
+                boxShadow: '0 0 20px rgba(135, 206, 250, 0.3)',
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">
                 <img
-                  src="https://i.imgur.com/Aad4yVk.png"
-                  alt="Christmas"
+                  src="https://i.imgur.com/iE2Hq9n.png"
+                  alt="Valentine's Day"
                   className="w-full h-full object-contain"
-                  style={{
-                    filter: 'brightness(1.1) contrast(1.1)',
-                  }}
                 />
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-red-400">Special Event</h3>
-              <p className="text-xs md:text-sm text-red-300/80">0.2 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold text-sky-300">Special Event</h3>
+              <p className="text-xs md:text-sm text-sky-300/80">0.2 SOL</p>
             </div>
           </div>
 

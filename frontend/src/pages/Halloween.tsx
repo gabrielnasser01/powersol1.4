@@ -56,7 +56,7 @@ export function Halloween() {
     const poolInterval = setInterval(loadPoolState, 10000); // Update every 10 seconds
 
     const updateCountdown = () => {
-      const valentines = new Date('2025-02-14T23:59:59').getTime();
+      const valentines = new Date('2025-04-20T23:59:59').getTime();
       const now = Date.now();
       const difference = valentines - now;
 
@@ -86,8 +86,8 @@ export function Halloween() {
       icon: Zap,
       title: 'POWER BOOST',
       subtitle: 'System Enhanced',
-      color: '#FF69B4',
-      gradient: `linear-gradient(135deg, rgba(255, 105, 180, 0.2), rgba(255, 20, 147, 0.2))`,
+      color: '#FF8EC8',
+      gradient: `linear-gradient(135deg, rgba(255, 142, 200, 0.2), rgba(255, 105, 180, 0.15))`,
       onClick: () => navigate('/halloween'),
       path: '/halloween',
     },
@@ -124,11 +124,11 @@ export function Halloween() {
   ];
 
   const stats = [
-    { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString()}`, icon: Trophy, color: '#FF69B4' },
-    { label: 'Participants', value: '666', icon: Users, color: '#FF1493' },
-    { label: 'Participants', value: '666', icon: Users, color: '#FF69B4' },
-    { label: 'Days Left', value: timeLeft.days.toString(), icon: Calendar, color: '#FF69B4' },
-    { label: 'Love Factor', value: '100%', icon: Ghost, color: '#FF1493' },
+    { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString()}`, icon: Trophy, color: '#FF8EC8' },
+    { label: 'Participants', value: '666', icon: Users, color: '#FF8EC8' },
+    { label: 'Participants', value: '666', icon: Users, color: '#FF8EC8' },
+    { label: 'Days Left', value: timeLeft.days.toString(), icon: Calendar, color: '#FF8EC8' },
+    { label: 'Easter Spirit', value: '100%', icon: Ghost, color: '#FF8EC8' },
   ];
 
   const timeUnits = [
@@ -210,21 +210,20 @@ export function Halloween() {
 
   return (
     <div className="min-h-screen pt-20 pb-20 relative overflow-hidden">
-      {/* Valentine's Terminal Background */}
+      {/* Easter Pastel Background */}
       <div className="absolute inset-0">
         <div
           className="absolute inset-0"
           style={{
             background: `
-              linear-gradient(0deg, rgba(255, 105, 180, 0.08) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255, 105, 180, 0.08) 1px, transparent 1px),
-              linear-gradient(135deg, rgba(80, 0, 0, 0.98) 0%, rgba(50, 0, 0, 0.95) 100%)
+              linear-gradient(0deg, rgba(135, 206, 250, 0.06) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(135, 206, 250, 0.06) 1px, transparent 1px),
+              linear-gradient(135deg, rgba(15, 30, 50, 0.98) 0%, rgba(20, 40, 65, 0.95) 100%)
             `,
             backgroundSize: '20px 20px, 20px 20px, 100% 100%',
           }}
         />
 
-        {/* Valentine's scanner effect */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -233,23 +232,23 @@ export function Halloween() {
                 0deg,
                 transparent,
                 transparent 2px,
-                rgba(255, 105, 180, 0.03) 2px,
-                rgba(255, 105, 180, 0.03) 4px
+                rgba(135, 206, 250, 0.02) 2px,
+                rgba(135, 206, 250, 0.02) 4px
               ),
               repeating-linear-gradient(
                 90deg,
                 transparent,
                 transparent 3px,
-                rgba(255, 105, 180, 0.02) 3px,
-                rgba(255, 105, 180, 0.02) 6px
+                rgba(135, 206, 250, 0.015) 3px,
+                rgba(135, 206, 250, 0.015) 6px
               )
             `,
-            animation: 'valentineScan 4s linear infinite',
+            animation: 'easterScan 4s linear infinite',
           }}
         />
 
         <style jsx>{`
-          @keyframes valentineScan {
+          @keyframes easterScan {
             0% { transform: translateY(-100%); }
             100% { transform: translateY(100%); }
           }
@@ -258,11 +257,11 @@ export function Halloween() {
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Terminal corner decorations - Desktop */}
-        <div className="absolute top-24 left-6 text-xs font-mono text-pink-400/40 hidden sm:block">
+        <div className="absolute top-24 left-6 text-xs font-mono text-sky-300/40 hidden sm:block">
           [SYSTEM_ACTIVE]
         </div>
-        <div className="absolute top-24 right-6 text-xs font-mono text-pink-400/60 hidden sm:block">
-          [SPECIAL_MODULE]
+        <div className="absolute top-24 right-6 text-xs font-mono text-sky-300/60 hidden sm:block">
+          [EASTER_MODULE]
         </div>
         
         {/* Banners Section */}
@@ -412,30 +411,30 @@ export function Halloween() {
             className="text-2xl md:text-3xl font-bold mb-4 text-center"
             style={{
               fontFamily: 'Orbitron, monospace',
-              background: 'linear-gradient(135deg, #FF69B4 0%, #FF1493 50%, #FF69B4 100%)',
+              background: 'linear-gradient(135deg, #FF8EC8 0%, #FF69B4 50%, #FF8EC8 100%)',
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               color: 'transparent',
-              textShadow: '0 0 40px rgba(255, 105, 180, 0.5)',
+              textShadow: '0 0 40px rgba(255, 142, 200, 0.5)',
             }}
           >
-            VALENTINE'S DAY
+            EASTER
           </h1>
           <h2
             className="text-3xl md:text-5xl mb-6 text-center"
             style={{
               fontFamily: 'Orbitron, monospace',
-              background: 'linear-gradient(135deg, #FF69B4 0%, #FF1493 50%, #FF69B4 100%)',
+              background: 'linear-gradient(135deg, #FF8EC8 0%, #FF69B4 50%, #FF8EC8 100%)',
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               color: 'transparent',
-              textShadow: '0 0 40px rgba(255, 105, 180, 0.5)',
+              textShadow: '0 0 40px rgba(255, 142, 200, 0.5)',
             }}
           >
             SPECIAL
           </h2>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-mono">
-            Love lottery event accumulating until February 14th! Odds 1:10
+            Easter lottery event accumulating until April 20th! Odds 1:10
           </p>
         </motion.div>
 
@@ -450,22 +449,21 @@ export function Halloween() {
             className="p-6 rounded-2xl border text-center relative overflow-hidden"
             style={{
               background: `
-                linear-gradient(0deg, rgba(255, 105, 180, 0.08) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 105, 180, 0.08) 1px, transparent 1px),
-                linear-gradient(135deg, rgba(60, 0, 0, 0.98) 0%, rgba(40, 0, 0, 0.95) 100%)
+                linear-gradient(0deg, rgba(255, 142, 200, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 142, 200, 0.06) 1px, transparent 1px),
+                linear-gradient(135deg, rgba(20, 15, 30, 0.98) 0%, rgba(30, 20, 40, 0.95) 100%)
               `,
               backgroundSize: '20px 20px, 20px 20px, 100% 100%',
-              borderColor: 'rgba(255, 105, 180, 0.5)',
-              boxShadow: '0 0 25px rgba(255, 105, 180, 0.4), inset 0 0 40px rgba(0, 0, 0, 0.9)',
+              borderColor: 'rgba(255, 142, 200, 0.45)',
+              boxShadow: '0 0 25px rgba(255, 142, 200, 0.3), inset 0 0 40px rgba(0, 0, 0, 0.9)',
               backdropFilter: 'blur(20px)',
               fontFamily: 'monospace',
             }}
           >
-            {/* Terminal indicators */}
-            <div className="absolute top-2 left-2 text-xs font-mono text-pink-400/60">
+            <div className="absolute top-2 left-2 text-xs font-mono" style={{ color: 'rgba(255, 142, 200, 0.6)' }}>
               [COUNTDOWN_SYS]
             </div>
-            <div className="absolute top-2 right-2 text-xs font-mono text-pink-400/60">
+            <div className="absolute top-2 right-2 text-xs font-mono" style={{ color: 'rgba(255, 142, 200, 0.6)' }}>
               [ACTIVE]
             </div>
 
@@ -473,13 +471,13 @@ export function Halloween() {
               <div
                 className="p-3 rounded-xl"
                 style={{
-                  background: `linear-gradient(135deg, rgba(255, 105, 180, 0.3), rgba(255, 20, 147, 0.2))`,
-                  border: `1px solid rgba(255, 105, 180, 0.5)`,
+                  background: `linear-gradient(135deg, rgba(255, 142, 200, 0.25), rgba(255, 105, 180, 0.15))`,
+                  border: `1px solid rgba(255, 142, 200, 0.4)`,
                 }}
               >
                 <img
-                  src="https://i.imgur.com/AO1X60a.png"
-                  alt="Valentine's Day"
+                  src="https://i.imgur.com/484ahmV.png"
+                  alt="Easter"
                   className="w-6 h-6 object-contain"
                   style={{
                     filter: 'brightness(1.2) contrast(1.1)',
@@ -488,48 +486,47 @@ export function Halloween() {
               </div>
               <div className="text-left">
                 <h3 className="text-xl font-bold font-mono" style={{ color: '#aaaaaa' }}>
-                  Valentine's Draw
+                  Easter Draw
                 </h3>
-                <p className="text-pink-400/70 font-mono text-sm">
-                  February 14, 2025
+                <p className="font-mono text-sm" style={{ color: 'rgba(255, 142, 200, 0.7)' }}>
+                  April 20, 2025
                 </p>
               </div>
             </div>
 
             {/* Prize Pool Display */}
             <div className="mb-6 p-4 rounded-xl relative" style={{
-              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(30, 15, 20, 0.4))',
-              border: '1px solid rgba(255, 105, 180, 0.3)',
-              boxShadow: 'inset 0 0 20px rgba(255, 105, 180, 0.1)'
+              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(20, 15, 30, 0.4))',
+              border: '1px solid rgba(255, 142, 200, 0.3)',
+              boxShadow: 'inset 0 0 20px rgba(255, 142, 200, 0.08)'
             }}>
               <div className="flex items-center justify-center space-x-2 mb-3">
-                <Trophy className="w-5 h-5" style={{ color: '#FF69B4' }} />
-                <span className="text-sm font-medium font-mono" style={{ color: '#aaaaaa' }}>Love Prize Pool</span>
+                <Trophy className="w-5 h-5" style={{ color: '#FF8EC8' }} />
+                <span className="text-sm font-medium font-mono" style={{ color: '#aaaaaa' }}>Easter Prize Pool</span>
               </div>
               <div className="text-2xl font-bold font-mono mb-2 flex items-center justify-center" style={{
-                color: '#FF69B4',
-                textShadow: '0 0 10px rgba(255, 105, 180, 0.5)'
+                color: '#FF8EC8',
+                textShadow: '0 0 10px rgba(255, 142, 200, 0.5)'
               }}>
                 <div className="flex items-center space-x-3">
-                  {/* Valentine's heart with love effects */}
                   <motion.div
                     className="w-12 h-12 flex items-center justify-center"
                     animate={{
-                      scale: [1, 1.2, 1],
-                      rotate: [0, 15, -15, 0],
+                      scale: [1, 1.15, 1],
+                      rotate: [0, 10, -10, 0],
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 2.5,
                       repeat: Infinity,
                       ease: 'easeInOut',
                     }}
                   >
                     <img
-                      src="https://i.imgur.com/iBbZJGo.png"
-                      alt="Valentine Heart"
+                      src="https://i.imgur.com/484ahmV.png"
+                      alt="Easter Egg"
                       className="w-full h-full object-contain"
                       style={{
-                        filter: 'brightness(1.2) contrast(1.1) drop-shadow(0 0 8px rgba(255, 105, 180, 0.6))',
+                        filter: 'brightness(1.2) contrast(1.1) drop-shadow(0 0 8px rgba(255, 142, 200, 0.5))',
                       }}
                     />
                   </motion.div>
@@ -537,8 +534,8 @@ export function Halloween() {
                 </div>
               </div>
               <div className="flex items-center justify-center space-x-2 text-lg font-mono" style={{
-                color: '#FF69B4',
-                textShadow: '0 0 8px rgba(255, 105, 180, 0.4)'
+                color: '#FF8EC8',
+                textShadow: '0 0 8px rgba(255, 142, 200, 0.4)'
               }}>
                 <motion.img
                   src="https://i.imgur.com/eE1m8fp.png"
@@ -568,9 +565,9 @@ export function Halloween() {
                   transition={{ delay: index * 0.1 }}
                   className="p-2 sm:p-4 rounded-xl"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(30, 15, 20, 0.5))',
-                    border: '1px solid rgba(255, 105, 180, 0.3)',
-                    boxShadow: 'inset 0 0 15px rgba(255, 105, 180, 0.1)',
+                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(20, 15, 30, 0.5))',
+                    border: '1px solid rgba(255, 142, 200, 0.25)',
+                    boxShadow: 'inset 0 0 15px rgba(255, 142, 200, 0.08)',
                   }}
                 >
                   <motion.div
@@ -582,12 +579,12 @@ export function Halloween() {
                     style={{
                       color: '#aaaaaa',
                       fontFamily: 'monospace',
-                      textShadow: '0 0 8px rgba(255, 105, 180, 0.6)',
+                      textShadow: '0 0 8px rgba(255, 142, 200, 0.5)',
                     }}
                   >
                     {unit.value.toString().padStart(2, '0')}
                   </motion.div>
-                  <div className="text-xs uppercase tracking-wide font-mono" style={{ color: '#FF69B4' }}>
+                  <div className="text-xs uppercase tracking-wide font-mono" style={{ color: '#FF8EC8' }}>
                     <span className="hidden sm:inline">{unit.label}</span>
                     <span className="sm:hidden">{unit.label.slice(0, 3)}</span>
                   </div>
@@ -603,22 +600,21 @@ export function Halloween() {
             className="p-6 rounded-2xl border relative overflow-hidden"
             style={{
               background: `
-                linear-gradient(0deg, rgba(255, 105, 180, 0.08) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 105, 180, 0.08) 1px, transparent 1px),
-                linear-gradient(135deg, rgba(80, 0, 0, 0.98) 0%, rgba(50, 0, 0, 0.95) 100%)
+                linear-gradient(0deg, rgba(255, 142, 200, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 142, 200, 0.06) 1px, transparent 1px),
+                linear-gradient(135deg, rgba(20, 15, 30, 0.98) 0%, rgba(30, 20, 40, 0.95) 100%)
               `,
               backgroundSize: '20px 20px, 20px 20px, 100% 100%',
-              borderColor: 'rgba(255, 105, 180, 0.4)',
-              boxShadow: '0 0 30px rgba(255, 105, 180, 0.3), inset 0 0 50px rgba(0, 0, 0, 0.9)',
+              borderColor: 'rgba(255, 142, 200, 0.35)',
+              boxShadow: '0 0 30px rgba(255, 142, 200, 0.2), inset 0 0 50px rgba(0, 0, 0, 0.9)',
               backdropFilter: 'blur(20px)',
               fontFamily: 'monospace',
             }}
           >
-            {/* Terminal indicators */}
-            <div className="absolute top-2 left-2 text-xs font-mono text-pink-400/60">
+            <div className="absolute top-2 left-2 text-xs font-mono" style={{ color: 'rgba(255, 142, 200, 0.6)' }}>
               [TICKET_SYS]
             </div>
-            <div className="absolute top-2 right-2 text-xs font-mono text-pink-400/60">
+            <div className="absolute top-2 right-2 text-xs font-mono" style={{ color: 'rgba(255, 142, 200, 0.6)' }}>
               [READY]
             </div>
 
@@ -626,11 +622,11 @@ export function Halloween() {
               <div className="text-center">
                 <h3 className="text-xl font-bold font-mono mb-2" style={{
                   color: '#aaaaaa',
-                  textShadow: '0 0 10px rgba(255, 105, 180, 0.5)'
+                  textShadow: '0 0 10px rgba(255, 142, 200, 0.4)'
                 }}>
-                  Love Tickets
+                  Easter Tickets
                 </h3>
-                <div className="text-lg font-bold font-mono" style={{ color: '#FF69B4' }}>
+                <div className="text-lg font-bold font-mono" style={{ color: '#FF8EC8' }}>
                   {formatSol(HALLOWEEN_TICKET_PRICE_SOL)}
                 </div>
               </div>
@@ -647,10 +643,10 @@ export function Halloween() {
                   disabled={quantity <= 1}
                   className="w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-50"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(30, 15, 20, 0.5))',
-                    border: '1px solid rgba(255, 105, 180, 0.3)',
-                    boxShadow: 'inset 0 0 15px rgba(255, 105, 180, 0.1)',
-                    color: '#FF69B4',
+                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(20, 15, 30, 0.5))',
+                    border: '1px solid rgba(255, 142, 200, 0.25)',
+                    boxShadow: 'inset 0 0 15px rgba(255, 142, 200, 0.08)',
+                    color: '#FF8EC8',
                   }}
                   whileHover={quantity > 1 ? { scale: 1.05 } : {}}
                   whileTap={quantity > 1 ? { scale: 0.95 } : {}}
@@ -666,7 +662,7 @@ export function Halloween() {
                     className="w-full text-center text-3xl font-bold bg-transparent border-none outline-none font-mono"
                     style={{
                       color: '#aaaaaa',
-                      textShadow: '0 0 8px rgba(255, 105, 180, 0.6)'
+                      textShadow: '0 0 8px rgba(255, 142, 200, 0.5)'
                     }}
                     min="1"
                     max="1000"
@@ -679,10 +675,10 @@ export function Halloween() {
                   disabled={quantity >= 1000}
                   className="w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-50"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(30, 15, 20, 0.5))',
-                    border: '1px solid rgba(255, 105, 180, 0.3)',
-                    boxShadow: 'inset 0 0 15px rgba(255, 105, 180, 0.1)',
-                    color: '#FF69B4',
+                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(20, 15, 30, 0.5))',
+                    border: '1px solid rgba(255, 142, 200, 0.25)',
+                    boxShadow: 'inset 0 0 15px rgba(255, 142, 200, 0.08)',
+                    color: '#FF8EC8',
                   }}
                   whileHover={quantity < 1000 ? { scale: 1.05 } : {}}
                   whileTap={quantity < 1000 ? { scale: 0.95 } : {}}
@@ -694,23 +690,23 @@ export function Halloween() {
 
             {/* Total Cost */}
             <div className="mb-6 p-4 rounded-xl text-center" style={{
-              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(20, 15, 20, 0.6))',
-              border: '1px solid rgba(255, 105, 180, 0.3)',
+              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(15, 10, 25, 0.6))',
+              border: '1px solid rgba(255, 142, 200, 0.25)',
               boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.9)'
             }}>
               <div className="text-sm font-medium font-mono mb-2" style={{ color: '#aaaaaa' }}>
-                TOTAL COST ({quantity} love ticket{quantity > 1 ? 's' : ''})
+                TOTAL COST ({quantity} easter ticket{quantity > 1 ? 's' : ''})
               </div>
               <div className="flex items-center justify-center space-x-4">
                 <div className="text-2xl font-bold font-mono" style={{
-                  color: '#FF69B4',
-                  textShadow: '0 0 10px rgba(255, 105, 180, 0.5)'
+                  color: '#FF8EC8',
+                  textShadow: '0 0 10px rgba(255, 142, 200, 0.4)'
                 }}>
                   {formatSol(totalSol)}
                 </div>
                 <div className="text-lg text-gray-400/70 font-mono" style={{
-                  textShadow: '0 0 8px rgba(255, 105, 180, 0.5)',
-                  color: '#FF69B4'
+                  textShadow: '0 0 8px rgba(255, 142, 200, 0.4)',
+                  color: '#FF8EC8'
                 }}>
                   {formatUsd(totalUsd)}
                 </div>
@@ -745,9 +741,9 @@ export function Halloween() {
               disabled={!isConnected || isLoading}
               className="w-full py-5 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
               style={{
-                background: isConnected ? 'linear-gradient(135deg, #FF69B4, #FF1493)' : 'rgba(170, 170, 170, 0.1)',
-                color: isConnected ? '#000' : '#aaaaaa',
-                boxShadow: isConnected ? '0 0 30px rgba(255, 105, 180, 0.5)' : 'none',
+                background: isConnected ? 'linear-gradient(135deg, #FF8EC8, #FF69B4)' : 'rgba(170, 170, 170, 0.1)',
+                color: isConnected ? '#1a1a2e' : '#aaaaaa',
+                boxShadow: isConnected ? '0 0 30px rgba(255, 142, 200, 0.4)' : 'none',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 fontFamily: 'monospace',
@@ -767,12 +763,12 @@ export function Halloween() {
                     alt="PWRS Ticket"
                     className="w-8 h-8 object-contain"
                     style={{
-                      filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(255, 105, 180, 0.6))',
+                      filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(255, 142, 200, 0.5))',
                     }}
                   />
                   <span>
                     {isConnected
-                      ? `Buy ${quantity} Love Ticket${quantity > 1 ? 's' : ''}`
+                      ? `Buy ${quantity} Easter Ticket${quantity > 1 ? 's' : ''}`
                       : 'Connect Wallet'
                     }
                   </span>
@@ -789,21 +785,21 @@ export function Halloween() {
                   exit={{ opacity: 0, y: -20 }}
                   className="mt-4 p-4 rounded-xl"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(255, 105, 180, 0.2), rgba(255, 20, 147, 0.1))',
-                    border: '1px solid rgba(255, 105, 180, 0.4)',
-                    boxShadow: '0 0 20px rgba(255, 105, 180, 0.3)',
+                    background: 'linear-gradient(135deg, rgba(255, 142, 200, 0.15), rgba(255, 105, 180, 0.08))',
+                    border: '1px solid rgba(255, 142, 200, 0.35)',
+                    boxShadow: '0 0 20px rgba(255, 142, 200, 0.2)',
                   }}
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <div
                       className="w-2 h-2 rounded-full animate-pulse"
-                      style={{ background: '#FF69B4' }}
+                      style={{ background: '#FF8EC8' }}
                     />
                     <p className="text-sm font-semibold font-mono" style={{
-                      color: '#FF69B4',
-                      textShadow: `0 0 8px rgba(255, 105, 180, 0.6)`
+                      color: '#FF8EC8',
+                      textShadow: `0 0 8px rgba(255, 142, 200, 0.5)`
                     }}>
-                      LOVE TICKETS PURCHASED!
+                      EASTER TICKETS PURCHASED!
                     </p>
                   </div>
                   <p className="text-xs font-mono ml-5" style={{
@@ -818,7 +814,7 @@ export function Halloween() {
 
             {!isConnected && (
               <p className="text-xs text-center text-zinc-500 mt-4 font-mono">
-                Connect your wallet to purchase love tickets
+                Connect your wallet to purchase easter tickets
               </p>
             )}
           </motion.div>
@@ -828,7 +824,7 @@ export function Halloween() {
         <div className="mt-16">
           <WinnersDisplay
             title="Winners"
-            accentColor="#FF69B4"
+            accentColor="#FF8EC8"
             lotteryType="halloween"
           />
         </div>

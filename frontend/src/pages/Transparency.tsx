@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Eye, CheckCircle, Terminal, Lock, Database } from 'lucide-react';
+import { Shield, Eye, CheckCircle, Terminal, Lock, Database, ExternalLink } from 'lucide-react';
 import { theme } from '../theme';
+import { LOTTERY_WALLETS } from '../services/walletBalanceService';
 
 export function Transparency() {
   const fairnessFeatures = [
@@ -191,17 +192,17 @@ export function Transparency() {
                     {/* Lottery Links Grid */}
                     <div className="grid grid-cols-2 gap-2 mt-3">
                       {[
-                        { name: 'TRI-DAILY', label: 'Tri-Daily' },
-                        { name: 'SPECIAL_EVENT', label: 'Special Event' },
-                        { name: 'JACKPOT', label: 'Jackpot' },
-                        { name: 'GRAND_PRIZE', label: 'Grand Prize' }
+                        { label: 'Tri-Daily', wallet: LOTTERY_WALLETS['tri-daily'] },
+                        { label: 'Special Event', wallet: LOTTERY_WALLETS['special-event'] },
+                        { label: 'Jackpot', wallet: LOTTERY_WALLETS['jackpot'] },
+                        { label: 'Grand Prize', wallet: LOTTERY_WALLETS['grand-prize'] },
                       ].map((lottery, idx) => (
                         <motion.a
                           key={idx}
-                          href="#"
+                          href={`https://solscan.io/account/${lottery.wallet}?cluster=devnet`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 rounded-lg text-center font-mono text-xs transition-all duration-300"
+                          className="p-2 rounded-lg font-mono text-xs transition-all duration-300 flex items-center justify-center gap-1.5"
                           style={{
                             background: 'rgba(0, 0, 0, 0.7)',
                             border: '1px solid rgba(0, 255, 136, 0.3)',
@@ -215,6 +216,7 @@ export function Transparency() {
                           whileTap={{ scale: 0.95 }}
                         >
                           {lottery.label}
+                          <ExternalLink className="w-3 h-3 opacity-60" />
                         </motion.a>
                       ))}
                     </div>

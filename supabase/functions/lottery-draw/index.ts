@@ -32,7 +32,7 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
   "tri-daily": {
     type: "tri-daily",
     winnersSelectionType: "PERCENTAGE",
-    totalWinnersPercentage: 10,
+    totalWinnersPercentage: 5,
     winnerTiers: [
       { tierNumber: 1, winnersPercentage: 1, poolPercentage: 20, description: "Tier 1 - Grand Prize" },
       { tierNumber: 2, winnersPercentage: 2, poolPercentage: 10, description: "Tier 2 - Major Prize" },
@@ -75,7 +75,7 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
   "xmas": {
     type: "xmas",
     winnersSelectionType: "PERCENTAGE",
-    totalWinnersPercentage: 10,
+    totalWinnersPercentage: 5,
     winnerTiers: [
       { tierNumber: 1, winnersPercentage: 1, poolPercentage: 20, description: "Tier 1 - Grand Prize" },
       { tierNumber: 2, winnersPercentage: 2, poolPercentage: 10, description: "Tier 2 - Major Prize" },

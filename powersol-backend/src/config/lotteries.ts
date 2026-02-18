@@ -57,7 +57,7 @@ export const TRI_DAILY_CONFIG: LotteryConfig = {
     affiliates: 30,
   },
   winnersSelectionType: 'PERCENTAGE',
-  totalWinnersPercentage: 10,
+  totalWinnersPercentage: 5,
   winnerTiers: [
     {
       tierNumber: 1,
@@ -92,7 +92,7 @@ export const TRI_DAILY_CONFIG: LotteryConfig = {
   ],
   features: [
     'Draw every 3 days',
-    'Multiple winners (10% of tickets)',
+    'Multiple winners (5% of tickets)',
     '5 prize tiers',
     'Affordable ticket price',
   ],
@@ -225,7 +225,7 @@ export const XMAS_CONFIG: LotteryConfig = {
     affiliates: 30,
   },
   winnersSelectionType: 'PERCENTAGE',
-  totalWinnersPercentage: 10,
+  totalWinnersPercentage: 5,
   winnerTiers: [
     {
       tierNumber: 1,
@@ -260,7 +260,7 @@ export const XMAS_CONFIG: LotteryConfig = {
   ],
   features: [
     "Valentine's Day special event",
-    'Multiple winners (10% of tickets)',
+    'Multiple winners (5% of tickets)',
     '5 prize tiers',
     "Special Valentine's NFTs",
   ],

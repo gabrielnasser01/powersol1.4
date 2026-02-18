@@ -365,7 +365,7 @@ export function Profile() {
   const handleDisconnectWallet = () => {
     if (isConnected) {
       userStorage.clear();
-      ticketsStorage.clear();
+      ticketStorage.clear();
       setUser(userStorage.get());
       window.dispatchEvent(new CustomEvent('walletStorageChange'));
       window.dispatchEvent(new CustomEvent('missionPointsChange'));

@@ -103,21 +103,19 @@ export function DailyMissions() {
       }
 
       if (user.publicKey && isConnected) {
-        const missionsWithProgress = await Promise.all(
-          (missionsData || []).map(async (mission) => {
-            const { data: progressData } = await supabase
-              .from('user_mission_progress')
-              .select('*')
-              .eq('user_id', user.publicKey)
-              .eq('mission_id', mission.id)
-              .maybeSingle();
+        const { data: allProgress } = await supabase
+          .from('user_mission_progress')
+          .select('*')
+          .eq('wallet_address', user.publicKey);
 
-            return {
-              ...mission,
-              user_progress: progressData || { completed: false, completed_at: null, progress: {} },
-            };
-          })
+        const progressMap = new Map(
+          (allProgress || []).map(p => [p.mission_id, p])
         );
+
+        const missionsWithProgress = (missionsData || []).map(mission => ({
+          ...mission,
+          user_progress: progressMap.get(mission.id) || { completed: false, completed_at: null, progress: {} },
+        }));
         setMissions(missionsWithProgress);
       } else {
         setMissions(missionsData || []);
@@ -142,7 +140,7 @@ export function DailyMissions() {
       const { data: existingProgress } = await supabase
         .from('user_mission_progress')
         .select('*')
-        .eq('user_id', user.publicKey)
+        .eq('wallet_address', user.publicKey)
         .eq('mission_id', mission.id)
         .maybeSingle();
 
@@ -167,7 +165,7 @@ export function DailyMissions() {
         await supabase
           .from('user_mission_progress')
           .insert({
-            user_id: user.publicKey,
+            wallet_address: user.publicKey,
             mission_id: mission.id,
             completed: true,
             completed_at: new Date().toISOString(),

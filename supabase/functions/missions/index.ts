@@ -50,7 +50,7 @@ async function getMissionsByType(type: string) {
   return data || [];
 }
 
-async function getUserProgress(userId: string) {
+async function getUserProgress(walletAddress: string) {
   const supabase = getServiceClient();
 
   const missions = await getAllMissions();
@@ -58,7 +58,7 @@ async function getUserProgress(userId: string) {
   const { data: progressData, error } = await supabase
     .from("user_mission_progress")
     .select("*")
-    .eq("user_id", userId);
+    .eq("wallet_address", walletAddress);
 
   if (error) throw error;
 
@@ -72,141 +72,7 @@ async function getUserProgress(userId: string) {
   }));
 }
 
-async function completeMission(userId: string, missionKey: string, additionalData?: any) {
-  const supabase = getServiceClient();
-
-  const { data: mission } = await supabase
-    .from("missions")
-    .select("*")
-    .eq("mission_key", missionKey)
-    .maybeSingle();
-
-  if (!mission) {
-    throw new Error("Mission not found");
-  }
-
-  const { data: existing } = await supabase
-    .from("user_mission_progress")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("mission_id", mission.id)
-    .maybeSingle();
-
-  if (existing?.completed) {
-    if (mission.mission_type === "social" || mission.mission_type === "activity") {
-      throw new Error("Mission already completed");
-    }
-
-    const now = new Date();
-    const lastReset = new Date(existing.last_reset);
-    const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
-
-    if (mission.mission_type === "daily" && hoursSinceReset < 24) {
-      throw new Error("Daily mission already completed today");
-    }
-
-    if (mission.mission_type === "weekly" && hoursSinceReset < 168) {
-      throw new Error("Weekly mission already completed this week");
-    }
-  }
-
-  const { error: upsertError } = await supabase
-    .from("user_mission_progress")
-    .upsert({
-      user_id: userId,
-      mission_id: mission.id,
-      completed: true,
-      completed_at: new Date().toISOString(),
-      progress: additionalData || {},
-      last_reset: new Date().toISOString(),
-    }, {
-      onConflict: "user_id,mission_id",
-    });
-
-  if (upsertError) throw upsertError;
-
-  await supabase.rpc("increment_power_points", {
-    user_id_param: userId,
-    points_param: mission.power_points,
-  });
-
-  return {
-    powerPoints: mission.power_points,
-    mission: mission.name,
-    missionKey: missionKey,
-  };
-}
-
-async function tryCompleteMission(userId: string, missionKey: string, additionalData?: any) {
-  try {
-    return await completeMission(userId, missionKey, additionalData);
-  } catch (e) {
-    return null;
-  }
-}
-
-async function checkAndCompleteTicketMilestones(userId: string) {
-  const supabase = getServiceClient();
-  const completed: any[] = [];
-
-  const { data: totalTickets } = await supabase.rpc("get_user_total_tickets", {
-    user_id_param: userId,
-  });
-
-  const { data: uniqueLotteries } = await supabase.rpc("get_user_unique_lottery_types", {
-    user_id_param: userId,
-  });
-
-  const { data: weeklyTickets } = await supabase.rpc("get_user_weekly_tickets", {
-    user_id_param: userId,
-  });
-
-  const { data: weeklyUniqueLotteries } = await supabase.rpc("get_user_weekly_unique_lotteries", {
-    user_id_param: userId,
-  });
-
-  if (totalTickets >= 1) {
-    const result = await tryCompleteMission(userId, "activity_first_ticket");
-    if (result) completed.push(result);
-  }
-
-  if (totalTickets >= 10) {
-    const result = await tryCompleteMission(userId, "activity_10_tickets");
-    if (result) completed.push(result);
-
-    const result2 = await tryCompleteMission(userId, "activity_buy_10_tickets");
-    if (result2) completed.push(result2);
-  }
-
-  if (totalTickets >= 50) {
-    const result = await tryCompleteMission(userId, "activity_50_tickets");
-    if (result) completed.push(result);
-  }
-
-  if (totalTickets >= 100) {
-    const result = await tryCompleteMission(userId, "activity_100_tickets");
-    if (result) completed.push(result);
-  }
-
-  if (uniqueLotteries >= 4) {
-    const result = await tryCompleteMission(userId, "activity_buy_all_lotteries");
-    if (result) completed.push(result);
-  }
-
-  if (weeklyTickets >= 5) {
-    const result = await tryCompleteMission(userId, "weekly_5_tickets");
-    if (result) completed.push(result);
-  }
-
-  if (weeklyUniqueLotteries >= 2) {
-    const result = await tryCompleteMission(userId, "weekly_buy_2_different");
-    if (result) completed.push(result);
-  }
-
-  return completed;
-}
-
-async function completeMissionByWallet(walletAddress: string, missionKey: string, additionalData?: any) {
+async function completeMission(walletAddress: string, missionKey: string, additionalData?: any) {
   const supabase = getServiceClient();
 
   const { data: mission } = await supabase
@@ -271,15 +137,15 @@ async function completeMissionByWallet(walletAddress: string, missionKey: string
   };
 }
 
-async function tryCompleteMissionByWallet(walletAddress: string, missionKey: string, additionalData?: any) {
+async function tryCompleteMission(walletAddress: string, missionKey: string, additionalData?: any) {
   try {
-    return await completeMissionByWallet(walletAddress, missionKey, additionalData);
+    return await completeMission(walletAddress, missionKey, additionalData);
   } catch (e) {
     return null;
   }
 }
 
-async function checkAndCompleteTicketMilestonesByWallet(walletAddress: string) {
+async function checkAndCompleteTicketMilestones(walletAddress: string) {
   const supabase = getServiceClient();
   const completed: any[] = [];
 
@@ -300,50 +166,49 @@ async function checkAndCompleteTicketMilestonesByWallet(walletAddress: string) {
   });
 
   if (totalTickets >= 1) {
-    const result = await tryCompleteMissionByWallet(walletAddress, "activity_first_ticket");
+    const result = await tryCompleteMission(walletAddress, "activity_first_ticket");
     if (result) completed.push(result);
   }
 
   if (totalTickets >= 10) {
-    const result = await tryCompleteMissionByWallet(walletAddress, "activity_10_tickets");
+    const result = await tryCompleteMission(walletAddress, "activity_10_tickets");
     if (result) completed.push(result);
 
-    const result2 = await tryCompleteMissionByWallet(walletAddress, "activity_buy_10_tickets");
+    const result2 = await tryCompleteMission(walletAddress, "activity_buy_10_tickets");
     if (result2) completed.push(result2);
   }
 
   if (totalTickets >= 50) {
-    const result = await tryCompleteMissionByWallet(walletAddress, "activity_50_tickets");
+    const result = await tryCompleteMission(walletAddress, "activity_50_tickets");
     if (result) completed.push(result);
   }
 
   if (totalTickets >= 100) {
-    const result = await tryCompleteMissionByWallet(walletAddress, "activity_100_tickets");
+    const result = await tryCompleteMission(walletAddress, "activity_100_tickets");
     if (result) completed.push(result);
   }
 
   if (uniqueLotteries >= 4) {
-    const result = await tryCompleteMissionByWallet(walletAddress, "activity_buy_all_lotteries");
+    const result = await tryCompleteMission(walletAddress, "activity_buy_all_lotteries");
     if (result) completed.push(result);
   }
 
   if (weeklyTickets >= 5) {
-    const result = await tryCompleteMissionByWallet(walletAddress, "weekly_5_tickets");
+    const result = await tryCompleteMission(walletAddress, "weekly_5_tickets");
     if (result) completed.push(result);
   }
 
   if (weeklyUniqueLotteries >= 2) {
-    const result = await tryCompleteMissionByWallet(walletAddress, "weekly_buy_2_different");
+    const result = await tryCompleteMission(walletAddress, "weekly_buy_2_different");
     if (result) completed.push(result);
   }
 
   return completed;
 }
 
-async function recordTicketPurchase(userId: string, body: any) {
-  const { lottery_type, quantity, ticket_count, wallet_address } = body;
+async function recordTicketPurchase(walletAddress: string, body: any) {
+  const { lottery_type, quantity, ticket_count } = body;
   const ticketQty = quantity || ticket_count || 1;
-  const walletAddr = wallet_address || userId;
 
   const powerPointsMap: Record<string, number> = {
     tri_daily: 10,
@@ -357,13 +222,13 @@ async function recordTicketPurchase(userId: string, body: any) {
   const supabase = getServiceClient();
 
   await supabase.rpc("increment_power_points_by_wallet", {
-    wallet_param: walletAddr,
+    wallet_param: walletAddress,
     points_param: powerPointsEarned,
   });
 
-  const dailyResult = await tryCompleteMissionByWallet(walletAddr, "daily_buy_ticket");
+  const dailyResult = await tryCompleteMission(walletAddress, "daily_buy_ticket");
 
-  const milestoneResults = await checkAndCompleteTicketMilestonesByWallet(walletAddr);
+  const milestoneResults = await checkAndCompleteTicketMilestones(walletAddress);
 
   const completedMissions = [dailyResult, ...milestoneResults].filter(Boolean);
 
@@ -374,7 +239,7 @@ async function recordTicketPurchase(userId: string, body: any) {
   };
 }
 
-async function recordDonation(userId: string, body: any) {
+async function recordDonation(walletAddress: string, body: any) {
   const { amount_sol, transaction_signature } = body;
 
   if (amount_sol < 0.05) {
@@ -389,7 +254,7 @@ async function recordDonation(userId: string, body: any) {
   const { data: todayDonation } = await supabase
     .from("donations")
     .select("id")
-    .eq("user_id", userId)
+    .eq("user_id", walletAddress)
     .gte("created_at", today.toISOString())
     .maybeSingle();
 
@@ -402,7 +267,7 @@ async function recordDonation(userId: string, body: any) {
   const { error } = await supabase
     .from("donations")
     .insert({
-      user_id: userId,
+      user_id: walletAddress,
       amount_sol,
       transaction_signature,
       power_points_earned: powerPointsEarned,
@@ -410,12 +275,12 @@ async function recordDonation(userId: string, body: any) {
 
   if (error) throw error;
 
-  await supabase.rpc("increment_power_points", {
-    user_id_param: userId,
+  await supabase.rpc("increment_power_points_by_wallet", {
+    wallet_param: walletAddress,
     points_param: powerPointsEarned,
   });
 
-  const missionResult = await tryCompleteMission(userId, "daily_donation", { amount_sol });
+  const missionResult = await tryCompleteMission(walletAddress, "daily_donation", { amount_sol });
 
   return {
     powerPoints: powerPointsEarned,
@@ -423,13 +288,13 @@ async function recordDonation(userId: string, body: any) {
   };
 }
 
-async function completeLogin(userId: string) {
+async function completeLogin(walletAddress: string) {
   const supabase = getServiceClient();
 
   const { data: existing } = await supabase
     .from("user_mission_progress")
     .select("*, missions!inner(mission_key)")
-    .eq("user_id", userId)
+    .eq("wallet_address", walletAddress)
     .eq("missions.mission_key", "daily_login")
     .maybeSingle();
 
@@ -448,14 +313,14 @@ async function completeLogin(userId: string) {
     }
   }
 
-  return await completeMission(userId, "daily_login");
+  return await completeMission(walletAddress, "daily_login");
 }
 
-async function recordVisit(userId: string) {
-  return await tryCompleteMission(userId, "daily_visit");
+async function recordVisit(walletAddress: string) {
+  return await tryCompleteMission(walletAddress, "daily_visit");
 }
 
-async function completeSocialMission(userId: string, platform: string) {
+async function completeSocialMission(walletAddress: string, platform: string) {
   const missionKeyMap: Record<string, string> = {
     discord: "social_discord_join",
     twitter_follow: "social_twitter_follow",
@@ -470,47 +335,47 @@ async function completeSocialMission(userId: string, platform: string) {
     throw new Error(`Unknown platform: ${platform}`);
   }
 
-  return await completeMission(userId, missionKey);
+  return await completeMission(walletAddress, missionKey);
 }
 
-async function recordReferral(userId: string, referredUserId: string) {
+async function recordReferral(walletAddress: string, referredUserId: string) {
   const supabase = getServiceClient();
 
   const { data: referralCount } = await supabase
     .from("referrals")
     .select("id", { count: "exact" })
-    .eq("referrer_id", userId)
+    .eq("referrer_id", walletAddress)
     .eq("is_valid", true);
 
   const count = (referralCount?.length || 0) + 1;
 
   const completed: any[] = [];
 
-  const weeklyResult = await tryCompleteMission(userId, "weekly_refer");
+  const weeklyResult = await tryCompleteMission(walletAddress, "weekly_refer");
   if (weeklyResult) completed.push(weeklyResult);
 
   if (count >= 3) {
-    const result = await tryCompleteMission(userId, "social_invite_3");
+    const result = await tryCompleteMission(walletAddress, "social_invite_3");
     if (result) completed.push(result);
   }
   if (count >= 5) {
-    const result = await tryCompleteMission(userId, "social_invite_5");
+    const result = await tryCompleteMission(walletAddress, "social_invite_5");
     if (result) completed.push(result);
   }
   if (count >= 10) {
-    const result = await tryCompleteMission(userId, "social_invite_10");
+    const result = await tryCompleteMission(walletAddress, "social_invite_10");
     if (result) completed.push(result);
   }
   if (count >= 100) {
-    const result = await tryCompleteMission(userId, "social_invite_100");
+    const result = await tryCompleteMission(walletAddress, "social_invite_100");
     if (result) completed.push(result);
   }
   if (count >= 1000) {
-    const result = await tryCompleteMission(userId, "social_invite_1000");
+    const result = await tryCompleteMission(walletAddress, "social_invite_1000");
     if (result) completed.push(result);
   }
   if (count >= 5000) {
-    const result = await tryCompleteMission(userId, "social_invite_5000");
+    const result = await tryCompleteMission(walletAddress, "social_invite_5000");
     if (result) completed.push(result);
   }
 
@@ -520,16 +385,16 @@ async function recordReferral(userId: string, referredUserId: string) {
   };
 }
 
-async function recordFirstWin(userId: string) {
-  return await completeMission(userId, "activity_first_win");
+async function recordFirstWin(walletAddress: string) {
+  return await completeMission(walletAddress, "activity_first_win");
 }
 
-async function recordBecameAffiliate(userId: string) {
-  return await completeMission(userId, "activity_become_affiliate");
+async function recordBecameAffiliate(walletAddress: string) {
+  return await completeMission(walletAddress, "activity_become_affiliate");
 }
 
-async function recordExploreTransparency(userId: string) {
-  return await tryCompleteMission(userId, "activity_explore_transparency");
+async function recordExploreTransparency(walletAddress: string) {
+  return await tryCompleteMission(walletAddress, "activity_explore_transparency");
 }
 
 Deno.serve(async (req: Request) => {
@@ -542,16 +407,24 @@ Deno.serve(async (req: Request) => {
     const path = url.pathname.replace("/missions", "");
     const authHeader = req.headers.get("Authorization");
 
-    let userId: string | undefined;
+    let walletAddress: string | undefined;
     if (authHeader) {
       const supabase = getSupabaseClient(authHeader);
       const { data: { user } } = await supabase.auth.getUser();
-      userId = user?.id;
+      if (user) {
+        const svc = getServiceClient();
+        const { data: userData } = await svc
+          .from("users")
+          .select("wallet_address")
+          .eq("id", user.id)
+          .maybeSingle();
+        walletAddress = userData?.wallet_address;
+      }
     }
 
-    const userIdParam = url.searchParams.get("user_id");
-    if (userIdParam && !userId) {
-      userId = userIdParam;
+    const walletParam = url.searchParams.get("wallet_address") || url.searchParams.get("user_id");
+    if (walletParam && !walletAddress) {
+      walletAddress = walletParam;
     }
 
     let result: any;
@@ -562,47 +435,47 @@ Deno.serve(async (req: Request) => {
       const type = path.replace("/type/", "");
       result = await getMissionsByType(type);
     } else if (req.method === "GET" && path === "/my-progress") {
-      if (!userId) throw new Error("User ID required");
-      result = await getUserProgress(userId);
+      if (!walletAddress) throw new Error("Wallet address required");
+      result = await getUserProgress(walletAddress);
     } else if (req.method === "POST" && path.includes("/complete")) {
-      if (!userId) throw new Error("User ID required");
+      if (!walletAddress) throw new Error("Wallet address required");
       const pathParts = path.split("/");
       const missionKey = pathParts[1];
       const body = req.headers.get("content-type")?.includes("application/json")
         ? await req.json().catch(() => ({}))
         : {};
-      result = await completeMission(userId, missionKey, body);
+      result = await completeMission(walletAddress, missionKey, body);
     } else if (req.method === "POST" && path === "/ticket-purchase") {
-      if (!userId) throw new Error("User ID required");
+      if (!walletAddress) throw new Error("Wallet address required");
       const body = await req.json();
-      result = await recordTicketPurchase(userId, body);
+      result = await recordTicketPurchase(walletAddress, body);
     } else if (req.method === "POST" && path === "/donation") {
-      if (!userId) throw new Error("User ID required");
+      if (!walletAddress) throw new Error("Wallet address required");
       const body = await req.json();
-      result = await recordDonation(userId, body);
+      result = await recordDonation(walletAddress, body);
     } else if (req.method === "POST" && path === "/login") {
-      if (!userId) throw new Error("User ID required");
-      result = await completeLogin(userId);
+      if (!walletAddress) throw new Error("Wallet address required");
+      result = await completeLogin(walletAddress);
     } else if (req.method === "POST" && path === "/visit") {
-      if (!userId) throw new Error("User ID required");
-      result = await recordVisit(userId);
+      if (!walletAddress) throw new Error("Wallet address required");
+      result = await recordVisit(walletAddress);
     } else if (req.method === "POST" && path === "/social") {
-      if (!userId) throw new Error("User ID required");
+      if (!walletAddress) throw new Error("Wallet address required");
       const body = await req.json();
-      result = await completeSocialMission(userId, body.platform);
+      result = await completeSocialMission(walletAddress, body.platform);
     } else if (req.method === "POST" && path === "/referral") {
-      if (!userId) throw new Error("User ID required");
+      if (!walletAddress) throw new Error("Wallet address required");
       const body = await req.json();
-      result = await recordReferral(userId, body.referred_user_id);
+      result = await recordReferral(walletAddress, body.referred_user_id);
     } else if (req.method === "POST" && path === "/first-win") {
-      if (!userId) throw new Error("User ID required");
-      result = await recordFirstWin(userId);
+      if (!walletAddress) throw new Error("Wallet address required");
+      result = await recordFirstWin(walletAddress);
     } else if (req.method === "POST" && path === "/became-affiliate") {
-      if (!userId) throw new Error("User ID required");
-      result = await recordBecameAffiliate(userId);
+      if (!walletAddress) throw new Error("Wallet address required");
+      result = await recordBecameAffiliate(walletAddress);
     } else if (req.method === "POST" && path === "/explore-transparency") {
-      if (!userId) throw new Error("User ID required");
-      result = await recordExploreTransparency(userId);
+      if (!walletAddress) throw new Error("Wallet address required");
+      result = await recordExploreTransparency(walletAddress);
     } else {
       throw new Error("Not found");
     }

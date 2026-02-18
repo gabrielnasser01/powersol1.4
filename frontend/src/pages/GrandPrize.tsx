@@ -25,6 +25,9 @@ export function GrandPrize() {
   const [txId, setTxId] = useOptimizedState('');
   const [error, setError] = useOptimizedState('');
   const [globalPool, setGlobalPool] = useOptimizedState({ prizePoolUsd: 0, prizePoolSol: 0 });
+  const [liveContributors, setLiveContributors] = useOptimizedState(0);
+  const [liveGrowthRate, setLiveGrowthRate] = useOptimizedState(0);
+  const [liveDaysLeft, setLiveDaysLeft] = useOptimizedState(0);
 
   const buttonRef = useRef<HTMLButtonElement>(null);
   const purchaseButtonRef = useRef<HTMLButtonElement>(null);
@@ -46,6 +49,22 @@ export function GrandPrize() {
     const interval = setInterval(loadGlobalPool, 5000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const fetchLotteryStats = async () => {
+      try {
+        const { data } = await supabase.rpc('get_lottery_public_stats', { p_lottery_type: 'grand-prize' });
+        if (data) {
+          setLiveContributors(data.contributors);
+          setLiveGrowthRate(data.growth_rate);
+          setLiveDaysLeft(data.days_left);
+        }
+      } catch (err) {
+        console.error('Failed to fetch grand-prize stats:', err);
+      }
+    };
+    fetchLotteryStats();
   }, []);
 
   const isConnected = connected && !!publicKey;
@@ -98,9 +117,9 @@ export function GrandPrize() {
 
   const stats = [
     { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString()}`, icon: Trophy, color: '#f8f9fa' },
-    { label: 'Participants', value: '2,847', icon: Users, color: '#e9ecef' },
-    { label: 'Days Until Draw', value: '127', icon: Calendar, color: '#dee2e6' },
-    { label: 'Growth Rate', value: '+8.3%', icon: TrendingUp, color: '#ced4da' },
+    { label: 'Participants', value: liveContributors.toLocaleString(), icon: Users, color: '#e9ecef' },
+    { label: 'Days Until Draw', value: liveDaysLeft.toString(), icon: Calendar, color: '#dee2e6' },
+    { label: 'Growth Rate', value: `${liveGrowthRate >= 0 ? '+' : ''}${liveGrowthRate}%`, icon: TrendingUp, color: '#ced4da' },
   ];
 
   const handleQuantityChange = (delta: number) => {

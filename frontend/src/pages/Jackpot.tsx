@@ -23,6 +23,9 @@ export function Jackpot() {
   const [txId, setTxId] = useState('');
   const [error, setError] = useState('');
   const [globalPool, setGlobalPool] = useState({ prizePoolSol: 0, prizePoolUsd: 0, ticketCount: 0 });
+  const [liveContributors, setLiveContributors] = useState(0);
+  const [liveGrowthRate, setLiveGrowthRate] = useState(0);
+  const [liveDaysLeft, setLiveDaysLeft] = useState(0);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const depositButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -43,6 +46,22 @@ export function Jackpot() {
     const interval = setInterval(loadGlobalPool, 10000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const fetchLotteryStats = async () => {
+      try {
+        const { data } = await supabase.rpc('get_lottery_public_stats', { p_lottery_type: 'jackpot' });
+        if (data) {
+          setLiveContributors(data.contributors);
+          setLiveGrowthRate(data.growth_rate);
+          setLiveDaysLeft(data.days_left);
+        }
+      } catch (err) {
+        console.error('Failed to fetch jackpot stats:', err);
+      }
+    };
+    fetchLotteryStats();
   }, []);
 
   const now = new Date();
@@ -170,9 +189,9 @@ export function Jackpot() {
 
   const stats = [
     { label: 'Current Jackpot', value: `$${globalPool.prizePoolUsd.toLocaleString()}`, icon: Trophy, color: '#0099ff' },
-    { label: 'Contributors', value: '1,247', icon: Users, color: '#00ccff' },
-    { label: 'Days Left', value: daysLeft.toString(), icon: Calendar, color: '#0066ff' },
-    { label: 'Growth Rate', value: '+12.5%', icon: TrendingUp, color: '#3399ff' },
+    { label: 'Contributors', value: liveContributors.toLocaleString(), icon: Users, color: '#00ccff' },
+    { label: 'Days Left', value: (liveDaysLeft || daysLeft).toString(), icon: Calendar, color: '#0066ff' },
+    { label: 'Growth Rate', value: `${liveGrowthRate >= 0 ? '+' : ''}${liveGrowthRate}%`, icon: TrendingUp, color: '#3399ff' },
   ];
 
   return (

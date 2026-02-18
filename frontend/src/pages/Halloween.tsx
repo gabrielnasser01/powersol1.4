@@ -56,7 +56,7 @@ export function Halloween() {
     const poolInterval = setInterval(loadPoolState, 10000); // Update every 10 seconds
 
     const updateCountdown = () => {
-      const valentines = new Date('2025-04-20T23:59:59').getTime();
+      const valentines = new Date('2026-04-05T23:59:00Z').getTime();
       const now = Date.now();
       const difference = valentines - now;
 
@@ -434,7 +434,7 @@ export function Halloween() {
             SPECIAL
           </h2>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-mono">
-            Easter lottery event accumulating until April 20th! Odds 1:20
+            Easter lottery event accumulating until April 5th! Odds 1:20
           </p>
         </motion.div>
 
@@ -489,7 +489,7 @@ export function Halloween() {
                   Easter Draw
                 </h3>
                 <p className="font-mono text-sm" style={{ color: 'rgba(255, 142, 200, 0.7)' }}>
-                  April 20, 2025
+                  April 5, 2026
                 </p>
               </div>
             </div>

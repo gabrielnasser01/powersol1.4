@@ -249,7 +249,7 @@ export function Lottery() {
             Tri-Daily Lottery
           </h1>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-            Join the most exciting lottery on Solana. Draws every 3 days with instant payouts! Odds 1:10
+            Join the most exciting lottery on Solana. Draws every 3 days with instant payouts! Odds 1:20
           </p>
         </motion.div>
 

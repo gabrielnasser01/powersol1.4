@@ -14,7 +14,7 @@ import { Connection, clusterApiUrl } from '@solana/web3.js';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { publicKey: walletPublicKey, connected, getWalletAdapter } = useWallet();
+  const { publicKey: walletPublicKey, connected, disconnect, getWalletAdapter } = useWallet();
   const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
   const [userStats, setUserStats] = useState(userStatsStorage.get());
@@ -362,13 +362,10 @@ export function Profile() {
     }
   };
 
-  const handleDisconnectWallet = () => {
+  const handleDisconnectWallet = async () => {
     if (isConnected) {
-      userStorage.clear();
-      ticketStorage.clear();
+      await disconnect();
       setUser(userStorage.get());
-      window.dispatchEvent(new CustomEvent('walletStorageChange'));
-      window.dispatchEvent(new CustomEvent('missionPointsChange'));
     } else {
       handleConnect();
     }

@@ -7,6 +7,8 @@ import { useMagnetic } from '../hooks/useMagnetic';
 import { apiClient } from '../services/api';
 import { affiliateDashboardService, ApplicationStatus } from '../services/affiliateDashboardService';
 import { useWallet } from '../contexts/WalletContext';
+import { supabase } from '../lib/supabase';
+import { solPriceService } from '../services/solPriceService';
 
 const affiliateTiers = [
   { 
@@ -43,12 +45,15 @@ const affiliateTiers = [
   },
 ];
 
-const stats = [
-  { label: 'Active Affiliates', value: '2,847', icon: Users, color: theme.colors.neonBlue },
-  { label: 'Total Commissions Paid', value: '$1.2M', icon: DollarSign, color: theme.colors.neonCyan },
-  { label: 'Average Monthly Earnings', value: '$3,450', icon: TrendingUp, color: theme.colors.neonPink },
-  { label: 'Top Affiliate Earnings', value: '$47K', icon: Crown, color: '#b347ff' },
-];
+function formatUsd(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}K`;
+  return `$${value.toFixed(0)}`;
+}
+
+function lamportsToSol(lamports: number): number {
+  return lamports / 1_000_000_000;
+}
 
 export function Affiliates() {
   const navigate = useNavigate();
@@ -73,6 +78,12 @@ export function Affiliates() {
     status: null,
     appliedAt: null,
   });
+  const [stats, setStats] = useState([
+    { label: 'Active Affiliates', value: '...', icon: Users, color: theme.colors.neonBlue },
+    { label: 'Total Commissions Paid', value: '...', icon: DollarSign, color: theme.colors.neonCyan },
+    { label: 'Average Monthly Earnings', value: '...', icon: TrendingUp, color: theme.colors.neonPink },
+    { label: 'Top Affiliate Earnings', value: '...', icon: Crown, color: '#b347ff' },
+  ]);
   const spanRef = useRef<HTMLSpanElement>(null);
   const ctaButtonRef = useRef<HTMLButtonElement>(null);
   const applyButtonRef = useRef<HTMLButtonElement>(null);
@@ -81,6 +92,38 @@ export function Affiliates() {
   useMagnetic(ctaButtonRef);
   useMagnetic(applyButtonRef);
   useMagnetic(dashboardButtonRef);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [{ data }, solPrice] = await Promise.all([
+          supabase.rpc('get_affiliate_public_stats'),
+          solPriceService.fetchPrice(),
+        ]);
+        if (data) {
+          const d = data as {
+            active_affiliates: number;
+            total_commissions_paid_lamports: number;
+            avg_monthly_earnings_lamports: number;
+            top_affiliate_earnings_lamports: number;
+          };
+          const totalPaidUsd = lamportsToSol(d.total_commissions_paid_lamports) * solPrice;
+          const avgMonthlyUsd = lamportsToSol(d.avg_monthly_earnings_lamports) * solPrice;
+          const topEarningsUsd = lamportsToSol(d.top_affiliate_earnings_lamports) * solPrice;
+
+          setStats([
+            { label: 'Active Affiliates', value: d.active_affiliates.toLocaleString(), icon: Users, color: theme.colors.neonBlue },
+            { label: 'Total Commissions Paid', value: formatUsd(totalPaidUsd), icon: DollarSign, color: theme.colors.neonCyan },
+            { label: 'Average Monthly Earnings', value: formatUsd(avgMonthlyUsd), icon: TrendingUp, color: theme.colors.neonPink },
+            { label: 'Top Affiliate Earnings', value: formatUsd(topEarningsUsd), icon: Crown, color: '#b347ff' },
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch affiliate stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const checkApplicationStatus = useCallback(async () => {
     if (!walletAddress) return;

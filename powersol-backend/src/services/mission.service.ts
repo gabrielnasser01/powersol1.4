@@ -158,14 +158,14 @@ export class MissionService {
 
   async recordTicketPurchase(
     userId: string,
-    lotteryType: 'tri_daily' | 'jackpot' | 'xmas' | 'grand_prize',
+    lotteryType: 'tri_daily' | 'jackpot' | 'special_event' | 'grand_prize',
     ticketCount: number,
     transactionSignature?: string
   ): Promise<{ powerPoints: number }> {
     const powerPointsMap = {
       tri_daily: 10,
       jackpot: 20,
-      xmas: 20,
+      special_event: 20,
       grand_prize: 30
     };
 

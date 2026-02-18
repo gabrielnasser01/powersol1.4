@@ -4,7 +4,7 @@ export enum LotteryType {
   TRI_DAILY = 'TRI_DAILY',
   JACKPOT = 'JACKPOT',
   GRAND_PRIZE = 'GRAND_PRIZE',
-  XMAS = 'XMAS',
+  SPECIAL_EVENT = 'SPECIAL_EVENT',
 }
 
 export interface WinnerTier {
@@ -206,14 +206,14 @@ export const GRAND_PRIZE_CONFIG: LotteryConfig = {
   ],
 };
 
-export const XMAS_CONFIG: LotteryConfig = {
-  type: LotteryType.XMAS,
-  name: "Valentine's Day Special",
-  description: 'Sorteio especial Dia dos Namorados 2026 com multiplos vencedores',
+export const SPECIAL_EVENT_CONFIG: LotteryConfig = {
+  type: LotteryType.SPECIAL_EVENT,
+  name: 'Easter Special',
+  description: 'Sorteio especial de Pascoa 2026 com multiplos vencedores',
   ticketPrice: BigInt(0.2 * LAMPORTS_PER_SOL),
   maxTickets: 7500,
-  frequency: 'Yearly',
-  drawSchedule: 'February 14, 2026 at 00:00 UTC',
+  frequency: 'Seasonal',
+  drawSchedule: 'April 5, 2026 at 23:59 UTC',
   revenueDistribution: {
     prizePool: 40,
     treasury: 30,
@@ -259,10 +259,10 @@ export const XMAS_CONFIG: LotteryConfig = {
     },
   ],
   features: [
-    "Valentine's Day special event",
+    'Easter special event',
     'Multiple winners (5% of tickets)',
     '5 prize tiers',
-    "Special Valentine's NFTs",
+    'Special Easter NFTs',
   ],
 };
 
@@ -270,7 +270,7 @@ export const LOTTERY_CONFIGS: Record<LotteryType, LotteryConfig> = {
   [LotteryType.TRI_DAILY]: TRI_DAILY_CONFIG,
   [LotteryType.JACKPOT]: JACKPOT_CONFIG,
   [LotteryType.GRAND_PRIZE]: GRAND_PRIZE_CONFIG,
-  [LotteryType.XMAS]: XMAS_CONFIG,
+  [LotteryType.SPECIAL_EVENT]: SPECIAL_EVENT_CONFIG,
 };
 
 export function getLotteryConfig(type: LotteryType): LotteryConfig {
@@ -305,8 +305,8 @@ export function getGrandPrizeDrawTime(): Date {
   return new Date(Date.UTC(nextYear, 0, 1, 0, 0, 0, 0));
 }
 
-export function getXmasDrawTime(): Date {
-  return new Date(Date.UTC(2026, 1, 14, 0, 0, 0, 0));
+export function getSpecialEventDrawTime(): Date {
+  return new Date(Date.UTC(2026, 3, 5, 23, 59, 0, 0));
 }
 
 export function getDrawTimeForType(type: LotteryType): Date {
@@ -317,8 +317,8 @@ export function getDrawTimeForType(type: LotteryType): Date {
       return getNextJackpotDrawTime();
     case LotteryType.GRAND_PRIZE:
       return getGrandPrizeDrawTime();
-    case LotteryType.XMAS:
-      return getXmasDrawTime();
+    case LotteryType.SPECIAL_EVENT:
+      return getSpecialEventDrawTime();
     default:
       throw new Error(`Unknown lottery type: ${type}`);
   }

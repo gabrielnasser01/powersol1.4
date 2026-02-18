@@ -12,7 +12,7 @@ interface LotteryTypeEnum {
 }
 
 interface InitializeLotteryParams {
-  lotteryType: 'TRI_DAILY' | 'JACKPOT' | 'XMAS' | 'GRAND_PRIZE';
+  lotteryType: 'TRI_DAILY' | 'JACKPOT' | 'SPECIAL_EVENT' | 'GRAND_PRIZE';
   ticketPrice: number;
   drawInterval: number;
   maxTickets: number;
@@ -118,7 +118,7 @@ class AnchorIntegrationService {
         return { triDaily: {} };
       case 'jackpot':
         return { jackpot: {} };
-      case 'xmas':
+      case 'specialevent':
         return { xmas: {} };
       case 'grandprize':
         return { grandPrize: {} };

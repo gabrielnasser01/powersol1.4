@@ -51,7 +51,7 @@ export class MissionController {
     const userId = req.user!.userId;
     const { lotteryType, ticketCount, transactionSignature } = req.body;
 
-    if (!['tri_daily', 'jackpot', 'xmas', 'grand_prize'].includes(lotteryType)) {
+    if (!['tri_daily', 'jackpot', 'special_event', 'grand_prize'].includes(lotteryType)) {
       throw new ValidationError('Invalid lottery type');
     }
 

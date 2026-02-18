@@ -5,7 +5,7 @@ export enum LotteryType {
   TRI_DAILY = 'TRI_DAILY',
   JACKPOT = 'JACKPOT',
   GRAND_PRIZE = 'GRAND_PRIZE',
-  XMAS = 'XMAS',
+  SPECIAL_EVENT = 'SPECIAL_EVENT',
 }
 
 export function findLotteryPDA(
@@ -63,7 +63,7 @@ export function findGrandPrizeLotteryPDA(
   return { publicKey, bump };
 }
 
-export function findXmasLotteryPDA(
+export function findSpecialEventLotteryPDA(
   year: number,
   programId: PublicKey
 ): { publicKey: PublicKey; bump: number } {
@@ -166,9 +166,9 @@ export function getLotteryPDAForType(
       if (!params.year) throw new Error('Year required for GRAND_PRIZE');
       return findGrandPrizeLotteryPDA(params.year, programId);
 
-    case LotteryType.XMAS:
-      if (!params.year) throw new Error('Year required for XMAS');
-      return findXmasLotteryPDA(params.year, programId);
+    case LotteryType.SPECIAL_EVENT:
+      if (!params.year) throw new Error('Year required for SPECIAL_EVENT');
+      return findSpecialEventLotteryPDA(params.year, programId);
 
     default:
       throw new Error(`Unknown lottery type: ${type}`);

@@ -22,8 +22,8 @@ export class VRFService {
         return { month: metadata.month, year: metadata.year };
       case LotteryType.GRAND_PRIZE:
         return { year: metadata.year || new Date().getFullYear() + 1 };
-      case LotteryType.XMAS:
-        return { year: metadata.year || 2024 };
+      case LotteryType.SPECIAL_EVENT:
+        return { year: metadata.year || 2026 };
       default:
         return { round: lottery.lottery_id };
     }

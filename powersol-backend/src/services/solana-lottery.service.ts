@@ -39,8 +39,8 @@ export class SolanaLotteryService {
         return { month: getCurrentMonth(), year: getCurrentYear() };
       case LotteryType.GRAND_PRIZE:
         return { year: getCurrentYear() + 1 };
-      case LotteryType.XMAS:
-        return { year: 2024 };
+      case LotteryType.SPECIAL_EVENT:
+        return { year: 2026 };
       default:
         throw new Error(`Unknown lottery type: ${type}`);
     }

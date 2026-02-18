@@ -9,7 +9,7 @@ import {
   getCurrentYear,
   getNextJackpotDrawTime,
   getGrandPrizeDrawTime,
-  getXmasDrawTime,
+  getSpecialEventDrawTime,
 } from '@config/lotteries.js';
 
 const logger = loggers.lottery;
@@ -118,28 +118,28 @@ async function createNextJackpotLottery() {
 
 async function ensureSpecialLotteries() {
   try {
-    const { data: xmas } = await supabaseAdmin
+    const { data: specialEvent } = await supabaseAdmin
       .from('lotteries')
       .select('id')
-      .eq('type', 'XMAS')
+      .eq('type', 'SPECIAL_EVENT')
       .eq('is_drawn', false)
       .maybeSingle();
 
-    if (!xmas && new Date() < getXmasDrawTime()) {
+    if (!specialEvent && new Date() < getSpecialEventDrawTime()) {
       await supabaseAdmin.from('lotteries').insert({
-        lottery_id: 20260214,
-        type: 'XMAS',
+        lottery_id: 20260405,
+        type: 'SPECIAL_EVENT',
         ticket_price: (0.2 * LAMPORTS_PER_SOL).toString(),
         max_tickets: 7500,
-        draw_timestamp: getXmasDrawTime().toISOString(),
+        draw_timestamp: getSpecialEventDrawTime().toISOString(),
         metadata: {
-          name: "Valentine's Day Special 2026",
-          description: 'Sorteio especial Dia dos Namorados',
-          frequency: 'Yearly',
+          name: 'Easter Special 2026',
+          description: 'Sorteio especial de Pascoa',
+          frequency: 'Seasonal',
           year: 2026,
         },
       });
-      logger.info('Created Valentines Day 2026 lottery');
+      logger.info('Created Easter Special 2026 lottery');
     }
 
     const { data: grandPrize } = await supabaseAdmin
@@ -197,5 +197,5 @@ export function startLotteryManager() {
   logger.info('  - TRI-DAILY: Every 3 days at 00:00 UTC');
   logger.info('  - JACKPOT: Last day of each month at 00:00 UTC');
   logger.info('  - GRAND_PRIZE: January 1st at 00:00 UTC');
-  logger.info('  - VALENTINES: February 14, 2026 at 00:00 UTC');
+  logger.info('  - SPECIAL_EVENT: April 5, 2026 at 23:59 UTC');
 }

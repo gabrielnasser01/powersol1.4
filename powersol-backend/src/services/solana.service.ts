@@ -19,7 +19,7 @@ import {
   findTriDailyLotteryPDA,
   findJackpotLotteryPDA,
   findGrandPrizeLotteryPDA,
-  findXmasLotteryPDA,
+  findSpecialEventLotteryPDA,
   findTicketPDA,
   findClaimPDA,
   findUserTicketsPDA,

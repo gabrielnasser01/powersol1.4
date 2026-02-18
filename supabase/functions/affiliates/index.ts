@@ -7,39 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(key: string, maxRequests = 30, windowMs = 60000): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  entry.count++;
-  return entry.count <= maxRequests;
-}
-
-function isValidWallet(addr: unknown): addr is string {
-  return typeof addr === "string" && SOLANA_ADDR_RE.test(addr.trim());
-}
-
-function sanitize(input: unknown, maxLen = 500): string {
-  if (!input || typeof input !== "string") return "";
-  return input.replace(/[<>]/g, "").replace(/javascript:/gi, "").trim().slice(0, maxLen);
-}
-
-function errorResponse(message: string, status: number) {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
 function getServiceClient() {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -47,18 +14,21 @@ function getServiceClient() {
   );
 }
 
+function getSupabaseClient(authHeader?: string) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  return createClient(supabaseUrl, supabaseKey, {
+    global: { headers: authHeader ? { Authorization: authHeader } : {} },
+  });
+}
+
 async function submitApplication(req: Request) {
   const body = await req.json();
   const { wallet_address, full_name, email, country, social_media, marketing_experience, marketing_strategy } = body;
 
-  if (!isValidWallet(wallet_address)) {
-    throw new Error("Invalid wallet address");
-  }
-  if (!full_name || typeof full_name !== "string" || full_name.trim().length < 2 || full_name.length > 100) {
-    throw new Error("Invalid name (2-100 characters)");
-  }
-  if (!email || typeof email !== "string" || !EMAIL_RE.test(email) || email.length > 320) {
-    throw new Error("Invalid email address");
+  if (!wallet_address || !full_name || !email) {
+    throw new Error("Missing required fields: wallet_address, full_name, email");
   }
 
   const supabase = getServiceClient();
@@ -66,7 +36,7 @@ async function submitApplication(req: Request) {
   const { data: existing } = await supabase
     .from("affiliate_applications")
     .select("id")
-    .eq("wallet_address", wallet_address.trim())
+    .eq("wallet_address", wallet_address)
     .maybeSingle();
 
   if (existing) {
@@ -76,13 +46,13 @@ async function submitApplication(req: Request) {
   const { data, error } = await supabase
     .from("affiliate_applications")
     .insert({
-      wallet_address: wallet_address.trim(),
-      full_name: sanitize(full_name, 100),
-      email: email.trim().toLowerCase(),
-      country: sanitize(country, 100) || null,
-      social_media: sanitize(social_media, 500) || null,
-      marketing_experience: sanitize(marketing_experience, 2000) || null,
-      marketing_strategy: sanitize(marketing_strategy, 2000) || null,
+      wallet_address,
+      full_name,
+      email,
+      country: country || null,
+      social_media: social_media || null,
+      marketing_experience: marketing_experience || null,
+      marketing_strategy: marketing_strategy || null,
       status: "pending",
     })
     .select()
@@ -93,15 +63,12 @@ async function submitApplication(req: Request) {
 }
 
 async function getMyApplication(walletAddress: string) {
-  if (!isValidWallet(walletAddress)) {
-    throw new Error("Invalid wallet address");
-  }
-
   const supabase = getServiceClient();
+
   const { data, error } = await supabase
     .from("affiliate_applications")
     .select("*")
-    .eq("wallet_address", walletAddress.trim())
+    .eq("wallet_address", walletAddress)
     .maybeSingle();
 
   if (error) throw error;
@@ -110,13 +77,8 @@ async function getMyApplication(walletAddress: string) {
 
 async function listApplications(url: URL) {
   const status = url.searchParams.get("status");
-  const validStatuses = ["pending", "approved", "rejected"];
-  if (status && !validStatuses.includes(status)) {
-    throw new Error("Invalid status filter");
-  }
-
-  const limit = Math.min(Math.max(1, parseInt(url.searchParams.get("limit") || "50")), 100);
-  const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0"));
+  const limit = parseInt(url.searchParams.get("limit") || "50");
+  const offset = parseInt(url.searchParams.get("offset") || "0");
 
   const supabase = getServiceClient();
 
@@ -131,20 +93,16 @@ async function listApplications(url: URL) {
   }
 
   const { data, error, count } = await query;
+
   if (error) throw error;
   return { applications: data || [], total: count || 0 };
 }
 
-async function updateApplicationStatus(applicationId: string, body: Record<string, unknown>) {
-  if (!UUID_RE.test(applicationId)) {
-    throw new Error("Invalid application ID");
-  }
-
+async function updateApplicationStatus(applicationId: string, body: any) {
   const { status, admin_notes } = body;
-  const validStatuses = ["pending", "approved", "rejected"];
 
-  if (!status || typeof status !== "string" || !validStatuses.includes(status)) {
-    throw new Error("Invalid status value");
+  if (!status) {
+    throw new Error("Status is required");
   }
 
   const supabase = getServiceClient();
@@ -153,7 +111,7 @@ async function updateApplicationStatus(applicationId: string, body: Record<strin
     .from("affiliate_applications")
     .update({
       status,
-      admin_notes: sanitize(admin_notes, 1000) || null,
+      admin_notes: admin_notes || null,
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", applicationId)
@@ -185,11 +143,8 @@ async function updateApplicationStatus(applicationId: string, body: Record<strin
 }
 
 async function deleteApplication(applicationId: string) {
-  if (!UUID_RE.test(applicationId)) {
-    throw new Error("Invalid application ID");
-  }
-
   const supabase = getServiceClient();
+
   const { error } = await supabase
     .from("affiliate_applications")
     .delete()
@@ -200,16 +155,12 @@ async function deleteApplication(applicationId: string) {
 }
 
 async function getAffiliateStats(walletAddress: string) {
-  if (!isValidWallet(walletAddress)) {
-    throw new Error("Invalid wallet address");
-  }
-
   const supabase = getServiceClient();
 
   const { data: affiliate } = await supabase
     .from("affiliates")
     .select("*")
-    .eq("wallet_address", walletAddress.trim())
+    .eq("wallet_address", walletAddress)
     .maybeSingle();
 
   if (!affiliate) {
@@ -219,14 +170,13 @@ async function getAffiliateStats(walletAddress: string) {
   const { data: earnings } = await supabase
     .from("solana_affiliate_earnings")
     .select("*")
-    .eq("affiliate_wallet", walletAddress.trim())
-    .order("created_at", { ascending: false })
-    .limit(100);
+    .eq("affiliate_wallet", walletAddress)
+    .order("created_at", { ascending: false });
 
-  const totalEarnings = (earnings || []).reduce((sum: number, e: Record<string, number>) => sum + (e.commission_amount || 0), 0);
+  const totalEarnings = (earnings || []).reduce((sum, e) => sum + (e.commission_amount || 0), 0);
   const pendingEarnings = (earnings || [])
-    .filter((e: Record<string, string>) => e.status === "pending")
-    .reduce((sum: number, e: Record<string, number>) => sum + (e.commission_amount || 0), 0);
+    .filter(e => e.status === "pending")
+    .reduce((sum, e) => sum + (e.commission_amount || 0), 0);
 
   return {
     is_affiliate: true,
@@ -246,22 +196,17 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
-    if (!checkRateLimit(clientIp, 30, 60000)) {
-      return errorResponse("Too many requests", 429);
-    }
-
     const url = new URL(req.url);
     const pathMatch = url.pathname.match(/\/affiliates(\/.*)?$/);
     const path = pathMatch ? (pathMatch[1] || "") : "";
 
-    let result: unknown;
+    let result: any;
 
     if (req.method === "POST" && (path === "/submit" || path === "" || path === "/")) {
       result = await submitApplication(req);
     } else if (req.method === "GET" && path === "/my-application") {
       const wallet = url.searchParams.get("wallet");
-      if (!wallet) return errorResponse("Wallet address required", 400);
+      if (!wallet) throw new Error("Wallet address required");
       result = await getMyApplication(wallet);
     } else if (req.method === "GET" && path === "/list") {
       result = await listApplications(url);
@@ -276,22 +221,22 @@ Deno.serve(async (req: Request) => {
       result = await deleteApplication(applicationId);
     } else if (req.method === "GET" && path === "/stats") {
       const wallet = url.searchParams.get("wallet");
-      if (!wallet) return errorResponse("Wallet address required", 400);
+      if (!wallet) throw new Error("Wallet address required");
       result = await getAffiliateStats(wallet);
     } else {
-      return errorResponse("Not found", 404);
+      throw new Error("Not found");
     }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "An error occurred";
+    const message = error instanceof Error ? error.message : "Unknown error";
     const status = message === "Not found" ? 404 : 400;
 
-    return errorResponse(
-      status === 400 ? "Bad request" : message,
-      status
-    );
+    return new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

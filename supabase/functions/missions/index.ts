@@ -7,39 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-const VALID_PLATFORMS = new Set(["discord", "twitter_follow", "tiktok_follow", "twitter_like", "twitter_repost", "twitter_comment"]);
-const VALID_MISSION_TYPES = new Set(["daily", "weekly", "social", "activity", "special"]);
-
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(key: string, maxRequests = 30, windowMs = 60000): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  entry.count++;
-  return entry.count <= maxRequests;
-}
-
-function isValidWallet(addr: string): boolean {
-  return typeof addr === "string" && SOLANA_ADDR_RE.test(addr.trim());
-}
-
-function sanitize(input: string, maxLen = 200): string {
-  if (!input || typeof input !== "string") return "";
-  return input.replace(/[<>]/g, "").trim().slice(0, maxLen);
-}
-
-function errorResponse(message: string, status: number) {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
 function getServiceClient() {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -58,6 +25,7 @@ function getSupabaseClient(authHeader?: string) {
 
 async function getAllMissions() {
   const supabase = getServiceClient();
+
   const { data, error } = await supabase
     .from("missions")
     .select("*")
@@ -69,11 +37,8 @@ async function getAllMissions() {
 }
 
 async function getMissionsByType(type: string) {
-  if (!VALID_MISSION_TYPES.has(type)) {
-    throw new Error("Invalid mission type");
-  }
-
   const supabase = getServiceClient();
+
   const { data, error } = await supabase
     .from("missions")
     .select("*")
@@ -87,6 +52,7 @@ async function getMissionsByType(type: string) {
 
 async function getUserProgress(walletAddress: string) {
   const supabase = getServiceClient();
+
   const missions = await getAllMissions();
 
   const { data: progressData, error } = await supabase
@@ -97,24 +63,22 @@ async function getUserProgress(walletAddress: string) {
   if (error) throw error;
 
   const progressMap = new Map(
-    (progressData || []).map((p: Record<string, unknown>) => [p.mission_id, p])
+    (progressData || []).map(p => [p.mission_id, p])
   );
 
-  return missions.map((mission: Record<string, unknown>) => ({
+  return missions.map(mission => ({
     ...mission,
-    user_progress: progressMap.get(mission.id as string) || null,
+    user_progress: progressMap.get(mission.id) || null,
   }));
 }
 
-async function completeMission(walletAddress: string, missionKey: string, additionalData?: Record<string, unknown>) {
+async function completeMission(walletAddress: string, missionKey: string, additionalData?: any) {
   const supabase = getServiceClient();
-
-  const safeMissionKey = sanitize(missionKey, 100);
 
   const { data: mission } = await supabase
     .from("missions")
     .select("*")
-    .eq("mission_key", safeMissionKey)
+    .eq("mission_key", missionKey)
     .maybeSingle();
 
   if (!mission) {
@@ -169,21 +133,21 @@ async function completeMission(walletAddress: string, missionKey: string, additi
   return {
     powerPoints: mission.power_points,
     mission: mission.name,
-    missionKey: safeMissionKey,
+    missionKey: missionKey,
   };
 }
 
-async function tryCompleteMission(walletAddress: string, missionKey: string, additionalData?: Record<string, unknown>) {
+async function tryCompleteMission(walletAddress: string, missionKey: string, additionalData?: any) {
   try {
     return await completeMission(walletAddress, missionKey, additionalData);
-  } catch {
+  } catch (e) {
     return null;
   }
 }
 
 async function checkAndCompleteTicketMilestones(walletAddress: string) {
   const supabase = getServiceClient();
-  const completed: Record<string, unknown>[] = [];
+  const completed: any[] = [];
 
   const { data: totalTickets } = await supabase.rpc("get_user_total_tickets_by_wallet", {
     wallet_param: walletAddress,
@@ -201,19 +165,27 @@ async function checkAndCompleteTicketMilestones(walletAddress: string) {
     wallet_param: walletAddress,
   });
 
-  const milestones: [number, string][] = [
-    [1, "activity_first_ticket"],
-    [10, "activity_10_tickets"],
-    [10, "activity_buy_10_tickets"],
-    [50, "activity_50_tickets"],
-    [100, "activity_100_tickets"],
-  ];
+  if (totalTickets >= 1) {
+    const result = await tryCompleteMission(walletAddress, "activity_first_ticket");
+    if (result) completed.push(result);
+  }
 
-  for (const [threshold, key] of milestones) {
-    if (totalTickets >= threshold) {
-      const result = await tryCompleteMission(walletAddress, key);
-      if (result) completed.push(result);
-    }
+  if (totalTickets >= 10) {
+    const result = await tryCompleteMission(walletAddress, "activity_10_tickets");
+    if (result) completed.push(result);
+
+    const result2 = await tryCompleteMission(walletAddress, "activity_buy_10_tickets");
+    if (result2) completed.push(result2);
+  }
+
+  if (totalTickets >= 50) {
+    const result = await tryCompleteMission(walletAddress, "activity_50_tickets");
+    if (result) completed.push(result);
+  }
+
+  if (totalTickets >= 100) {
+    const result = await tryCompleteMission(walletAddress, "activity_100_tickets");
+    if (result) completed.push(result);
   }
 
   if (uniqueLotteries >= 4) {
@@ -234,12 +206,9 @@ async function checkAndCompleteTicketMilestones(walletAddress: string) {
   return completed;
 }
 
-async function recordTicketPurchase(walletAddress: string, body: Record<string, unknown>) {
+async function recordTicketPurchase(walletAddress: string, body: any) {
   const { lottery_type, quantity, ticket_count } = body;
-  const ticketQty = Math.min(Math.max(1, Number(quantity || ticket_count || 1)), 100);
-
-  const validTypes = ["tri_daily", "jackpot", "xmas", "grand_prize"];
-  const safeType = typeof lottery_type === "string" && validTypes.includes(lottery_type) ? lottery_type : "tri_daily";
+  const ticketQty = quantity || ticket_count || 1;
 
   const powerPointsMap: Record<string, number> = {
     tri_daily: 10,
@@ -248,7 +217,8 @@ async function recordTicketPurchase(walletAddress: string, body: Record<string, 
     grand_prize: 30,
   };
 
-  const powerPointsEarned = (powerPointsMap[safeType] || 10) * ticketQty;
+  const powerPointsEarned = (powerPointsMap[lottery_type] || 10) * ticketQty;
+
   const supabase = getServiceClient();
 
   await supabase.rpc("increment_power_points_by_wallet", {
@@ -257,25 +227,23 @@ async function recordTicketPurchase(walletAddress: string, body: Record<string, 
   });
 
   const dailyResult = await tryCompleteMission(walletAddress, "daily_buy_ticket");
+
   const milestoneResults = await checkAndCompleteTicketMilestones(walletAddress);
+
   const completedMissions = [dailyResult, ...milestoneResults].filter(Boolean);
 
   return {
     powerPoints: powerPointsEarned,
     completedMissions,
-    totalMissionPoints: completedMissions.reduce((sum, m) => sum + ((m as Record<string, number>)?.powerPoints || 0), 0),
+    totalMissionPoints: completedMissions.reduce((sum, m) => sum + (m?.powerPoints || 0), 0),
   };
 }
 
-async function recordDonation(walletAddress: string, body: Record<string, unknown>) {
+async function recordDonation(walletAddress: string, body: any) {
   const { amount_sol, transaction_signature } = body;
 
-  if (typeof amount_sol !== "number" || amount_sol < 0.05 || amount_sol > 10000) {
-    throw new Error("Invalid donation amount (min 0.05 SOL)");
-  }
-
-  if (!transaction_signature || typeof transaction_signature !== "string" || transaction_signature.length > 256) {
-    throw new Error("Invalid transaction signature");
+  if (amount_sol < 0.05) {
+    throw new Error("Minimum donation is 0.05 SOL");
   }
 
   const supabase = getServiceClient();
@@ -353,10 +321,6 @@ async function recordVisit(walletAddress: string) {
 }
 
 async function completeSocialMission(walletAddress: string, platform: string) {
-  if (!platform || !VALID_PLATFORMS.has(platform)) {
-    throw new Error("Invalid platform");
-  }
-
   const missionKeyMap: Record<string, string> = {
     discord: "social_discord_join",
     twitter_follow: "social_twitter_follow",
@@ -366,14 +330,15 @@ async function completeSocialMission(walletAddress: string, platform: string) {
     twitter_comment: "weekly_twitter_comment",
   };
 
-  return await completeMission(walletAddress, missionKeyMap[platform]);
+  const missionKey = missionKeyMap[platform];
+  if (!missionKey) {
+    throw new Error(`Unknown platform: ${platform}`);
+  }
+
+  return await completeMission(walletAddress, missionKey);
 }
 
 async function recordReferral(walletAddress: string, referredUserId: string) {
-  if (!isValidWallet(referredUserId)) {
-    throw new Error("Invalid referred user ID");
-  }
-
   const supabase = getServiceClient();
 
   const { data: referralCount } = await supabase
@@ -383,28 +348,41 @@ async function recordReferral(walletAddress: string, referredUserId: string) {
     .eq("is_valid", true);
 
   const count = (referralCount?.length || 0) + 1;
-  const completed: Record<string, unknown>[] = [];
+
+  const completed: any[] = [];
 
   const weeklyResult = await tryCompleteMission(walletAddress, "weekly_refer");
   if (weeklyResult) completed.push(weeklyResult);
 
-  const thresholds: [number, string][] = [
-    [3, "social_invite_3"],
-    [5, "social_invite_5"],
-    [10, "social_invite_10"],
-    [100, "social_invite_100"],
-    [1000, "social_invite_1000"],
-    [5000, "social_invite_5000"],
-  ];
-
-  for (const [threshold, key] of thresholds) {
-    if (count >= threshold) {
-      const result = await tryCompleteMission(walletAddress, key);
-      if (result) completed.push(result);
-    }
+  if (count >= 3) {
+    const result = await tryCompleteMission(walletAddress, "social_invite_3");
+    if (result) completed.push(result);
+  }
+  if (count >= 5) {
+    const result = await tryCompleteMission(walletAddress, "social_invite_5");
+    if (result) completed.push(result);
+  }
+  if (count >= 10) {
+    const result = await tryCompleteMission(walletAddress, "social_invite_10");
+    if (result) completed.push(result);
+  }
+  if (count >= 100) {
+    const result = await tryCompleteMission(walletAddress, "social_invite_100");
+    if (result) completed.push(result);
+  }
+  if (count >= 1000) {
+    const result = await tryCompleteMission(walletAddress, "social_invite_1000");
+    if (result) completed.push(result);
+  }
+  if (count >= 5000) {
+    const result = await tryCompleteMission(walletAddress, "social_invite_5000");
+    if (result) completed.push(result);
   }
 
-  return { completedMissions: completed, totalReferrals: count };
+  return {
+    completedMissions: completed,
+    totalReferrals: count,
+  };
 }
 
 async function recordFirstWin(walletAddress: string) {
@@ -425,11 +403,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
-    if (!checkRateLimit(clientIp, 60, 60000)) {
-      return errorResponse("Too many requests", 429);
-    }
-
     const url = new URL(req.url);
     const path = url.pathname.replace("/missions", "");
     const authHeader = req.headers.get("Authorization");
@@ -451,13 +424,10 @@ Deno.serve(async (req: Request) => {
 
     const walletParam = url.searchParams.get("wallet_address") || url.searchParams.get("user_id");
     if (walletParam && !walletAddress) {
-      if (!isValidWallet(walletParam)) {
-        return errorResponse("Invalid wallet address format", 400);
-      }
-      walletAddress = walletParam.trim();
+      walletAddress = walletParam;
     }
 
-    let result: unknown;
+    let result: any;
 
     if (req.method === "GET" && (path === "" || path === "/")) {
       result = await getAllMissions();
@@ -465,62 +435,61 @@ Deno.serve(async (req: Request) => {
       const type = path.replace("/type/", "");
       result = await getMissionsByType(type);
     } else if (req.method === "GET" && path === "/my-progress") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       result = await getUserProgress(walletAddress);
     } else if (req.method === "POST" && path.includes("/complete")) {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       const pathParts = path.split("/");
-      const missionKey = sanitize(pathParts[1], 100);
-      if (!missionKey) return errorResponse("Invalid mission key", 400);
+      const missionKey = pathParts[1];
       const body = req.headers.get("content-type")?.includes("application/json")
         ? await req.json().catch(() => ({}))
         : {};
       result = await completeMission(walletAddress, missionKey, body);
     } else if (req.method === "POST" && path === "/ticket-purchase") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       const body = await req.json();
       result = await recordTicketPurchase(walletAddress, body);
     } else if (req.method === "POST" && path === "/donation") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       const body = await req.json();
       result = await recordDonation(walletAddress, body);
     } else if (req.method === "POST" && path === "/login") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       result = await completeLogin(walletAddress);
     } else if (req.method === "POST" && path === "/visit") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       result = await recordVisit(walletAddress);
     } else if (req.method === "POST" && path === "/social") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       const body = await req.json();
       result = await completeSocialMission(walletAddress, body.platform);
     } else if (req.method === "POST" && path === "/referral") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       const body = await req.json();
       result = await recordReferral(walletAddress, body.referred_user_id);
     } else if (req.method === "POST" && path === "/first-win") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       result = await recordFirstWin(walletAddress);
     } else if (req.method === "POST" && path === "/became-affiliate") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       result = await recordBecameAffiliate(walletAddress);
     } else if (req.method === "POST" && path === "/explore-transparency") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      if (!walletAddress) throw new Error("Wallet address required");
       result = await recordExploreTransparency(walletAddress);
     } else {
-      return errorResponse("Not found", 404);
+      throw new Error("Not found");
     }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "An error occurred";
+    const message = error instanceof Error ? error.message : "Unknown error";
     const status = message.includes("required") ? 401 : message === "Not found" ? 404 : 400;
 
-    return errorResponse(
-      status === 400 ? "Bad request" : message,
-      status
-    );
+    return new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

@@ -238,13 +238,13 @@ async function recordTicketPurchase(walletAddress: string, body: Record<string, 
   const { lottery_type, quantity, ticket_count } = body;
   const ticketQty = Math.min(Math.max(1, Number(quantity || ticket_count || 1)), 100);
 
-  const validTypes = ["tri_daily", "jackpot", "xmas", "grand_prize"];
+  const validTypes = ["tri_daily", "jackpot", "special_event", "grand_prize"];
   const safeType = typeof lottery_type === "string" && validTypes.includes(lottery_type) ? lottery_type : "tri_daily";
 
   const powerPointsMap: Record<string, number> = {
     tri_daily: 10,
     jackpot: 20,
-    xmas: 20,
+    special_event: 20,
     grand_prize: 30,
   };
 

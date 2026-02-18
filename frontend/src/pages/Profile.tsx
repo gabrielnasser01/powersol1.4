@@ -1472,7 +1472,6 @@ export function Profile() {
                       const lotteryColors: Record<string, string> = {
                         'tri-daily': '#ff1493',
                         'special-event': '#ff8c00',
-                        'halloween': '#ff8c00',
                         'jackpot': '#00bfff',
                         'grand-prize': '#9ca3af',
                       };

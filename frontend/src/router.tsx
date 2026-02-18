@@ -11,7 +11,7 @@ import { Transparency } from './pages/Transparency';
 import { FAQ } from './pages/FAQ';
 import { Terms } from './pages/Terms';
 import { Jackpot } from './pages/Jackpot';
-import { Halloween } from './pages/Halloween';
+import { SpecialEvent } from './pages/SpecialEvent';
 import { GrandPrize } from './pages/GrandPrize';
 import { Missions } from './pages/Missions';
 import { Privacy } from './pages/Privacy';
@@ -33,8 +33,8 @@ export function AppRouter() {
           <Route path="/transparency" element={<Transparency />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/terms" element={<Terms />} />
-          <Route path="/halloween" element={<Halloween />} />
-          <Route path="/valentines" element={<Halloween />} />
+          <Route path="/special-event" element={<SpecialEvent />} />
+          <Route path="/valentines" element={<SpecialEvent />} />
           <Route path="/grand-prize" element={<GrandPrize />} />
           <Route path="/missions" element={<Missions />} />
           <Route path="/privacy" element={<Privacy />} />

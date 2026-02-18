@@ -7,7 +7,7 @@ import { solToUsd } from '../chain/adapter';
 interface WinnersDisplayProps {
   title?: string;
   accentColor?: string;
-  lotteryType: 'tri-daily' | 'halloween' | 'jackpot' | 'grand-prize';
+  lotteryType: 'tri-daily' | 'special-event' | 'jackpot' | 'grand-prize';
 }
 
 export function WinnersDisplay({
@@ -34,7 +34,7 @@ export function WinnersDisplay({
             filteredWinners = data.slice(0, 3);
             break;
           case 'tri-daily':
-          case 'halloween':
+          case 'special-event':
           default:
             filteredWinners = data;
             break;

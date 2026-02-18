@@ -80,8 +80,8 @@ export function GrandPrize() {
       subtitle: 'System Enhanced',
       color: '#FFD700',
       gradient: `linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.2))`,
-      onClick: () => navigate('/halloween'),
-      path: '/halloween',
+      onClick: () => navigate('/special-event'),
+      path: '/special-event',
     },
     {
       id: 2,
@@ -267,7 +267,7 @@ export function GrandPrize() {
                 scale: 1.05,
                 boxShadow: '0 0 30px rgba(135, 206, 250, 0.6)',
               }}
-              onClick={() => navigate('/halloween')}
+              onClick={() => navigate('/special-event')}
               className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
                 background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.35), rgba(135, 206, 250, 0.3))',

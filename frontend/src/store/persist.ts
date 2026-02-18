@@ -18,7 +18,7 @@ interface Ticket {
 
 interface Draw {
   id: string;
-  kind: 'tri-daily' | 'monthly' | 'event:halloween';
+  kind: 'tri-daily' | 'monthly' | 'event:special-event';
   scheduledAt: number;
   executedAt?: number;
   seedHash?: string;

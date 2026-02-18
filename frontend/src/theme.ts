@@ -26,7 +26,7 @@ export const theme = {
     neon: 'linear-gradient(135deg, #3ecbff 0%, #ff4ecd 50%, #2fffe2 100%)',
     card: 'linear-gradient(135deg, rgba(15,17,23,.8) 0%, rgba(19,22,33,.8) 100%)',
     button: 'linear-gradient(135deg, #3ecbff 0%, #2fffe2 100%)',
-    halloween: 'linear-gradient(135deg, #b347ff 0%, #ff7847 100%)',
+    specialEvent: 'linear-gradient(135deg, #b347ff 0%, #ff7847 100%)',
   }
 };
 

@@ -8,7 +8,7 @@ export const PROGRAM_ID = new PublicKey(import.meta.env.VITE_PROGRAM_ID || 'Gqfd
 export const TREASURY_WALLET = new PublicKey(import.meta.env.VITE_TREASURY_WALLET || '55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1');
 export const AFFILIATES_POOL_WALLET = new PublicKey(import.meta.env.VITE_AFFILIATES_POOL_WALLET || '8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf');
 
-export type LotteryType = 'tri-daily' | 'jackpot' | 'grand-prize' | 'xmas';
+export type LotteryType = 'tri-daily' | 'jackpot' | 'grand-prize' | 'special-event';
 
 export interface LotteryInfo {
   type: LotteryType;
@@ -75,9 +75,9 @@ class AnchorService {
           new BN(lotteryInfo.year || new Date().getFullYear()).toArrayLike(Buffer, 'le', 4),
         ];
         break;
-      case 'xmas':
+      case 'special-event':
         seeds = [
-          Buffer.from('xmas'),
+          Buffer.from('special_event'),
           new BN(lotteryInfo.year || new Date().getFullYear()).toArrayLike(Buffer, 'le', 4),
         ];
         break;

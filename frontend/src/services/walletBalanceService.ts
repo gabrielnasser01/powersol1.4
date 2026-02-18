@@ -8,8 +8,7 @@ export const LOTTERY_WALLETS = {
   'jackpot': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
   'mega': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
   'grand-prize': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
-  'halloween': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
-  'special': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
+  'special-event': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
 } as const;
 
 export type LotteryType = keyof typeof LOTTERY_WALLETS;
@@ -78,7 +77,7 @@ class WalletBalanceService {
       this.getLotteryPoolBalance('tri-daily'),
       this.getLotteryPoolBalance('weekly'),
       this.getLotteryPoolBalance('mega'),
-      this.getLotteryPoolBalance('special'),
+      this.getLotteryPoolBalance('special-event'),
     ]);
 
     const totalSol = triDaily.balanceSol + weekly.balanceSol + mega.balanceSol + special.balanceSol;

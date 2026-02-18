@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 export interface Lottery {
   id: number;
   lottery_id: number;
-  lottery_type: 'tri-daily' | 'jackpot' | 'grand-prize' | 'xmas' | string;
+  lottery_type: 'tri-daily' | 'jackpot' | 'grand-prize' | 'special-event' | string;
   ticket_price: number;
   max_tickets: number;
   draw_timestamp: number;
@@ -29,7 +29,7 @@ const LOTTERY_DISPLAY_NAMES: Record<string, string> = {
   'tri-daily': 'Tri-Daily',
   'jackpot': 'Monthly Jackpot',
   'grand-prize': 'Grand Prize',
-  'xmas': 'Christmas Special',
+  'special-event': 'Special Event',
 };
 
 function mapLotteryToNextDraw(lottery: Lottery): NextDraw {

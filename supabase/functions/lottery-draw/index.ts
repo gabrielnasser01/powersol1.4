@@ -72,8 +72,8 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
     ticketPriceLamports: 330000000,
     maxTickets: 10000,
   },
-  "xmas": {
-    type: "xmas",
+  "special-event": {
+    type: "special-event",
     winnersSelectionType: "PERCENTAGE",
     totalWinnersPercentage: 5,
     winnerTiers: [
@@ -316,7 +316,7 @@ function calculateNextDrawTimestamp(lotteryType: string, currentDrawTimestamp: n
       return Math.floor(nextDate.getTime() / 1000);
     }
 
-    case "xmas":
+    case "special-event":
     default:
       return null;
   }
@@ -326,7 +326,7 @@ async function createNextLottery(supabase: any, lottery: any) {
   const config = LOTTERY_CONFIGS[lottery.lottery_type];
   if (!config) return null;
 
-  if (lottery.lottery_type === "xmas") {
+  if (lottery.lottery_type === "special-event") {
     return null;
   }
 

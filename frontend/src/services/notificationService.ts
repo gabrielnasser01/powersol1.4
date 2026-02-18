@@ -132,7 +132,7 @@ class NotificationService {
 
     const lotteryNames: Record<string, string> = {
       'tri-daily': 'Loteria Tri-Diaria',
-      'halloween': 'Halloween Special',
+      'special-event': 'Special Event',
       'jackpot': 'Jackpot',
       'grand-prize': 'Grand Prize'
     };

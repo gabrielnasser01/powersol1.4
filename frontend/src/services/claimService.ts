@@ -220,7 +220,7 @@ export const claimService = {
 
       const lotteryTypeMap: Record<string, number> = {
         'tri-daily': 0,
-        'halloween': 1,
+        'special-event': 1,
         'jackpot': 2,
         'grand-prize': 3
       };

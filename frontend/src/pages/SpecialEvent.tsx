@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Zap, Shield, Trophy, Plus, Minus, Ticket, Loader, Calendar, Users, TrendingUp, Ghost, Crown, AlertTriangle } from 'lucide-react';
 import { theme } from '../theme';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { chainAdapter, formatSol, formatUsd, solToUsd, HALLOWEEN_TICKET_PRICE_SOL } from '../chain/adapter';
+import { chainAdapter, formatSol, formatUsd, solToUsd, SPECIAL_EVENT_TICKET_PRICE_SOL } from '../chain/adapter';
 import { ticketsStorage } from '../store/ticketStorage';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { WinnersDisplay } from '../components/WinnersDisplay';
@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const HOUSE_COMMISSION_RATE = 0.30;
 
-export function Halloween() {
+export function SpecialEvent() {
   const navigate = useNavigate();
   const location = useLocation();
   const { publicKey, connected, getWalletAdapter, refreshBalance, balance } = useWallet();
@@ -33,7 +33,7 @@ export function Halloween() {
 
   const isConnected = connected && !!publicKey;
 
-  const totalSol = HALLOWEEN_TICKET_PRICE_SOL * quantity;
+  const totalSol = SPECIAL_EVENT_TICKET_PRICE_SOL * quantity;
   const totalUsd = solToUsd(totalSol);
 
   // Valentine's countdown
@@ -88,8 +88,8 @@ export function Halloween() {
       subtitle: 'System Enhanced',
       color: '#FF8EC8',
       gradient: `linear-gradient(135deg, rgba(255, 142, 200, 0.2), rgba(255, 105, 180, 0.15))`,
-      onClick: () => navigate('/halloween'),
-      path: '/halloween',
+      onClick: () => navigate('/special-event'),
+      path: '/special-event',
     },
     {
       id: 2,
@@ -164,7 +164,7 @@ export function Halloween() {
       const result = await solanaService.purchaseTicketsWithWallet(
         wallet,
         quantity,
-        HALLOWEEN_TICKET_PRICE_SOL,
+        SPECIAL_EVENT_TICKET_PRICE_SOL,
         'special-event'
       );
       const signature = result.signature;
@@ -281,7 +281,7 @@ export function Halloween() {
                 scale: 1.05,
                 boxShadow: '0 0 30px rgba(135, 206, 250, 0.6)',
               }}
-              onClick={() => navigate('/halloween')}
+              onClick={() => navigate('/special-event')}
               className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
                 background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.35), rgba(135, 206, 250, 0.3))',
@@ -627,7 +627,7 @@ export function Halloween() {
                   Easter Tickets
                 </h3>
                 <div className="text-lg font-bold font-mono" style={{ color: '#FF8EC8' }}>
-                  {formatSol(HALLOWEEN_TICKET_PRICE_SOL)}
+                  {formatSol(SPECIAL_EVENT_TICKET_PRICE_SOL)}
                 </div>
               </div>
             </div>
@@ -825,7 +825,7 @@ export function Halloween() {
           <WinnersDisplay
             title="Winners"
             accentColor="#FF8EC8"
-            lotteryType="halloween"
+            lotteryType="special-event"
           />
         </div>
       </div>

@@ -42,7 +42,7 @@ export function isValidUUID(id: string): boolean {
 }
 
 export function isValidLotteryType(type: string): boolean {
-  const validTypes = ['tri-daily', 'jackpot', 'grand-prize', 'special-event', 'xmas'];
+  const validTypes = ['tri-daily', 'jackpot', 'grand-prize', 'special-event'];
   return validTypes.includes(type);
 }
 

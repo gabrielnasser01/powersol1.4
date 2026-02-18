@@ -9,7 +9,7 @@ function getSolUsdRate(): number {
 }
 
 export const LOTTERY_TICKET_PRICE_SOL = 0.1;
-export const HALLOWEEN_TICKET_PRICE_SOL = 0.2;
+export const SPECIAL_EVENT_TICKET_PRICE_SOL = 0.2;
 export const JACKPOT_TICKET_PRICE_SOL = 0.2;
 export const GRAND_PRIZE_TICKET_PRICE_SOL = 0.33;
 export const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -29,7 +29,7 @@ export interface ChainAdapter {
 
 function getLotteryTypeFromPath(): string {
   const currentPath = window.location.pathname;
-  if (currentPath.includes('/halloween')) return 'halloween';
+  if (currentPath.includes('/special-event')) return 'special-event';
   if (currentPath.includes('/jackpot')) return 'jackpot';
   if (currentPath.includes('/grand-prize')) return 'grand-prize';
   return 'tri-daily';
@@ -37,7 +37,7 @@ function getLotteryTypeFromPath(): string {
 
 function getTicketPriceForType(type: string): number {
   switch (type) {
-    case 'halloween': return HALLOWEEN_TICKET_PRICE_SOL;
+    case 'special-event': return SPECIAL_EVENT_TICKET_PRICE_SOL;
     case 'jackpot': return JACKPOT_TICKET_PRICE_SOL;
     case 'grand-prize': return GRAND_PRIZE_TICKET_PRICE_SOL;
     default: return LOTTERY_TICKET_PRICE_SOL;

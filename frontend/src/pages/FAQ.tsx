@@ -17,7 +17,7 @@ const faqs = [
   {
     id: 'when-draws',
     question: 'When do draws happen?',
-    answer: 'Tri-daily draws occur every 3 days. We also have monthly jackpot draws and special seasonal events like Halloween and the annual grand prize. Check the countdown timer on the lottery page for the next draw.',
+    answer: 'Tri-daily draws occur every 3 days. We also have monthly jackpot draws, special seasonal events, and the annual grand prize. Check the countdown timer on the lottery page for the next draw.',
   },
   {
     id: 'how-winners',

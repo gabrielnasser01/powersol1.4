@@ -434,7 +434,7 @@ export function Halloween() {
             SPECIAL
           </h2>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-mono">
-            Easter lottery event accumulating until April 20th! Odds 1:10
+            Easter lottery event accumulating until April 20th! Odds 1:20
           </p>
         </motion.div>
 

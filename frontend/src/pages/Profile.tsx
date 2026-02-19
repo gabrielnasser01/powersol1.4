@@ -1361,17 +1361,19 @@ export function Profile() {
                               <div
                                 className="px-2 py-1 rounded text-xs font-mono"
                                 style={{
-                                  background: `${lotteryGroup.color}33`,
-                                  border: `1px solid ${lotteryGroup.color}66`,
-                                  color: lotteryGroup.color,
+                                  background: ticket.status === 'expired'
+                                    ? 'rgba(239, 68, 68, 0.2)'
+                                    : `${lotteryGroup.color}33`,
+                                  border: `1px solid ${ticket.status === 'expired' ? 'rgba(239, 68, 68, 0.5)' : `${lotteryGroup.color}66`}`,
+                                  color: ticket.status === 'expired' ? '#ef4444' : lotteryGroup.color,
                                 }}
                               >
-                                ACTIVE
+                                {ticket.status === 'expired' ? 'SORTEADO' : 'ATIVO'}
                               </div>
                             </div>
                             <div className="space-y-1 text-xs font-mono text-zinc-400">
-                              <div>Purchased: {ticket.purchaseDate}</div>
-                              <div>Draw Date: {ticket.drawDate}</div>
+                              <div>Compra: {ticket.purchaseDate}</div>
+                              <div>Sorteio: {ticket.drawDate}</div>
                             </div>
                           </motion.div>
                         ))}

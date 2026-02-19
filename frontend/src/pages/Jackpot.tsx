@@ -166,7 +166,7 @@ export function Jackpot() {
         transaction_signature: signature,
       });
 
-      ticketsStorage.add(depositAmount, 'jackpot');
+      await ticketsStorage.add(depositAmount, 'jackpot');
 
       window.dispatchEvent(new CustomEvent('ticketsPurchased', {
         detail: { quantity: depositAmount, signature }

@@ -93,7 +93,7 @@ export function TicketPurchaseCard() {
           return null;
         }
 
-        ticketStorage.add(qty, 'tri-daily');
+        await ticketStorage.add(qty, 'tri-daily');
         return retryData;
       }
 
@@ -108,7 +108,7 @@ export function TicketPurchaseCard() {
         });
       }
 
-      ticketStorage.add(qty, 'tri-daily');
+      await ticketStorage.add(qty, 'tri-daily');
 
       return purchaseData;
     } catch (error) {

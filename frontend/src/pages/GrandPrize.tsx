@@ -171,7 +171,7 @@ export function GrandPrize() {
         transaction_signature: signature,
       });
 
-      ticketsStorage.add(ticketAmount, 'grand-prize');
+      await ticketsStorage.add(ticketAmount, 'grand-prize');
 
       window.dispatchEvent(new CustomEvent('ticketsPurchased', {
         detail: { quantity: ticketAmount, signature }

@@ -187,7 +187,7 @@ export function SpecialEvent() {
         transaction_signature: signature,
       });
 
-      ticketsStorage.add(quantity, 'special-event');
+      await ticketsStorage.add(quantity, 'special-event');
 
       window.dispatchEvent(new CustomEvent('ticketsPurchased', {
         detail: { quantity, signature }

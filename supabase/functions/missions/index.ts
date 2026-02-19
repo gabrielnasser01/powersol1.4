@@ -280,42 +280,21 @@ async function recordDonation(walletAddress: string, body: Record<string, unknow
 
   const supabase = getServiceClient();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const { data: todayDonation } = await supabase
-    .from("donations")
-    .select("id")
-    .eq("user_id", walletAddress)
-    .gte("created_at", today.toISOString())
-    .maybeSingle();
-
-  if (todayDonation) {
-    throw new Error("Donation mission already completed today");
-  }
-
-  const powerPointsEarned = 50;
-
-  const { error } = await supabase
-    .from("donations")
-    .insert({
-      user_id: walletAddress,
-      amount_sol,
-      transaction_signature,
-      power_points_earned: powerPointsEarned,
-    });
-
-  if (error) throw error;
-
-  await supabase.rpc("increment_power_points_by_wallet", {
-    wallet_param: walletAddress,
-    points_param: powerPointsEarned,
+  const { data: donationResult, error: donationError } = await supabase.rpc("record_donation_with_tiers", {
+    p_wallet_address: walletAddress,
+    p_amount_sol: amount_sol,
+    p_transaction_signature: transaction_signature,
   });
 
+  if (donationError) throw donationError;
+
+  const result = donationResult?.[0] || { points_earned: 50, new_balance: 0, tier_matched: 0.05 };
   const missionResult = await tryCompleteMission(walletAddress, "daily_donation", { amount_sol });
 
   return {
-    powerPoints: powerPointsEarned,
+    powerPoints: result.points_earned,
+    newBalance: result.new_balance,
+    tierMatched: result.tier_matched,
     missionCompleted: missionResult,
   };
 }

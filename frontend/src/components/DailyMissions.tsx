@@ -33,8 +33,6 @@ interface BackendMission {
   };
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
 export function DailyMissions() {
   const [missions, setMissions] = useState<BackendMission[]>([]);
   const [userStats, setUserStats] = useState(userStatsStorage.get());
@@ -133,10 +131,6 @@ export function DailyMissions() {
       const mission = missions.find(m => m.mission_key === missionKey);
       if (!mission) return false;
 
-      if (mission.user_progress?.completed) {
-        return false;
-      }
-
       const { data: existingProgress } = await supabase
         .from('user_mission_progress')
         .select('*')
@@ -145,20 +139,29 @@ export function DailyMissions() {
         .maybeSingle();
 
       if (existingProgress?.completed) {
-        setMissions(prev => prev.map(m =>
-          m.id === mission.id
-            ? { ...m, user_progress: { completed: true, completed_at: existingProgress.completed_at, progress: {} } }
-            : m
-        ));
-        return false;
+        if (mission.mission_type === 'social' || mission.mission_type === 'activity') {
+          return false;
+        }
+
+        const lastReset = new Date(existingProgress.last_reset || existingProgress.completed_at);
+        const hoursSinceReset = (Date.now() - lastReset.getTime()) / (1000 * 60 * 60);
+
+        if (mission.mission_type === 'daily' && hoursSinceReset < 24) {
+          return false;
+        }
+        if (mission.mission_type === 'weekly' && hoursSinceReset < 168) {
+          return false;
+        }
       }
 
+      const now = new Date().toISOString();
       if (existingProgress) {
         await supabase
           .from('user_mission_progress')
           .update({
             completed: true,
-            completed_at: new Date().toISOString(),
+            completed_at: now,
+            last_reset: now,
           })
           .eq('id', existingProgress.id);
       } else {
@@ -168,14 +171,15 @@ export function DailyMissions() {
             wallet_address: user.publicKey,
             mission_id: mission.id,
             completed: true,
-            completed_at: new Date().toISOString(),
+            completed_at: now,
+            last_reset: now,
             progress: {},
           });
       }
 
       setMissions(prev => prev.map(m =>
         m.id === mission.id
-          ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: {} } }
+          ? { ...m, user_progress: { completed: true, completed_at: now, progress: {} } }
           : m
       ));
 
@@ -183,7 +187,7 @@ export function DailyMissions() {
         user.publicKey,
         mission.power_points,
         'mission_complete',
-        `Completed mission: ${mission.name}`,
+        `Missao concluida: ${mission.name}`,
         mission.id,
         'mission'
       );
@@ -217,19 +221,22 @@ export function DailyMissions() {
       if (error) {
         console.error('Daily login error:', error);
         if (error.message.includes('already claimed')) {
-          alert('You already claimed your daily login points today!');
+          alert('Voce ja resgatou seus pontos de login hoje!');
         } else {
-          alert('Failed to claim daily login points. Please try again.');
+          alert('Falha ao resgatar pontos de login. Tente novamente.');
         }
         return;
       }
 
       if (data?.already_claimed) {
-        alert('You already claimed your daily login points today!');
+        alert('Voce ja resgatou seus pontos de login hoje!');
         return;
       }
 
       const pointsEarned = data?.points_earned || 10;
+
+      await completeMissionAPI('daily_login');
+
       userStatsStorage.addMissionPoints(pointsEarned);
       window.dispatchEvent(new CustomEvent('missionPointsChange'));
 
@@ -239,8 +246,30 @@ export function DailyMissions() {
       await loadMissions();
     } catch (error) {
       console.error('Failed to claim daily login:', error);
-      alert('Failed to claim daily login points. Please try again.');
+      alert('Falha ao resgatar pontos de login. Tente novamente.');
     }
+  };
+
+  const handleDailyVisit = async () => {
+    if (!isConnected || !user.publicKey) return;
+
+    try {
+      const success = await completeMissionAPI('daily_visit');
+      if (!success) {
+        alert('Visita diaria ja registrada hoje!');
+        return;
+      }
+      await loadMissions();
+    } catch (error) {
+      console.error('Failed to record daily visit:', error);
+    }
+  };
+
+  const getDonationTierPoints = (amount: number): { points: number; tier: number } => {
+    if (amount >= 1.0) return { points: 800, tier: 1.0 };
+    if (amount >= 0.5) return { points: 350, tier: 0.5 };
+    if (amount >= 0.25) return { points: 150, tier: 0.25 };
+    return { points: 50, tier: 0.05 };
   };
 
   const handleDonation = async () => {
@@ -274,23 +303,34 @@ export function DailyMissions() {
       const signature = await connection.sendRawTransaction(signed.serialize());
       await connection.confirmTransaction(signature);
 
-      const donationPoints = 50;
-      const result = await powerPointsService.addPoints(
-        wallet.publicKey.toBase58(),
-        donationPoints,
-        'donation',
-        `Donation of ${amount} SOL - tx: ${signature.slice(0, 8)}...`
-      );
+      const walletAddr = wallet.publicKey.toBase58();
 
-      if (result.success) {
-        userStatsStorage.addMissionPoints(donationPoints);
-        window.dispatchEvent(new CustomEvent('missionPointsChange'));
-        alert(`Donation successful! +${donationPoints} Power Points`);
+      const { data: donationResult, error: donationError } = await supabase.rpc('record_donation_with_tiers', {
+        p_wallet_address: walletAddr,
+        p_amount_sol: amount,
+        p_transaction_signature: signature,
+      });
+
+      if (donationError) {
+        console.error('Donation record error:', donationError);
+        alert('Donation sent but points could not be recorded. Contact support.');
         setShowDonationModal(false);
-        await loadMissions();
-      } else {
-        alert('Points not added but donation was successful!');
+        return;
       }
+
+      const result = donationResult?.[0] || { points_earned: 50 };
+      const donationPoints = result.points_earned;
+
+      await completeMissionAPI('daily_donation');
+
+      userStatsStorage.addMissionPoints(donationPoints);
+      window.dispatchEvent(new CustomEvent('missionPointsChange'));
+
+      setShowReward({ amount: donationPoints });
+      setTimeout(() => setShowReward(null), 3000);
+
+      setShowDonationModal(false);
+      await loadMissions();
     } catch (error) {
       console.error('Donation failed:', error);
       alert('Donation failed. Please try again.');
@@ -620,10 +660,15 @@ export function DailyMissions() {
               const categoryColor = getCategoryColor(mission.mission_type);
               const isCompleted = mission.user_progress?.completed || false;
               const isDonationMission = mission.mission_key === 'daily_donation';
-              const isAutoMission = mission.mission_key.startsWith('social_invite_') ||
+              const clickableSocialKeys = new Set([
+                'social_discord_join', 'social_join_discord', 'social_twitter_follow',
+                'social_tiktok_follow', 'social_share',
+              ]);
+              const isAutoMission = (mission.mission_key.startsWith('social_invite_') ||
+                (mission.mission_key.startsWith('social_') && !clickableSocialKeys.has(mission.mission_key)) ||
                 mission.mission_key.startsWith('weekly_') ||
                 (mission.mission_key.startsWith('activity_') && mission.mission_key !== 'activity_explore_transparency') ||
-                mission.mission_key === 'daily_buy_ticket';
+                mission.mission_key === 'daily_buy_ticket');
               const isClickable = !isCompleted && !isAutoMission;
 
               return (
@@ -660,8 +705,13 @@ export function DailyMissions() {
                       return;
                     }
 
-                    if (mission.mission_key === 'daily_login' || mission.mission_key === 'daily_visit') {
+                    if (mission.mission_key === 'daily_login') {
                       handleDailyLogin();
+                      return;
+                    }
+
+                    if (mission.mission_key === 'daily_visit') {
+                      handleDailyVisit();
                       return;
                     }
 
@@ -671,9 +721,21 @@ export function DailyMissions() {
                       return;
                     }
 
+                    if (mission.mission_key === 'social_twitter_follow') {
+                      completeMissionAPI('social_twitter_follow');
+                      window.open('https://twitter.com/powersol_io', '_blank');
+                      return;
+                    }
+
+                    if (mission.mission_key === 'social_tiktok_follow') {
+                      completeMissionAPI('social_tiktok_follow');
+                      window.open('https://tiktok.com/@powersol', '_blank');
+                      return;
+                    }
+
                     if (mission.mission_key === 'social_share') {
                       const shareUrl = 'https://powersol.io';
-                      const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
+                      const shareText = 'Confira a PowerSOL - A Loteria Solana!';
                       completeMissionAPI('social_share');
                       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       return;
@@ -782,10 +844,7 @@ export function DailyMissions() {
                         <CheckCircle className="w-4 h-4" />
                         <span>COMPLETE</span>
                       </div>
-                    ) : mission.mission_key.startsWith('social_invite_') ||
-                        mission.mission_key.startsWith('weekly_') ||
-                        (mission.mission_key.startsWith('activity_') && mission.mission_key !== 'activity_explore_transparency') ||
-                        mission.mission_key === 'daily_buy_ticket' ? (
+                    ) : isAutoMission ? (
                       <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: '#888888' }}>
                         <Activity className="w-4 h-4" />
                         <span>AUTO</span>
@@ -872,13 +931,34 @@ export function DailyMissions() {
                   />
                 </div>
 
-                <div className="mb-6 p-4 rounded-xl" style={{
-                  background: 'rgba(0, 255, 136, 0.1)',
-                  border: '1px solid rgba(0, 255, 136, 0.3)',
-                }}>
-                  <p className="font-mono text-sm" style={{ color: '#00ff88' }}>
-                    REWARD: +50 POWER POINTS
-                  </p>
+                <div className="mb-6 space-y-2">
+                  {[
+                    { amount: 0.05, points: 50 },
+                    { amount: 0.25, points: 150 },
+                    { amount: 0.5, points: 350 },
+                    { amount: 1.0, points: 800 },
+                  ].map((tier) => {
+                    const currentAmount = parseFloat(donationAmount) || 0;
+                    const matched = getDonationTierPoints(currentAmount);
+                    const isMatched = matched.tier === tier.amount;
+                    return (
+                      <div
+                        key={tier.amount}
+                        className="flex items-center justify-between p-3 rounded-xl font-mono text-sm transition-all duration-200"
+                        style={{
+                          background: isMatched ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                          border: `1px solid ${isMatched ? 'rgba(0, 255, 136, 0.5)' : 'rgba(255, 255, 255, 0.08)'}`,
+                        }}
+                      >
+                        <span style={{ color: isMatched ? '#00ff88' : '#888' }}>
+                          {'>='} {tier.amount} SOL
+                        </span>
+                        <span style={{ color: isMatched ? '#00ff88' : '#888' }} className="font-bold">
+                          +{tier.points} POWER
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <button

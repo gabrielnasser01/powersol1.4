@@ -40,7 +40,12 @@ export function WalletConnection() {
       }
       setShowModal(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect');
+      const msg = err instanceof Error ? err.message : 'Failed to connect';
+      if (msg.includes('Opening')) {
+        setShowModal(false);
+      } else {
+        setError(msg);
+      }
     } finally {
       setIsConnecting(false);
     }

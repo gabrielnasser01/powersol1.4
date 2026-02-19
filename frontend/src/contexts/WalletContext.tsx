@@ -6,6 +6,32 @@ import { getActiveAffiliateCode, initAffiliateTracking } from '../utils/affiliat
 import { apiClient } from '../services/api';
 import { powerPointsService } from '../services/powerPointsService';
 
+function isMobileDevice(): boolean {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+}
+
+function isInPhantomBrowser(): boolean {
+  const w = window as any;
+  return !!(w.phantom?.solana?.isPhantom);
+}
+
+function isInSolflareBrowser(): boolean {
+  const w = window as any;
+  return !!(w.solflare);
+}
+
+function openPhantomBrowseDeepLink() {
+  const currentUrl = encodeURIComponent(window.location.href);
+  window.location.href = `https://phantom.app/ul/browse/${currentUrl}`;
+}
+
+function openSolflareBrowseDeepLink() {
+  const currentUrl = encodeURIComponent(window.location.href);
+  window.location.href = `https://solflare.com/ul/v1/browse/${currentUrl}`;
+}
+
 interface PhantomProvider {
   isPhantom?: boolean;
   publicKey?: { toBase58(): string };
@@ -102,12 +128,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (walletType === 'phantom') {
         walletProvider = getPhantomProvider();
         if (!walletProvider) {
+          if (isMobileDevice()) {
+            openPhantomBrowseDeepLink();
+            throw new Error('Opening Phantom app...');
+          }
           window.open('https://phantom.app/', '_blank');
           throw new Error('Phantom wallet not installed. Please install it from phantom.app');
         }
       } else if (walletType === 'solflare') {
         walletProvider = getSolflareProvider();
         if (!walletProvider) {
+          if (isMobileDevice()) {
+            openSolflareBrowseDeepLink();
+            throw new Error('Opening Solflare app...');
+          }
           window.open('https://solflare.com/', '_blank');
           throw new Error('Solflare wallet not installed. Please install it from solflare.com');
         }

@@ -37,9 +37,9 @@ export function AffiliateDashboardLevel3() {
   });
 
   const user = userStorage.get();
-  const affiliateLink = `https://powersol.io?ref=${user.publicKey?.slice(0, 8) || 'demo123'}`;
+  const affiliateLink = user.publicKey ? `https://powersol.io?ref=${user.publicKey}` : '';
   const userLevel = 3;
-  const commissionRate = 20; // 20% para Level 3
+  const commissionRate = 20;
 
   // Generate daily data for the last 7 days
   useEffect(() => {

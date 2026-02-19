@@ -46,7 +46,7 @@ export function AffiliateDashboard() {
   });
 
   const user = userStorage.get();
-  const affiliateLink = `https://powersol.io?ref=${stats.referralCode || user.publicKey?.slice(0, 8) || 'loading'}`;
+  const affiliateLink = user.publicKey ? `https://powersol.io?ref=${user.publicKey}` : '';
 
   useEffect(() => {
     const fetchAffiliateData = async () => {
@@ -67,7 +67,7 @@ export function AffiliateDashboard() {
             weeklyEarnings: 0,
             totalEarnings: 0,
             conversionRate: 0,
-            referralCode: user.publicKey.slice(0, 8),
+            referralCode: user.publicKey,
             currentTier: 1,
             commissionRate: 5,
             dailyData: []
@@ -93,7 +93,7 @@ export function AffiliateDashboard() {
           weeklyEarnings: weeklyEarnedSOL,
           totalEarnings: totalEarnedSOL,
           conversionRate: statsData.totalReferrals > 0 ? (statsData.totalReferrals / (statsData.totalReferrals + 100)) * 100 : 0,
-          referralCode: user.publicKey.slice(0, 8),
+          referralCode: user.publicKey,
           currentTier: statsData.tier,
           commissionRate: statsData.commissionRate * 100,
           dailyData: dailyData

@@ -215,7 +215,8 @@ export function Affiliates() {
   };
 
   const copyReferralLink = async () => {
-    const link = 'https://powersol.io?ref=demo123';
+    if (!walletAddress) return;
+    const link = `https://powersol.io?ref=${walletAddress}`;
     await navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -344,7 +345,8 @@ export function Affiliates() {
 
             <motion.button
               onClick={copyReferralLink}
-              className="px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 border font-mono"
+              disabled={!connected}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 border font-mono ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{
                 background: 'rgba(255, 255, 255, 0.05)',
                 borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -353,14 +355,14 @@ export function Affiliates() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
               }}
-              whileHover={{
+              whileHover={connected ? {
                 background: 'rgba(255, 255, 255, 0.1)',
                 scale: 1.02,
-              }}
-              whileTap={{ scale: 0.98 }}
+              } : {}}
+              whileTap={connected ? { scale: 0.98 } : {}}
             >
               {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-              <span>{copied ? 'COPIED!' : 'COPY_AFFILIATE_LINK'}</span>
+              <span>{copied ? 'COPIED!' : !connected ? 'CONNECT_WALLET' : 'COPY_AFFILIATE_LINK'}</span>
             </motion.button>
           </motion.div>
 

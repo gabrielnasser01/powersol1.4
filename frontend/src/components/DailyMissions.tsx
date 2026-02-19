@@ -1,19 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Trophy, Gift, CheckCircle, Clock, Zap, Users, Shield, Activity, Terminal, Heart, Share2, TrendingUp, Calendar, Star, Coins, Lock, LogIn, Ticket, MessageCircle, Repeat, ShoppingCart, Twitter, Music, MessageSquare, Eye, ShoppingBag } from 'lucide-react';
-import { theme } from '../theme';
-import { missionsStorage, userStatsStorage, Mission, userStorage } from '../store/persist';
-import { useFrameLimiter } from '../hooks/useFrameLimiter';
+import {
+  Target, Trophy, Gift, CheckCircle, Clock, Zap, Users, Shield,
+  Activity, Terminal, Heart, Share2, TrendingUp, Calendar, Star,
+  Coins, Lock, LogIn, Ticket, MessageCircle, Repeat, ShoppingCart,
+  Twitter, Music, MessageSquare, Eye, ShoppingBag, X, Sparkles,
+  ChevronRight, Flame,
+} from 'lucide-react';
+import { userStatsStorage, userStorage } from '../store/persist';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { supabase } from '../lib/supabase';
 import { powerPointsService } from '../services/powerPointsService';
 
-const missionCategories = [
-  { id: 'daily', label: 'Daily', icon: Calendar, color: '#00ff88' },
-  { id: 'weekly', label: 'Weekly', icon: Star, color: '#00bfff' },
-  { id: 'social', label: 'Social', icon: Share2, color: '#ff1493' },
-  { id: 'activity', label: 'Activity', color: '#b347ff', icon: Activity },
+const CATEGORY_CONFIG = [
+  { id: 'daily', label: 'Diarias', icon: Calendar, color: '#00ff88', description: 'Missoes que resetam todo dia' },
+  { id: 'weekly', label: 'Semanais', icon: Star, color: '#00bfff', description: 'Objetivos da semana' },
+  { id: 'social', label: 'Social', icon: Share2, color: '#ff1493', description: 'Interaja com a comunidade' },
+  { id: 'activity', label: 'Conquistas', color: '#ffaa00', icon: Trophy, description: 'Marcos permanentes' },
+];
+
+const DONATION_TIERS = [
+  { amount: 0.05, points: 50, label: 'Apoiador' },
+  { amount: 0.25, points: 150, label: 'Colaborador' },
+  { amount: 0.5, points: 350, label: 'Patrocinador' },
+  { amount: 1.0, points: 800, label: 'Lenda' },
 ];
 
 interface BackendMission {
@@ -33,74 +44,73 @@ interface BackendMission {
   };
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const ICON_MAP: Record<string, React.ElementType> = {
+  LogIn, Ticket, Heart, Repeat, MessageCircle, ShoppingCart,
+  Twitter, Music, MessageSquare, Users, Eye, Trophy, ShoppingBag,
+  Star, Gift, Flame, Share2,
+};
+
+function getMissionIcon(iconName: string): React.ElementType {
+  return ICON_MAP[iconName] || Target;
+}
+
+function getMissionProgress(mission: BackendMission, ticketCount: number, referralCount: number): { current: number; target: number } | null {
+  const req = mission.requirements;
+  if (!req) return null;
+
+  if (req.total_tickets) return { current: Math.min(ticketCount, req.total_tickets), target: req.total_tickets };
+  if (req.tickets) return { current: Math.min(ticketCount, req.tickets), target: req.tickets };
+  if (req.refs_required) return { current: Math.min(referralCount, req.refs_required), target: req.refs_required };
+  if (req.min_tickets && req.period === 'week') return { current: 0, target: req.min_tickets };
+  if (req.days) return { current: 0, target: req.days };
+  if (req.different_lotteries) return { current: 0, target: req.different_lotteries };
+
+  return null;
+}
 
 export function DailyMissions() {
   const [missions, setMissions] = useState<BackendMission[]>([]);
-  const [userStats, setUserStats] = useState(userStatsStorage.get());
-  const [terminalLines, setTerminalLines] = useState<string[]>([]);
-  const [showReward, setShowReward] = useState<{ amount: number } | null>(null);
   const [activeCategory, setActiveCategory] = useState('daily');
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [user, setUser] = useState(userStorage.get());
   const [loading, setLoading] = useState(true);
-  const [donationAmount, setDonationAmount] = useState('0.05');
+  const [donationAmount, setDonationAmount] = useState(0.05);
   const [showDonationModal, setShowDonationModal] = useState(false);
-  const { start, stop } = useFrameLimiter(30);
+  const [showReward, setShowReward] = useState<{ amount: number; missionName: string } | null>(null);
+  const [processingMission, setProcessingMission] = useState<string | null>(null);
+  const [ticketCount, setTicketCount] = useState(0);
+  const [referralCount, setReferralCount] = useState(0);
   const wallet = useWallet();
 
+  const user = userStorage.get();
   const isConnected = !!user.publicKey;
 
   useEffect(() => {
-    const bootSequence = [
-      { desktop: '> INITIALIZING_MISSION_SYSTEM...', mobile: '> INIT_SYSTEM...' },
-      { desktop: '> LOADING_OBJECTIVES_DATABASE...', mobile: '> LOAD_DB...' },
-      { desktop: '> SCANNING_USER_PROGRESS...', mobile: '> SCAN_PROGRESS...' },
-      { desktop: '> CATEGORIES_LOADED: 4', mobile: '> CATEGORIES: 4' },
-      { desktop: '> MISSION_MODULE_READY', mobile: '> MODULE_READY' },
-    ];
-
-    bootSequence.forEach((lineObj, index) => {
-      setTimeout(() => {
-        setTerminalLines(prev => [...prev, lineObj]);
-      }, index * 400);
-    });
-  }, []);
-
-  useEffect(() => {
-    start(() => {
-      setCurrentTime(new Date());
-    });
-
-    return () => stop();
-  }, [start, stop]);
-
-  useEffect(() => {
-    const handleWalletChange = () => {
-      setUser(userStorage.get());
-    };
-
-    window.addEventListener('walletStorageChange', handleWalletChange);
-    return () => window.removeEventListener('walletStorageChange', handleWalletChange);
-  }, []);
-
-  useEffect(() => {
     loadMissions();
-  }, [isConnected]);
+    if (user.publicKey) loadUserStats();
+  }, [user.publicKey]);
+
+  const loadUserStats = async () => {
+    if (!user.publicKey) return;
+
+    const [ticketRes, refRes] = await Promise.all([
+      supabase.from('ticket_purchases').select('quantity').eq('wallet_address', user.publicKey),
+      supabase.from('referrals').select('id').eq('referrer_wallet', user.publicKey).eq('is_validated', true),
+    ]);
+
+    const total = (ticketRes.data || []).reduce((sum, r) => sum + (r.quantity || 0), 0);
+    setTicketCount(total);
+    setReferralCount((refRes.data || []).length);
+  };
 
   const loadMissions = async () => {
     try {
       setLoading(true);
-
       const { data: missionsData, error } = await supabase
         .from('missions')
         .select('*')
         .eq('is_active', true)
-        .order('mission_type');
+        .order('power_points', { ascending: true });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (user.publicKey && isConnected) {
         const { data: allProgress } = await supabase
@@ -112,11 +122,10 @@ export function DailyMissions() {
           (allProgress || []).map(p => [p.mission_id, p])
         );
 
-        const missionsWithProgress = (missionsData || []).map(mission => ({
+        setMissions((missionsData || []).map(mission => ({
           ...mission,
           user_progress: progressMap.get(mission.id) || { completed: false, completed_at: null, progress: {} },
-        }));
-        setMissions(missionsWithProgress);
+        })));
       } else {
         setMissions(missionsData || []);
       }
@@ -131,11 +140,9 @@ export function DailyMissions() {
 
     try {
       const mission = missions.find(m => m.mission_key === missionKey);
-      if (!mission) return false;
+      if (!mission || mission.user_progress?.completed) return false;
 
-      if (mission.user_progress?.completed) {
-        return false;
-      }
+      setProcessingMission(mission.id);
 
       const { data: existingProgress } = await supabase
         .from('user_mission_progress')
@@ -150,16 +157,14 @@ export function DailyMissions() {
             ? { ...m, user_progress: { completed: true, completed_at: existingProgress.completed_at, progress: {} } }
             : m
         ));
+        setProcessingMission(null);
         return false;
       }
 
       if (existingProgress) {
         await supabase
           .from('user_mission_progress')
-          .update({
-            completed: true,
-            completed_at: new Date().toISOString(),
-          })
+          .update({ completed: true, completed_at: new Date().toISOString() })
           .eq('id', existingProgress.id);
       } else {
         await supabase
@@ -188,20 +193,18 @@ export function DailyMissions() {
         'mission'
       );
 
-      if (!result.success) {
-        console.error('Failed to add power points:', result.error);
-        return true;
+      if (result.success) {
+        userStatsStorage.addMissionPoints(mission.power_points);
+        window.dispatchEvent(new CustomEvent('missionPointsChange'));
+        setShowReward({ amount: mission.power_points, missionName: mission.name });
+        setTimeout(() => setShowReward(null), 3500);
       }
 
-      userStatsStorage.addMissionPoints(mission.power_points);
-      window.dispatchEvent(new CustomEvent('missionPointsChange'));
-
-      setShowReward({ amount: mission.power_points });
-      setTimeout(() => setShowReward(null), 3000);
-
+      setProcessingMission(null);
       return true;
     } catch (error) {
       console.error('Failed to complete mission:', error);
+      setProcessingMission(null);
       return false;
     }
   };
@@ -209,60 +212,59 @@ export function DailyMissions() {
   const handleDailyLogin = async () => {
     if (!isConnected || !user.publicKey) return;
 
+    setProcessingMission('daily_login');
     try {
       const { data, error } = await supabase.rpc('claim_daily_login_points', {
         p_wallet_address: user.publicKey
       });
 
       if (error) {
-        console.error('Daily login error:', error);
         if (error.message.includes('already claimed')) {
-          alert('You already claimed your daily login points today!');
+          alert('Voce ja resgatou seus pontos de login hoje!');
         } else {
-          alert('Failed to claim daily login points. Please try again.');
+          alert('Falha ao resgatar pontos. Tente novamente.');
         }
+        setProcessingMission(null);
         return;
       }
 
       if (data?.already_claimed) {
-        alert('You already claimed your daily login points today!');
+        alert('Voce ja resgatou seus pontos de login hoje!');
+        setProcessingMission(null);
         return;
       }
 
       const pointsEarned = data?.points_earned || 10;
       userStatsStorage.addMissionPoints(pointsEarned);
       window.dispatchEvent(new CustomEvent('missionPointsChange'));
-
-      setShowReward({ amount: pointsEarned });
-      setTimeout(() => setShowReward(null), 3000);
-
+      setShowReward({ amount: pointsEarned, missionName: 'Login Diario' });
+      setTimeout(() => setShowReward(null), 3500);
       await loadMissions();
-    } catch (error) {
-      console.error('Failed to claim daily login:', error);
-      alert('Failed to claim daily login points. Please try again.');
+    } catch {
+      alert('Falha ao resgatar pontos. Tente novamente.');
     }
+    setProcessingMission(null);
   };
 
   const handleDonation = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) {
-      alert('Please connect your wallet!');
+      alert('Conecte sua wallet primeiro!');
       return;
     }
 
-    const amount = parseFloat(donationAmount);
-    if (amount < 0.05) {
-      alert('Minimum donation is 0.05 SOL');
+    if (donationAmount < 0.05) {
+      alert('Doacao minima: 0.05 SOL');
       return;
     }
 
+    setProcessingMission('donation');
     try {
       const connection = new Connection('https://api.devnet.solana.com');
-
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: wallet.publicKey,
           toPubkey: new PublicKey('2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU'),
-          lamports: amount * LAMPORTS_PER_SOL,
+          lamports: donationAmount * LAMPORTS_PER_SOL,
         })
       );
 
@@ -274,319 +276,231 @@ export function DailyMissions() {
       const signature = await connection.sendRawTransaction(signed.serialize());
       await connection.confirmTransaction(signature);
 
-      const donationPoints = 50;
+      const tier = [...DONATION_TIERS].reverse().find(t => donationAmount >= t.amount);
+      const donationPoints = tier?.points || 50;
+
       const result = await powerPointsService.addPoints(
         wallet.publicKey.toBase58(),
         donationPoints,
         'donation',
-        `Donation of ${amount} SOL - tx: ${signature.slice(0, 8)}...`
+        `Doacao de ${donationAmount} SOL - tx: ${signature.slice(0, 8)}...`
       );
 
       if (result.success) {
         userStatsStorage.addMissionPoints(donationPoints);
         window.dispatchEvent(new CustomEvent('missionPointsChange'));
-        alert(`Donation successful! +${donationPoints} Power Points`);
-        setShowDonationModal(false);
-        await loadMissions();
-      } else {
-        alert('Points not added but donation was successful!');
+        setShowReward({ amount: donationPoints, missionName: 'Doacao' });
+        setTimeout(() => setShowReward(null), 3500);
       }
+
+      setShowDonationModal(false);
+      await loadMissions();
     } catch (error) {
       console.error('Donation failed:', error);
-      alert('Donation failed. Please try again.');
+      alert('Doacao falhou. Tente novamente.');
+    }
+    setProcessingMission(null);
+  };
+
+  const handleMissionClick = (mission: BackendMission) => {
+    if (!isConnected) {
+      alert('Conecte sua wallet primeiro para completar missoes!');
+      return;
+    }
+    if (mission.user_progress?.completed) return;
+
+    if (mission.mission_key === 'daily_donation') {
+      setShowDonationModal(true);
+      return;
+    }
+    if (mission.mission_key === 'daily_login' || mission.mission_key === 'daily_visit') {
+      handleDailyLogin();
+      return;
+    }
+    if (mission.mission_key === 'social_join_discord' || mission.mission_key === 'social_discord_join') {
+      completeMissionAPI(mission.mission_key);
+      window.open('https://discord.gg/powersol', '_blank');
+      return;
+    }
+    if (mission.mission_key === 'social_share') {
+      const shareUrl = 'https://powersol.io';
+      const shareText = 'Confira a PowerSOL - A Melhor Loteria Solana!';
+      completeMissionAPI('social_share');
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+      return;
+    }
+    if (mission.mission_key === 'activity_explore_transparency') {
+      completeMissionAPI('activity_explore_transparency').then(() => {
+        window.location.href = '/transparency';
+      });
+      return;
     }
   };
 
-  const getMissionIcon = (iconName: string) => {
-    const icons: { [key: string]: any } = {
-      'LogIn': LogIn,
-      'Ticket': Ticket,
-      'Heart': Heart,
-      'Repeat': Repeat,
-      'MessageCircle': MessageCircle,
-      'ShoppingCart': ShoppingCart,
-      'Twitter': Twitter,
-      'Music': Music,
-      'MessageSquare': MessageSquare,
-      'Users': Users,
-      'Eye': Eye,
-      'Trophy': Trophy,
-      'ShoppingBag': ShoppingBag,
-    };
-    return icons[iconName] || Target;
+  const isAutoMission = (mission: BackendMission) => {
+    return mission.mission_key.startsWith('social_invite_') ||
+      mission.mission_key.startsWith('weekly_') ||
+      (mission.mission_key.startsWith('activity_') && mission.mission_key !== 'activity_explore_transparency') ||
+      mission.mission_key === 'daily_buy_ticket';
   };
 
-  const getCategoryColor = (category: string) => {
-    const cat = missionCategories.find(c => c.id === category);
-    return cat?.color || '#ffffff';
-  };
+  const filteredMissions = useMemo(() =>
+    missions.filter(m => m.mission_type === activeCategory),
+    [missions, activeCategory]
+  );
 
-  const filteredMissions = missions.filter(m => m.mission_type === activeCategory);
   const completedCount = missions.filter(m => m.user_progress?.completed).length;
   const totalMissions = missions.length;
+  const completionPct = totalMissions > 0 ? Math.round((completedCount / totalMissions) * 100) : 0;
+
+  const categoryStats = useMemo(() => {
+    const stats: Record<string, { total: number; completed: number }> = {};
+    CATEGORY_CONFIG.forEach(c => {
+      const catMissions = missions.filter(m => m.mission_type === c.id);
+      stats[c.id] = {
+        total: catMissions.length,
+        completed: catMissions.filter(m => m.user_progress?.completed).length,
+      };
+    });
+    return stats;
+  }, [missions]);
 
   return (
-    <section className="py-12 relative overflow-hidden">
-      {/* Terminal Matrix Background */}
-      <div className="absolute inset-0">
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: `
-              linear-gradient(0deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
-              linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(0, 20, 10, 0.95) 100%)
-            `,
-            backgroundSize: '20px 20px, 20px 20px, 100% 100%',
-          }}
-        />
-        
-        {/* Terminal scanner effect */}
-        <motion.div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `
-              repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0, 255, 136, 0.02) 2px,
-                rgba(0, 255, 136, 0.02) 4px
-              )
-            `,
-          }}
-          animate={{ y: ['-100%', '100%'] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-        />
-        
-        {/* Floating data particles */}
-        {Array.from({ length: 12 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              background: i % 4 === 0 ? '#00ff88' : i % 4 === 1 ? '#00bfff' : i % 4 === 2 ? '#ff1493' : '#b347ff',
-              boxShadow: `0 0 6px ${i % 4 === 0 ? '#00ff88' : i % 4 === 1 ? '#00bfff' : i % 4 === 2 ? '#ff1493' : '#b347ff'}`,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              opacity: [0.3, 0.8, 0.3],
-              scale: [1, 1.5, 1],
-            }}
-            transition={{
-              duration: 4 + Math.random() * 2,
-              delay: Math.random() * 2,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
-        ))}
+    <section className="py-8 sm:py-12 relative overflow-hidden min-h-screen">
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.98) 0%, rgba(0,15,8,0.95) 50%, rgba(0,0,0,0.98) 100%)',
+      }}>
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(0deg, rgba(0,255,136,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.04) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }} />
       </div>
 
-      <div className="container mx-auto px-6 relative z-10">
-        {/* Terminal Header */}
+      <div className="container mx-auto px-4 sm:px-6 relative z-10 max-w-6xl">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: -30 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="mb-12"
+          transition={{ duration: 0.6 }}
+          className="mb-8 sm:mb-10"
         >
-          {/* Terminal Status Bar */}
-          <div 
-            className="p-4 rounded-t-2xl border-b-0 font-mono text-sm mb-0"
-            style={{
-              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(0, 30, 15, 0.8))',
-              borderColor: '#00ff88',
-              border: '1px solid rgba(0, 255, 136, 0.3)',
-              borderBottom: 'none',
-            }}
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                </div>
-                <span className="text-xs sm:text-sm" style={{ color: '#00ff88' }}>
-                  <span className="hidden sm:inline">MISSION_TERMINAL_v3.0.0</span>
-                  <span className="sm:hidden">MISSION_v3.0</span>
-                </span>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl" style={{
+                background: 'linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,191,255,0.1))',
+                border: '1px solid rgba(0,255,136,0.3)',
+                boxShadow: '0 0 20px rgba(0,255,136,0.2)',
+              }}>
+                <Terminal className="w-7 h-7 sm:w-8 sm:h-8" style={{ color: '#00ff88' }} />
               </div>
-              <div className="flex items-center space-x-2 sm:space-x-6 text-xs">
-                <span className="hidden sm:inline" style={{ color: '#00bfff' }}>
-                  {currentTime.toLocaleTimeString()}
-                </span>
-                <span className="text-xs" style={{ color: '#ff1493' }}>
-                  <span className="hidden sm:inline">COMPLETED: </span>
-                  <span className="sm:hidden">DONE: </span>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold font-mono text-white">
+                  Missoes
+                </h1>
+                <p className="text-sm font-mono text-zinc-500">
+                  Complete missoes para ganhar Power Points
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-xs font-mono text-zinc-500">Progresso Geral</p>
+                <p className="text-lg font-bold font-mono" style={{ color: '#00ff88' }}>
                   {completedCount}/{totalMissions}
-                </span>
-                <span style={{ color: '#00ff88' }}>
-                  <span className="hidden sm:inline">ACTIVE: </span>
-                  <span className="sm:hidden">ACT: </span>
-                  {filteredMissions.length}
+                </p>
+              </div>
+              <div className="w-14 h-14 rounded-full flex items-center justify-center relative">
+                <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+                  <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
+                  <circle
+                    cx="28" cy="28" r="24" fill="none"
+                    stroke="#00ff88" strokeWidth="3"
+                    strokeDasharray={`${completionPct * 1.508} 150.8`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="absolute text-xs font-bold font-mono" style={{ color: '#00ff88' }}>
+                  {completionPct}%
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Terminal Content */}
-          <div 
-            className="p-6 rounded-b-2xl"
-            style={{
-              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 20, 10, 0.9))',
-              border: '1px solid rgba(0, 255, 136, 0.3)',
-              borderTop: 'none',
-              boxShadow: '0 0 30px rgba(0, 255, 136, 0.2), inset 0 0 50px rgba(0, 0, 0, 0.8)',
-            }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div 
-                  className="p-3 rounded-xl"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 191, 255, 0.2))',
-                    border: '1px solid rgba(0, 255, 136, 0.5)',
-                    boxShadow: '0 0 15px rgba(0, 255, 136, 0.4)',
-                  }}
-                >
-                  <Terminal className="w-8 h-8" style={{ color: '#00ff88' }} />
-                </div>
+          {!isConnected && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-xl border"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,20,147,0.1), rgba(255,20,147,0.05))',
+                borderColor: 'rgba(255,20,147,0.3)',
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <Lock className="w-5 h-5 flex-shrink-0" style={{ color: '#ff1493' }} />
                 <div>
-                  <h1 
-                    className="text-xl sm:text-3xl font-bold font-mono"
-                    style={{ 
-                      color: '#ffffff',
-                      textShadow: '0 0 10px rgba(0, 255, 136, 0.5)',
-                    }}
-                  >
-                    <span className="hidden sm:inline">{'>'} MISSION_SYSTEM.EXE</span>
-                    <span className="sm:hidden">{'>'} MISSIONS.EXE</span>
-                  </h1>
-                  <p className="text-green-300/70 font-mono text-sm">
-                    <span className="hidden sm:inline">Advanced Mission Control Interface v3.0</span>
-                    <span className="sm:hidden">Mission Control v3.0</span>
+                  <p className="font-mono font-bold text-sm" style={{ color: '#ff1493' }}>
+                    WALLET NAO CONECTADA
+                  </p>
+                  <p className="font-mono text-xs text-zinc-500">
+                    Conecte sua wallet para completar missoes e ganhar recompensas
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Terminal Boot Sequence */}
-            <div className="mb-6 p-4 rounded-xl font-mono text-sm" style={{
-              background: 'rgba(0, 0, 0, 0.6)',
-              border: '1px solid rgba(0, 255, 136, 0.2)',
-            }}>
-              {terminalLines.map((lineObj, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  style={{ color: '#00ff88' }}
-                  className="text-xs sm:text-sm"
-                >
-                  <span className="hidden sm:inline">{lineObj.desktop}</span>
-                  <span className="sm:hidden">{lineObj.mobile}</span>
-                </motion.div>
-              ))}
-              <motion.span
-                className="inline-block w-2 h-4 ml-1"
-                style={{ background: '#00ff88' }}
-                animate={{ opacity: [1, 0, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-              />
-            </div>
-          </div>
+            </motion.div>
+          )}
         </motion.div>
 
-        {/* Wallet Connection Warning */}
-        {!isConnected && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-8 p-4 rounded-xl border-2"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.2), rgba(255, 20, 147, 0.1))',
-              borderColor: '#ff1493',
-              boxShadow: '0 0 20px rgba(255, 20, 147, 0.3)',
-            }}
-          >
-            <div className="flex items-center space-x-3">
-              <Lock className="w-6 h-6" style={{ color: '#ff1493' }} />
-              <div>
-                <p className="font-mono font-bold text-sm sm:text-base" style={{ color: '#ff1493' }}>
-                  WALLET NOT CONNECTED
-                </p>
-                <p className="font-mono text-xs sm:text-sm text-zinc-400">
-                  Connect your wallet to start completing missions and earning rewards
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Category Tabs - 2x2 Grid Layout */}
+        {/* Category Tabs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="grid grid-cols-2 gap-4 mb-12 max-w-2xl mx-auto"
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 sm:mb-10"
         >
-          {missionCategories.map((category, index) => {
-            const Icon = category.icon;
-            const isActive = activeCategory === category.id;
-            const categoryMissions = missions.filter(m => m.mission_type === category.id);
-            const completedInCategory = categoryMissions.filter(m => m.user_progress?.completed).length;
+          {CATEGORY_CONFIG.map((cat) => {
+            const Icon = cat.icon;
+            const isActive = activeCategory === cat.id;
+            const stats = categoryStats[cat.id] || { total: 0, completed: 0 };
+            const allDone = stats.total > 0 && stats.completed === stats.total;
 
             return (
               <motion.button
-                key={category.id}
-                onClick={() => setActiveCategory(category.id)}
-                className="px-6 py-3 rounded-xl font-mono font-bold transition-all duration-300 relative overflow-hidden"
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="relative px-4 py-3 rounded-xl font-mono transition-all duration-200 text-left"
                 style={{
                   background: isActive
-                    ? `linear-gradient(135deg, ${category.color}30, ${category.color}20)`
-                    : 'rgba(0, 0, 0, 0.6)',
-                  border: `1px solid ${isActive ? category.color : 'rgba(255, 255, 255, 0.1)'}`,
-                  color: isActive ? category.color : '#ffffff',
-                  boxShadow: isActive ? `0 0 20px ${category.color}40` : 'none',
+                    ? `linear-gradient(135deg, ${cat.color}18, ${cat.color}08)`
+                    : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${isActive ? `${cat.color}60` : 'rgba(255,255,255,0.06)'}`,
+                  boxShadow: isActive ? `0 0 20px ${cat.color}15` : 'none',
                 }}
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: `0 0 25px ${category.color}50`,
-                }}
-                whileTap={{ scale: 0.95 }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 + index * 0.1 }}
               >
-                {/* Scanning effect */}
-                <motion.div
-                  className="absolute inset-0 rounded-xl"
-                  style={{
-                    background: `linear-gradient(90deg, transparent, ${category.color}30, transparent)`,
-                    opacity: isActive ? 1 : 0,
-                  }}
-                  animate={{ x: [-100, 100] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                />
-
-                <div className="relative z-10 flex items-center space-x-2">
-                  <Icon className="w-5 h-5" />
-                  <span>{category.label}</span>
-                  <div
-                    className="px-2 py-1 rounded-full text-xs"
-                    style={{
-                      background: `${category.color}20`,
-                      color: category.color,
-                    }}
-                  >
-                    {completedInCategory}/{categoryMissions.length}
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className="w-4 h-4" style={{ color: isActive ? cat.color : '#666' }} />
+                  <span className="text-sm font-bold" style={{ color: isActive ? cat.color : '#999' }}>
+                    {cat.label}
+                  </span>
+                  {allDone && (
+                    <CheckCircle className="w-3.5 h-3.5 ml-auto" style={{ color: '#00ff88' }} />
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: cat.color }}
+                      initial={{ width: 0 }}
+                      animate={{ width: stats.total > 0 ? `${(stats.completed / stats.total) * 100}%` : '0%' }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
+                    />
                   </div>
+                  <span className="text-xs text-zinc-600 font-mono whitespace-nowrap">
+                    {stats.completed}/{stats.total}
+                  </span>
                 </div>
               </motion.button>
             );
@@ -597,221 +511,139 @@ export function DailyMissions() {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeCategory}
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            transition={{ duration: 0.5 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto"
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.35 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {loading ? (
-              <div className="col-span-full text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-t-2" style={{ borderColor: '#00ff88' }}></div>
-                <p className="mt-4 font-mono" style={{ color: '#00ff88' }}>LOADING MISSIONS...</p>
+              <div className="col-span-full flex flex-col items-center justify-center py-16">
+                <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin mb-4" style={{ borderColor: '#00ff88', borderTopColor: 'transparent' }} />
+                <p className="font-mono text-sm text-zinc-500">Carregando missoes...</p>
               </div>
             ) : filteredMissions.length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <p className="font-mono text-xl" style={{ color: '#ff1493' }}>NO MISSIONS IN THIS CATEGORY</p>
-                <p className="font-mono text-sm text-zinc-400 mt-2">Check other categories or connect your wallet</p>
+              <div className="col-span-full text-center py-16">
+                <Target className="w-12 h-12 mx-auto mb-3 text-zinc-700" />
+                <p className="font-mono text-zinc-500">Nenhuma missao nesta categoria</p>
               </div>
-            ) : null}
-
-            {!loading && filteredMissions.map((mission, index) => {
+            ) : filteredMissions.map((mission, index) => {
               const Icon = getMissionIcon(mission.icon);
-              const categoryColor = getCategoryColor(mission.mission_type);
+              const catConfig = CATEGORY_CONFIG.find(c => c.id === mission.mission_type);
+              const catColor = catConfig?.color || '#fff';
               const isCompleted = mission.user_progress?.completed || false;
-              const isDonationMission = mission.mission_key === 'daily_donation';
-              const isAutoMission = mission.mission_key.startsWith('social_invite_') ||
-                mission.mission_key.startsWith('weekly_') ||
-                (mission.mission_key.startsWith('activity_') && mission.mission_key !== 'activity_explore_transparency') ||
-                mission.mission_key === 'daily_buy_ticket';
-              const isClickable = !isCompleted && !isAutoMission;
+              const isAuto = isAutoMission(mission);
+              const isClickable = !isCompleted && !isAuto;
+              const isProcessing = processingMission === mission.id || processingMission === mission.mission_key;
+              const progress = getMissionProgress(mission, ticketCount, referralCount);
+              const progressPct = progress ? Math.min((progress.current / progress.target) * 100, 100) : null;
 
               return (
                 <motion.div
                   key={mission.id}
-                  initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  whileHover={{ y: -5, scale: 1.02 }}
-                  className={`p-6 rounded-2xl border relative overflow-hidden group ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
-                  style={{
-                    background: `
-                      linear-gradient(0deg, ${categoryColor}08 1px, transparent 1px),
-                      linear-gradient(90deg, ${categoryColor}08 1px, transparent 1px),
-                      linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
-                    `,
-                    backgroundSize: '20px 20px, 20px 20px, 100% 100%',
-                    borderColor: isCompleted ? '#00ff88' : categoryColor,
-                    boxShadow: isCompleted
-                      ? '0 0 30px rgba(0, 255, 136, 0.4)'
-                      : `0 0 20px ${categoryColor}30`,
-                    backdropFilter: 'blur(20px)',
-                  }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  whileHover={isClickable ? { y: -3, scale: 1.01 } : {}}
                   onClick={() => {
-                    if (!isConnected) {
-                      alert('Please connect your wallet first to complete missions!');
-                      return;
-                    }
-
-                    if (isCompleted) return;
-
-                    if (isDonationMission) {
-                      setShowDonationModal(true);
-                      return;
-                    }
-
-                    if (mission.mission_key === 'daily_login' || mission.mission_key === 'daily_visit') {
-                      handleDailyLogin();
-                      return;
-                    }
-
-                    if (mission.mission_key === 'social_join_discord' || mission.mission_key === 'social_discord_join') {
-                      completeMissionAPI(mission.mission_key);
-                      window.open('https://discord.gg/powersol', '_blank');
-                      return;
-                    }
-
-                    if (mission.mission_key === 'social_share') {
-                      const shareUrl = 'https://powersol.io';
-                      const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
-                      completeMissionAPI('social_share');
-                      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
-                      return;
-                    }
-
-                    if (mission.mission_key === 'activity_explore_transparency') {
-                      completeMissionAPI('activity_explore_transparency').then(() => {
-                        window.location.href = '/transparency';
-                      });
-                      return;
-                    }
-
-                    if (mission.mission_key.startsWith('social_invite_') ||
-                        mission.mission_key.startsWith('weekly_') ||
-                        mission.mission_key.startsWith('activity_') ||
-                        mission.mission_key === 'daily_buy_ticket') {
-                      return;
-                    }
+                    if (isClickable && !isProcessing) handleMissionClick(mission);
+                  }}
+                  className={`relative p-5 rounded-xl border overflow-hidden group ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
+                  style={{
+                    background: isCompleted
+                      ? 'linear-gradient(135deg, rgba(0,255,136,0.06), rgba(0,255,136,0.02))'
+                      : 'rgba(255,255,255,0.02)',
+                    borderColor: isCompleted ? 'rgba(0,255,136,0.25)' : 'rgba(255,255,255,0.06)',
+                    transition: 'border-color 0.3s, background 0.3s',
                   }}
                 >
-                  <div className="absolute top-2 left-2 text-xs font-mono opacity-60" style={{ color: categoryColor }}>
-                    [{index.toString().padStart(2, '0')}]
-                  </div>
-
-                  {isCompleted && (
-                    <motion.div
-                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center"
-                      style={{ background: '#00ff88' }}
-                      animate={{
-                        scale: [1, 1.2, 1],
-                        opacity: [1, 0.7, 1],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
-                      }}
-                    >
-                      <CheckCircle className="w-4 h-4 text-black" />
-                    </motion.div>
+                  {isProcessing && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl" style={{ background: 'rgba(0,0,0,0.7)' }}>
+                      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: catColor, borderTopColor: 'transparent' }} />
+                    </div>
                   )}
 
                   {!isConnected && !isCompleted && (
-                    <motion.div
-                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
-                      animate={{
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
-                      }}
-                    >
-                      <div
-                        className="w-16 h-16 rounded-full flex items-center justify-center"
-                        style={{
-                          background: 'rgba(0, 0, 0, 0.9)',
-                          border: '2px solid #ff1493',
-                          boxShadow: '0 0 20px rgba(255, 20, 147, 0.5)',
-                        }}
-                      >
-                        <Lock className="w-8 h-8" style={{ color: '#ff1493' }} />
-                      </div>
-                    </motion.div>
+                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>
+                      <Lock className="w-6 h-6" style={{ color: '#ff1493', opacity: 0.7 }} />
+                    </div>
                   )}
 
-                  <div
-                    className="w-16 h-16 rounded-xl mb-4 flex items-center justify-center relative"
-                    style={{
-                      background: `linear-gradient(135deg, ${categoryColor}30, ${categoryColor}15)`,
-                      border: `1px solid ${categoryColor}50`,
-                      boxShadow: `inset 0 0 15px ${categoryColor}20`,
-                      opacity: !isConnected && !isCompleted ? 0.3 : 1,
-                    }}
-                  >
-                    <Icon className="w-8 h-8" style={{ color: categoryColor }} />
-
-                    <motion.div
-                      className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
-                      style={{
-                        background: `linear-gradient(90deg, transparent, ${categoryColor}30, transparent)`,
-                      }}
-                      animate={{ x: [-100, 100] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                    />
-                  </div>
-
-                  <h3 className="text-lg font-bold mb-2 font-mono" style={{ color: '#ffffff' }}>
-                    {mission.name}
-                  </h3>
-                  <p className="text-sm text-zinc-400 mb-4 font-mono">
-                    {mission.description}
-                  </p>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Zap className="w-5 h-5" style={{ color: categoryColor }} />
-                      <span className="text-sm font-mono font-bold" style={{ color: '#ffffff' }}>
-                        {mission.power_points} POWER
-                      </span>
+                  {/* Top row: Icon + Status */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-11 h-11 rounded-lg flex items-center justify-center" style={{
+                      background: isCompleted ? 'rgba(0,255,136,0.15)' : `${catColor}12`,
+                      border: `1px solid ${isCompleted ? 'rgba(0,255,136,0.3)' : `${catColor}25`}`,
+                    }}>
+                      <Icon className="w-5 h-5" style={{ color: isCompleted ? '#00ff88' : catColor }} />
                     </div>
-
                     {isCompleted ? (
-                      <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: '#00ff88' }}>
-                        <CheckCircle className="w-4 h-4" />
-                        <span>COMPLETE</span>
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-md" style={{ background: 'rgba(0,255,136,0.15)' }}>
+                        <CheckCircle className="w-3.5 h-3.5" style={{ color: '#00ff88' }} />
+                        <span className="text-xs font-mono font-bold" style={{ color: '#00ff88' }}>Feito</span>
                       </div>
-                    ) : mission.mission_key.startsWith('social_invite_') ||
-                        mission.mission_key.startsWith('weekly_') ||
-                        (mission.mission_key.startsWith('activity_') && mission.mission_key !== 'activity_explore_transparency') ||
-                        mission.mission_key === 'daily_buy_ticket' ? (
-                      <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: '#888888' }}>
-                        <Activity className="w-4 h-4" />
-                        <span>AUTO</span>
+                    ) : isAuto ? (
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-md" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                        <Activity className="w-3.5 h-3.5 text-zinc-600" />
+                        <span className="text-xs font-mono text-zinc-600">Auto</span>
                       </div>
                     ) : (
-                      <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: categoryColor }}>
-                        <Clock className="w-4 h-4" />
-                        <span>CLAIM</span>
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors" style={{ background: `${catColor}10` }}>
+                        <ChevronRight className="w-3.5 h-3.5" style={{ color: catColor }} />
+                        <span className="text-xs font-mono font-bold" style={{ color: catColor }}>Resgatar</span>
                       </div>
                     )}
                   </div>
 
-                  <motion.div
-                    className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 pointer-events-none"
-                    style={{
-                      background: `linear-gradient(135deg, ${categoryColor}05, transparent)`,
-                      boxShadow: `inset 0 0 20px ${categoryColor}20`,
-                    }}
-                    transition={{ duration: 0.3 }}
-                  />
+                  {/* Mission info */}
+                  <h3 className="text-sm font-bold font-mono text-white mb-1 leading-tight">
+                    {mission.name}
+                  </h3>
+                  <p className="text-xs font-mono text-zinc-500 mb-3 leading-relaxed">
+                    {mission.description}
+                  </p>
+
+                  {/* Progress bar (for milestone missions) */}
+                  {progress && !isCompleted && (
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-mono text-zinc-600">Progresso</span>
+                        <span className="text-xs font-mono" style={{ color: catColor }}>
+                          {progress.current}/{progress.target}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ background: `linear-gradient(90deg, ${catColor}, ${catColor}cc)` }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progressPct}%` }}
+                          transition={{ duration: 1, ease: 'easeOut', delay: index * 0.05 }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reward */}
+                  <div className="flex items-center gap-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                    <Zap className="w-4 h-4" style={{ color: '#ffaa00' }} />
+                    <span className="text-xs font-mono font-bold" style={{ color: '#ffaa00' }}>
+                      +{mission.power_points} PWRS
+                    </span>
+                  </div>
+
+                  {/* Hover glow */}
+                  {isClickable && (
+                    <motion.div
+                      className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300"
+                      style={{ boxShadow: `inset 0 0 30px ${catColor}08, 0 0 15px ${catColor}08` }}
+                    />
+                  )}
                 </motion.div>
               );
             })}
           </motion.div>
         </AnimatePresence>
-
 
         {/* Donation Modal */}
         <AnimatePresence>
@@ -821,117 +653,175 @@ export function DailyMissions() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              style={{ background: 'rgba(0, 0, 0, 0.9)' }}
+              style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}
               onClick={() => setShowDonationModal(false)}
             >
               <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="p-8 rounded-2xl max-w-md w-full"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="w-full max-w-md rounded-2xl overflow-hidden"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.9) 100%)',
-                  border: '1px solid rgba(0, 255, 136, 0.3)',
-                  boxShadow: '0 0 50px rgba(0, 255, 136, 0.3)',
+                  background: 'linear-gradient(180deg, rgba(10,10,15,0.98), rgba(0,15,8,0.95))',
+                  border: '1px solid rgba(0,255,136,0.2)',
+                  boxShadow: '0 0 60px rgba(0,255,136,0.15)',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold font-mono" style={{ color: '#00ff88' }}>
-                    DONATE SOL
-                  </h2>
-                  <button
-                    onClick={() => setShowDonationModal(false)}
-                    className="text-zinc-400 hover:text-white transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
+                        background: 'rgba(0,255,136,0.15)',
+                        border: '1px solid rgba(0,255,136,0.3)',
+                      }}>
+                        <Heart className="w-5 h-5" style={{ color: '#00ff88' }} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold font-mono text-white">Apoiar o Projeto</h2>
+                        <p className="text-xs font-mono text-zinc-500">Escolha um valor de doacao</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowDonationModal(false)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5"
+                    >
+                      <X className="w-4 h-4 text-zinc-500" />
+                    </button>
+                  </div>
 
-                <p className="text-zinc-400 mb-6 font-mono text-sm">
-                  Support PowerSOL development! Minimum donation: 0.05 SOL
-                </p>
+                  {/* Tier Selection */}
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    {DONATION_TIERS.map((tier) => {
+                      const isSelected = donationAmount === tier.amount;
+                      return (
+                        <motion.button
+                          key={tier.amount}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => setDonationAmount(tier.amount)}
+                          className="relative p-4 rounded-xl text-left transition-all duration-200"
+                          style={{
+                            background: isSelected ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.02)',
+                            border: `1px solid ${isSelected ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                            boxShadow: isSelected ? '0 0 20px rgba(0,255,136,0.1)' : 'none',
+                          }}
+                        >
+                          <p className="text-lg font-bold font-mono text-white mb-0.5">{tier.amount} SOL</p>
+                          <p className="text-xs font-mono text-zinc-500 mb-2">{tier.label}</p>
+                          <div className="flex items-center gap-1">
+                            <Zap className="w-3.5 h-3.5" style={{ color: '#ffaa00' }} />
+                            <span className="text-xs font-mono font-bold" style={{ color: '#ffaa00' }}>
+                              +{tier.points} PWRS
+                            </span>
+                          </div>
+                          {isSelected && (
+                            <motion.div
+                              layoutId="tierIndicator"
+                              className="absolute top-2 right-2 w-2 h-2 rounded-full"
+                              style={{ background: '#00ff88' }}
+                            />
+                          )}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
 
-                <div className="mb-6">
-                  <label className="block mb-2 font-mono text-sm" style={{ color: '#00ff88' }}>
-                    AMOUNT (SOL)
-                  </label>
-                  <input
-                    type="number"
-                    min="0.05"
-                    step="0.01"
-                    value={donationAmount}
-                    onChange={(e) => setDonationAmount(e.target.value)}
-                    className="w-full p-3 rounded-xl font-mono text-white"
+                  {/* Custom Amount */}
+                  <div className="mb-6">
+                    <label className="block text-xs font-mono text-zinc-500 mb-2">Valor personalizado (SOL)</label>
+                    <input
+                      type="number"
+                      min="0.05"
+                      step="0.01"
+                      value={donationAmount}
+                      onChange={(e) => setDonationAmount(parseFloat(e.target.value) || 0.05)}
+                      className="w-full p-3 rounded-lg font-mono text-white text-sm"
+                      style={{
+                        background: 'rgba(0,0,0,0.4)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        outline: 'none',
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = 'rgba(0,255,136,0.4)')}
+                      onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
+                    />
+                  </div>
+
+                  {/* Summary */}
+                  <div className="p-3 rounded-lg mb-6" style={{ background: 'rgba(255,170,0,0.08)', border: '1px solid rgba(255,170,0,0.15)' }}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-zinc-400">Recompensa estimada</span>
+                      <div className="flex items-center gap-1">
+                        <Zap className="w-4 h-4" style={{ color: '#ffaa00' }} />
+                        <span className="text-sm font-bold font-mono" style={{ color: '#ffaa00' }}>
+                          +{([...DONATION_TIERS].reverse().find(t => donationAmount >= t.amount)?.points || 50)} PWRS
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleDonation}
+                    disabled={processingMission === 'donation'}
+                    className="w-full py-3.5 rounded-xl font-mono font-bold text-sm transition-all duration-200 disabled:opacity-50"
                     style={{
-                      background: 'rgba(0, 0, 0, 0.6)',
-                      border: '1px solid rgba(0, 255, 136, 0.3)',
+                      background: 'linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,191,255,0.15))',
+                      border: '1px solid rgba(0,255,136,0.3)',
+                      color: '#00ff88',
+                      boxShadow: '0 0 20px rgba(0,255,136,0.1)',
                     }}
-                  />
+                  >
+                    {processingMission === 'donation' ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#00ff88', borderTopColor: 'transparent' }} />
+                        Processando...
+                      </div>
+                    ) : (
+                      `DOAR ${donationAmount} SOL`
+                    )}
+                  </motion.button>
                 </div>
-
-                <div className="mb-6 p-4 rounded-xl" style={{
-                  background: 'rgba(0, 255, 136, 0.1)',
-                  border: '1px solid rgba(0, 255, 136, 0.3)',
-                }}>
-                  <p className="font-mono text-sm" style={{ color: '#00ff88' }}>
-                    REWARD: +50 POWER POINTS
-                  </p>
-                </div>
-
-                <button
-                  onClick={handleDonation}
-                  className="w-full py-3 rounded-xl font-mono font-bold transition-all duration-300"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 191, 255, 0.2))',
-                    border: '1px solid rgba(0, 255, 136, 0.5)',
-                    color: '#00ff88',
-                    boxShadow: '0 0 20px rgba(0, 255, 136, 0.3)',
-                  }}
-                >
-                  DONATE NOW
-                </button>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* System Status */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          className="mt-16 p-4 rounded-xl text-center"
-          style={{
-            background: 'rgba(0, 255, 136, 0.1)',
-            border: '1px solid rgba(0, 255, 136, 0.3)',
-          }}
-        >
-          <div className="flex items-center justify-center space-x-4 font-mono text-sm">
-            <div className="flex items-center space-x-2">
-              <div
-                className="w-2 h-2 rounded-full animate-pulse"
-                style={{ background: '#00ff88' }}
-              />
-              <span style={{ color: '#00ff88' }}>
-                <span className="hidden sm:inline">SYSTEM_STATUS: OPERATIONAL</span>
-                <span className="sm:hidden">STATUS: OK</span>
-              </span>
-            </div>
-            <div className="text-zinc-400">|</div>
-            <div style={{ color: '#00bfff' }}>
-              <span className="hidden sm:inline">MISSIONS_LOADED: {totalMissions}</span>
-              <span className="sm:hidden">LOADED: {totalMissions}</span>
-            </div>
-            <div className="text-zinc-400">|</div>
-            <div style={{ color: '#ffffff' }}>
-              <span className="hidden sm:inline">COMPLETION_RATE: {((completedCount/totalMissions)*100).toFixed(1)}%</span>
-              <span className="sm:hidden">RATE: {((completedCount/totalMissions)*100).toFixed(1)}%</span>
-            </div>
-          </div>
-        </motion.div>
+        {/* Reward Toast */}
+        <AnimatePresence>
+          {showReward && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.9 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,0,0,0.95))',
+                border: '1px solid rgba(0,255,136,0.4)',
+                boxShadow: '0 0 40px rgba(0,255,136,0.25), 0 20px 40px rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(12px)',
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <motion.div
+                  animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <Sparkles className="w-6 h-6" style={{ color: '#ffaa00' }} />
+                </motion.div>
+                <div>
+                  <p className="text-xs font-mono text-zinc-400">{showReward.missionName}</p>
+                  <p className="text-lg font-bold font-mono" style={{ color: '#00ff88' }}>
+                    +{showReward.amount} Power Points
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );

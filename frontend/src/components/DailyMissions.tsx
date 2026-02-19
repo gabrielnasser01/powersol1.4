@@ -4,8 +4,8 @@ import { Target, Trophy, Gift, CheckCircle, Clock, Zap, Users, Shield, Activity,
 import { theme } from '../theme';
 import { missionsStorage, userStatsStorage, Mission, userStorage } from '../store/persist';
 import { useFrameLimiter } from '../hooks/useFrameLimiter';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { useWallet } from '../contexts/WalletContext';
+import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
 import { powerPointsService } from '../services/powerPointsService';
 
@@ -45,7 +45,7 @@ export function DailyMissions() {
   const [donationAmount, setDonationAmount] = useState('0.05');
   const [showDonationModal, setShowDonationModal] = useState(false);
   const { start, stop } = useFrameLimiter(30);
-  const wallet = useWallet();
+  const { publicKey: walletPubKey, connected: walletConnected, getWalletAdapter, refreshBalance } = useWallet();
 
   const isConnected = !!user.publicKey;
 
@@ -272,8 +272,11 @@ export function DailyMissions() {
     return { points: 50, tier: 0.05 };
   };
 
+  const [isDonating, setIsDonating] = useState(false);
+  const [donationTxId, setDonationTxId] = useState('');
+
   const handleDonation = async () => {
-    if (!wallet.publicKey || !wallet.signTransaction) {
+    if (!walletConnected || !walletPubKey) {
       alert('Please connect your wallet!');
       return;
     }
@@ -284,38 +287,27 @@ export function DailyMissions() {
       return;
     }
 
+    const adapter = getWalletAdapter();
+    if (!adapter) {
+      alert('Wallet adapter not available. Please reconnect your wallet.');
+      return;
+    }
+
+    setIsDonating(true);
+
     try {
-      const connection = new Connection('https://api.devnet.solana.com');
+      const { signature } = await solanaService.donateWithWallet(adapter, amount);
 
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: wallet.publicKey,
-          toPubkey: new PublicKey('2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU'),
-          lamports: amount * LAMPORTS_PER_SOL,
-        })
-      );
-
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = wallet.publicKey;
-
-      const signed = await wallet.signTransaction(transaction);
-      const signature = await connection.sendRawTransaction(signed.serialize());
-      await connection.confirmTransaction(signature);
-
-      const walletAddr = wallet.publicKey.toBase58();
+      setDonationTxId(signature);
 
       const { data: donationResult, error: donationError } = await supabase.rpc('record_donation_with_tiers', {
-        p_wallet_address: walletAddr,
+        p_wallet_address: walletPubKey,
         p_amount_sol: amount,
         p_transaction_signature: signature,
       });
 
       if (donationError) {
         console.error('Donation record error:', donationError);
-        alert('Donation sent but points could not be recorded. Contact support.');
-        setShowDonationModal(false);
-        return;
       }
 
       const result = donationResult?.[0] || { points_earned: 50 };
@@ -329,11 +321,16 @@ export function DailyMissions() {
       setShowReward({ amount: donationPoints });
       setTimeout(() => setShowReward(null), 3000);
 
-      setShowDonationModal(false);
+      await refreshBalance();
       await loadMissions();
+
+      setTimeout(() => setShowDonationModal(false), 5000);
     } catch (error) {
       console.error('Donation failed:', error);
-      alert('Donation failed. Please try again.');
+      const message = error instanceof Error ? error.message : 'Donation failed';
+      alert(message);
+    } finally {
+      setIsDonating(false);
     }
   };
 
@@ -701,6 +698,7 @@ export function DailyMissions() {
                     if (isCompleted) return;
 
                     if (isDonationMission) {
+                      setDonationTxId('');
                       setShowDonationModal(true);
                       return;
                     }
@@ -963,7 +961,8 @@ export function DailyMissions() {
 
                 <button
                   onClick={handleDonation}
-                  className="w-full py-3 rounded-xl font-mono font-bold transition-all duration-300"
+                  disabled={isDonating}
+                  className="w-full py-3 rounded-xl font-mono font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                   style={{
                     background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 191, 255, 0.2))',
                     border: '1px solid rgba(0, 255, 136, 0.5)',
@@ -971,8 +970,39 @@ export function DailyMissions() {
                     boxShadow: '0 0 20px rgba(0, 255, 136, 0.3)',
                   }}
                 >
-                  DONATE NOW
+                  {isDonating ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                      <span>SIGNING TRANSACTION...</span>
+                    </>
+                  ) : (
+                    <span>DONATE NOW</span>
+                  )}
                 </button>
+
+                {donationTxId && (
+                  <div className="mt-4 p-3 rounded-xl" style={{
+                    background: 'rgba(0, 255, 136, 0.1)',
+                    border: '1px solid rgba(0, 255, 136, 0.3)',
+                  }}>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00ff88' }} />
+                      <span className="text-sm font-mono font-bold" style={{ color: '#00ff88' }}>DONATION SUCCESSFUL!</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-zinc-400">TX: {donationTxId.slice(0, 20)}...</span>
+                      <a
+                        href={solanaService.getExplorerUrl(donationTxId)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono hover:underline"
+                        style={{ color: '#00bfff' }}
+                      >
+                        View on Explorer
+                      </a>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}

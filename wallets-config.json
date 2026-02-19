@@ -46,22 +46,22 @@
       "lottery_type": "tri_daily",
       "recommended_balance": "0.5-1 SOL"
     },
-    "lottery_weekly": {
-      "name": "LOTTERY_WEEKLY",
+    "lottery_jackpot": {
+      "name": "LOTTERY_JACKPOT",
       "address": "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
-      "purpose": "Weekly lottery prize pool",
+      "purpose": "Jackpot lottery prize pool",
       "has_private_key": true,
       "needs_funding": true,
-      "lottery_type": "weekly",
+      "lottery_type": "jackpot",
       "recommended_balance": "0.5-1 SOL"
     },
-    "lottery_mega": {
-      "name": "LOTTERY_MEGA",
+    "lottery_grand_prize": {
+      "name": "LOTTERY_GRAND_PRIZE",
       "address": "nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C",
-      "purpose": "Mega lottery prize pool",
+      "purpose": "Grand Prize lottery prize pool",
       "has_private_key": true,
       "needs_funding": true,
-      "lottery_type": "mega",
+      "lottery_type": "grand-prize",
       "recommended_balance": "0.5-1 SOL"
     },
     "special_event": {

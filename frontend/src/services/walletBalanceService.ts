@@ -4,10 +4,8 @@ const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devne
 
 export const LOTTERY_WALLETS = {
   'tri-daily': '4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx',
-  'weekly': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
   'jackpot': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
-  'mega': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
-  'grand-prize': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
+  'grand-prize': 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C',
   'special-event': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
 } as const;
 
@@ -21,8 +19,8 @@ interface WalletBalance {
 
 interface AllWalletBalances {
   triDaily: WalletBalance;
-  weekly: WalletBalance;
-  mega: WalletBalance;
+  jackpot: WalletBalance;
+  grandPrize: WalletBalance;
   special: WalletBalance;
   totalSol: number;
 }
@@ -73,19 +71,19 @@ class WalletBalanceService {
   }
 
   async getAllLotteryBalances(): Promise<AllWalletBalances> {
-    const [triDaily, weekly, mega, special] = await Promise.all([
+    const [triDaily, jackpot, grandPrize, special] = await Promise.all([
       this.getLotteryPoolBalance('tri-daily'),
-      this.getLotteryPoolBalance('weekly'),
-      this.getLotteryPoolBalance('mega'),
+      this.getLotteryPoolBalance('jackpot'),
+      this.getLotteryPoolBalance('grand-prize'),
       this.getLotteryPoolBalance('special-event'),
     ]);
 
-    const totalSol = triDaily.balanceSol + weekly.balanceSol + mega.balanceSol + special.balanceSol;
+    const totalSol = triDaily.balanceSol + jackpot.balanceSol + grandPrize.balanceSol + special.balanceSol;
 
     return {
       triDaily,
-      weekly,
-      mega,
+      jackpot,
+      grandPrize,
       special,
       totalSol,
     };

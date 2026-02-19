@@ -187,7 +187,7 @@ export function DailyMissions() {
         user.publicKey,
         mission.power_points,
         'mission_complete',
-        `Missao concluida: ${mission.name}`,
+        `Completed mission: ${mission.name}`,
         mission.id,
         'mission'
       );
@@ -221,15 +221,15 @@ export function DailyMissions() {
       if (error) {
         console.error('Daily login error:', error);
         if (error.message.includes('already claimed')) {
-          alert('Voce ja resgatou seus pontos de login hoje!');
+          alert('You already claimed your daily login points today!');
         } else {
-          alert('Falha ao resgatar pontos de login. Tente novamente.');
+          alert('Failed to claim daily login points. Please try again.');
         }
         return;
       }
 
       if (data?.already_claimed) {
-        alert('Voce ja resgatou seus pontos de login hoje!');
+        alert('You already claimed your daily login points today!');
         return;
       }
 
@@ -246,7 +246,7 @@ export function DailyMissions() {
       await loadMissions();
     } catch (error) {
       console.error('Failed to claim daily login:', error);
-      alert('Falha ao resgatar pontos de login. Tente novamente.');
+      alert('Failed to claim daily login points. Please try again.');
     }
   };
 
@@ -256,7 +256,7 @@ export function DailyMissions() {
     try {
       const success = await completeMissionAPI('daily_visit');
       if (!success) {
-        alert('Visita diaria ja registrada hoje!');
+        alert('Daily visit already recorded today!');
         return;
       }
       await loadMissions();
@@ -735,7 +735,7 @@ export function DailyMissions() {
 
                     if (mission.mission_key === 'social_share') {
                       const shareUrl = 'https://powersol.io';
-                      const shareText = 'Confira a PowerSOL - A Loteria Solana!';
+                      const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
                       completeMissionAPI('social_share');
                       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       return;

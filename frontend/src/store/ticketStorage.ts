@@ -7,11 +7,10 @@ export interface MockTicket {
   drawDate: string;
   lotteryType: 'tri-daily' | 'special-event' | 'jackpot' | 'grand-prize';
   status: 'active' | 'claimed' | 'expired';
+  lotteryRoundId?: number;
 }
 
 const STORAGE_KEY_PREFIX = 'powersol_tickets_';
-
-let drawDateCache: Record<string, string> = {};
 
 function getCurrentWallet(): string | null {
   try {
@@ -35,49 +34,25 @@ function generateTicketNumber(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-async function fetchNextDrawDate(lotteryType: string): Promise<string> {
-  const cached = drawDateCache[lotteryType];
-  if (cached) return cached;
-
-  const nowTimestamp = Math.floor(Date.now() / 1000);
-  const { data } = await supabase
-    .from('blockchain_lotteries')
-    .select('draw_timestamp')
-    .eq('lottery_type', lotteryType)
-    .eq('is_drawn', false)
-    .gt('draw_timestamp', nowTimestamp)
-    .order('draw_timestamp', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (data?.draw_timestamp) {
-    const date = new Date(data.draw_timestamp * 1000);
-    const formatted = date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    drawDateCache[lotteryType] = formatted;
-    return formatted;
-  }
-
-  return 'A definir';
+function formatTimestamp(ts: number): string {
+  const date = new Date(ts * 1000);
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-function getTicketStatus(drawDateStr: string): 'active' | 'expired' {
-  if (drawDateStr === 'A definir') return 'active';
-  const parts = drawDateStr.match(/(\d{2})\/(\d{2})\/(\d{4}),?\s*(\d{2}):(\d{2})/);
-  if (!parts) return 'active';
-  const drawTime = new Date(
-    parseInt(parts[3]),
-    parseInt(parts[2]) - 1,
-    parseInt(parts[1]),
-    parseInt(parts[4]),
-    parseInt(parts[5])
-  ).getTime();
-  return Date.now() > drawTime ? 'expired' : 'active';
+const VALID_TYPES = ['tri-daily', 'special-event', 'jackpot', 'grand-prize'] as const;
+type LotteryType = typeof VALID_TYPES[number];
+
+function normalizeLotteryType(raw: string): LotteryType {
+  let t = raw.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
+  if (t === 'halloween') t = 'special-event';
+  if (!VALID_TYPES.includes(t as LotteryType)) t = 'tri-daily';
+  return t as LotteryType;
 }
 
 export const ticketStorage = {
@@ -90,10 +65,23 @@ export const ticketStorage = {
     }
   },
 
-  async add(quantity: number, lotteryType: 'tri-daily' | 'special-event' | 'jackpot' | 'grand-prize' = 'tri-daily'): Promise<MockTicket[]> {
+  async add(quantity: number, lotteryType: LotteryType = 'tri-daily', lotteryRoundId?: number): Promise<MockTicket[]> {
     const tickets = this.getAll();
     const now = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const drawDate = await fetchNextDrawDate(lotteryType);
+
+    let drawDate = 'A definir';
+    if (lotteryRoundId) {
+      const { data } = await supabase
+        .from('blockchain_lotteries')
+        .select('draw_timestamp')
+        .eq('lottery_id', lotteryRoundId)
+        .eq('lottery_type', lotteryType)
+        .maybeSingle();
+
+      if (data?.draw_timestamp) {
+        drawDate = formatTimestamp(data.draw_timestamp);
+      }
+    }
 
     const newTickets: MockTicket[] = [];
     for (let i = 0; i < quantity; i++) {
@@ -103,7 +91,8 @@ export const ticketStorage = {
         purchaseDate: now,
         drawDate,
         lotteryType,
-        status: 'active'
+        status: 'active',
+        lotteryRoundId,
       });
     }
 
@@ -127,7 +116,6 @@ export const ticketStorage = {
 
   async syncFromDatabase(walletAddress: string): Promise<void> {
     try {
-      drawDateCache = {};
       const storageKey = `${STORAGE_KEY_PREFIX}${walletAddress}`;
 
       const { data: purchases, error } = await supabase
@@ -146,17 +134,24 @@ export const ticketStorage = {
         return;
       }
 
-      const drawDates: Record<string, string> = {};
-      const lotteryTypes = [...new Set(purchases.map(p => {
-        let t = p.lottery_type.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
-        if (t === 'halloween') t = 'special-event';
-        if (!['tri-daily', 'special-event', 'jackpot', 'grand-prize'].includes(t)) t = 'tri-daily';
-        return t;
-      }))];
+      const roundIds = [...new Set(purchases.map(p => p.lottery_round_id).filter(Boolean))];
+      let lotteryMap: Record<number, { draw_timestamp: number; is_drawn: boolean }> = {};
 
-      await Promise.all(lotteryTypes.map(async (lt) => {
-        drawDates[lt] = await fetchNextDrawDate(lt);
-      }));
+      if (roundIds.length > 0) {
+        const { data: lotteries } = await supabase
+          .from('blockchain_lotteries')
+          .select('lottery_id, draw_timestamp, is_drawn, lottery_type')
+          .in('lottery_id', roundIds);
+
+        if (lotteries) {
+          lotteries.forEach(l => {
+            lotteryMap[l.lottery_id] = {
+              draw_timestamp: l.draw_timestamp,
+              is_drawn: l.is_drawn,
+            };
+          });
+        }
+      }
 
       const dbTickets: MockTicket[] = [];
 
@@ -165,21 +160,27 @@ export const ticketStorage = {
           day: '2-digit', month: '2-digit', year: 'numeric'
         });
 
-        let normalizedLotteryType = purchase.lottery_type
-          .toLowerCase()
-          .replace(/_/g, '-')
-          .replace(/\s+/g, '-');
+        const normalizedType = normalizeLotteryType(purchase.lottery_type);
+        const roundId = purchase.lottery_round_id;
+        const lotteryInfo = roundId ? lotteryMap[roundId] : null;
 
-        if (normalizedLotteryType === 'halloween') {
-          normalizedLotteryType = 'special-event';
+        let drawDate = 'A definir';
+        let status: 'active' | 'expired' = 'active';
+
+        if (purchase.is_drawn) {
+          status = 'expired';
+          if (lotteryInfo) {
+            drawDate = formatTimestamp(lotteryInfo.draw_timestamp);
+          }
+        } else if (lotteryInfo) {
+          drawDate = formatTimestamp(lotteryInfo.draw_timestamp);
+          if (lotteryInfo.is_drawn) {
+            status = 'expired';
+          } else {
+            const drawTimeMs = lotteryInfo.draw_timestamp * 1000;
+            status = Date.now() > drawTimeMs ? 'expired' : 'active';
+          }
         }
-
-        if (!['tri-daily', 'special-event', 'jackpot', 'grand-prize'].includes(normalizedLotteryType)) {
-          normalizedLotteryType = 'tri-daily';
-        }
-
-        const drawDate = drawDates[normalizedLotteryType] || 'A definir';
-        const status = getTicketStatus(drawDate);
 
         for (let i = 0; i < purchase.quantity; i++) {
           dbTickets.push({
@@ -187,8 +188,9 @@ export const ticketStorage = {
             number: generateTicketNumber(),
             purchaseDate,
             drawDate,
-            lotteryType: normalizedLotteryType as 'tri-daily' | 'special-event' | 'jackpot' | 'grand-prize',
-            status
+            lotteryType: normalizedType,
+            status,
+            lotteryRoundId: roundId || undefined,
           });
         }
       });
@@ -200,5 +202,4 @@ export const ticketStorage = {
   }
 };
 
-// Export with plural name for consistency
 export const ticketsStorage = ticketStorage;

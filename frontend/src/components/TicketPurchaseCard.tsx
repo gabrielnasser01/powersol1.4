@@ -71,6 +71,7 @@ export function TicketPurchaseCard() {
         quantity: qty,
         total_sol: sol,
         transaction_signature: sig,
+        lottery_round_id: currentRound,
       };
 
       const { data: purchaseData, error: insertError } = await supabase
@@ -93,7 +94,7 @@ export function TicketPurchaseCard() {
           return null;
         }
 
-        await ticketStorage.add(qty, 'tri-daily');
+        await ticketStorage.add(qty, 'tri-daily', currentRound);
         return retryData;
       }
 
@@ -108,7 +109,7 @@ export function TicketPurchaseCard() {
         });
       }
 
-      await ticketStorage.add(qty, 'tri-daily');
+      await ticketStorage.add(qty, 'tri-daily', currentRound);
 
       return purchaseData;
     } catch (error) {

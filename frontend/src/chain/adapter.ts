@@ -82,6 +82,17 @@ class RealChainAdapter implements ChainAdapter {
       const userData = userDataStr ? JSON.parse(userDataStr) : {};
       const walletAddress = userData.publicKey || 'unknown';
 
+      const { data: currentLottery } = await supabase
+        .from('blockchain_lotteries')
+        .select('lottery_id')
+        .eq('lottery_type', type)
+        .eq('is_drawn', false)
+        .order('draw_timestamp', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      const roundId = currentLottery?.lottery_id || null;
+
       const ticketsToInsert = [];
       for (let i = 0; i < amount; i++) {
         ticketsToInsert.push({
@@ -90,6 +101,7 @@ class RealChainAdapter implements ChainAdapter {
           quantity: 1,
           total_sol: ticketPriceSol,
           transaction_signature: `${txId}-${i}`,
+          lottery_round_id: roundId,
         });
       }
 

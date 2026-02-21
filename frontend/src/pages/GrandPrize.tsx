@@ -155,12 +155,24 @@ export function GrandPrize() {
 
       setTxId(signature);
 
+      const { data: currentLottery } = await supabase
+        .from('blockchain_lotteries')
+        .select('lottery_id')
+        .eq('lottery_type', 'grand-prize')
+        .eq('is_drawn', false)
+        .order('draw_timestamp', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      const roundId = currentLottery?.lottery_id || null;
+
       await supabase.from('ticket_purchases').insert({
         wallet_address: publicKey,
         lottery_type: 'grand-prize',
         quantity: ticketAmount,
         total_sol: totalSol,
         transaction_signature: signature,
+        lottery_round_id: roundId,
       });
 
       const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
@@ -171,7 +183,7 @@ export function GrandPrize() {
         transaction_signature: signature,
       });
 
-      await ticketsStorage.add(ticketAmount, 'grand-prize');
+      await ticketsStorage.add(ticketAmount, 'grand-prize', roundId || undefined);
 
       window.dispatchEvent(new CustomEvent('ticketsPurchased', {
         detail: { quantity: ticketAmount, signature }

@@ -1,7 +1,14 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { LOTTERY_WALLETS } from './walletBalanceService';
+import { TREASURY_WALLET, AFFILIATES_POOL_WALLET } from './anchorService';
 
 const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+
+const DISTRIBUTION = {
+  PRIZE_POOL: 40,
+  TREASURY: 30,
+  AFFILIATES: 30,
+} as const;
 
 function getLotteryWalletForType(lotteryType?: string): string {
   const type = lotteryType || 'tri-daily';
@@ -44,8 +51,12 @@ class SolanaService {
   ): Promise<Transaction> {
     const buyer = new PublicKey(buyerPublicKey);
     const lotteryWallet = getLotteryWalletForType(lotteryType);
-    const lottery = new PublicKey(lotteryWallet);
-    const lamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
+    const prizePoolWallet = new PublicKey(lotteryWallet);
+    const totalLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
+
+    const prizePoolAmount = Math.floor((totalLamports * DISTRIBUTION.PRIZE_POOL) / 100);
+    const treasuryAmount = Math.floor((totalLamports * DISTRIBUTION.TREASURY) / 100);
+    const affiliatesAmount = totalLamports - prizePoolAmount - treasuryAmount;
 
     const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
 
@@ -53,11 +64,29 @@ class SolanaService {
       feePayer: buyer,
       blockhash,
       lastValidBlockHeight,
-    }).add(
+    });
+
+    transaction.add(
       SystemProgram.transfer({
         fromPubkey: buyer,
-        toPubkey: lottery,
-        lamports,
+        toPubkey: prizePoolWallet,
+        lamports: prizePoolAmount,
+      })
+    );
+
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: buyer,
+        toPubkey: TREASURY_WALLET,
+        lamports: treasuryAmount,
+      })
+    );
+
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: buyer,
+        toPubkey: AFFILIATES_POOL_WALLET,
+        lamports: affiliatesAmount,
       })
     );
 

@@ -1,5 +1,5 @@
 import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { getConnection, getAuthorityKeypair, getTreasuryPublicKey, PROGRAM_IDS } from '@config/solana.js';
+import { getConnection, getAuthorityKeypair, getTreasuryPublicKey, getAffiliatesPoolPublicKey, DISTRIBUTION, PROGRAM_IDS } from '@config/solana.js';
 import {
   getLotteryPDAForType,
   LotteryType,
@@ -21,6 +21,7 @@ export class SolanaLotteryService {
   private connection = getConnection();
   private authority = getAuthorityKeypair();
   private treasury = getTreasuryPublicKey();
+  private affiliatesPool = getAffiliatesPoolPublicKey();
 
   getLotteryPDA(type: LotteryType): { publicKey: PublicKey; bump: number } {
     const params = this.getLotteryParams(type);
@@ -62,11 +63,32 @@ export class SolanaLotteryService {
 
       const transaction = new Transaction();
 
+      const totalLamports = Number(config.ticketPrice);
+      const prizePoolAmount = Math.floor(totalLamports * DISTRIBUTION.PRIZE_POOL);
+      const treasuryAmount = Math.floor(totalLamports * DISTRIBUTION.TREASURY);
+      const affiliatesAmount = totalLamports - prizePoolAmount - treasuryAmount;
+
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: buyer,
+          toPubkey: lotteryPDA.publicKey,
+          lamports: prizePoolAmount,
+        })
+      );
+
       transaction.add(
         SystemProgram.transfer({
           fromPubkey: buyer,
           toPubkey: this.treasury,
-          lamports: Number(config.ticketPrice),
+          lamports: treasuryAmount,
+        })
+      );
+
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: buyer,
+          toPubkey: this.affiliatesPool,
+          lamports: affiliatesAmount,
         })
       );
 
@@ -77,8 +99,11 @@ export class SolanaLotteryService {
           ticketNumber,
           lotteryPDA: lotteryPDA.publicKey.toBase58(),
           ticketPDA: ticketPDA.publicKey.toBase58(),
+          prizePoolAmount,
+          treasuryAmount,
+          affiliatesAmount,
         },
-        'Purchase transaction built'
+        'Purchase transaction built with 40/30/30 split'
       );
 
       return transaction;

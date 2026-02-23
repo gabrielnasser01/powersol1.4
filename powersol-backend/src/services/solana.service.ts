@@ -13,6 +13,7 @@ import {
   getAuthorityKeypair,
   getTreasuryPublicKey,
   getAffiliatesPoolPublicKey,
+  DISTRIBUTION,
   PROGRAM_IDS,
 } from '@config/solana.js';
 import {
@@ -207,15 +208,43 @@ export class SolanaService {
 
       const transaction = new Transaction();
 
+      const totalLamports = Number(ticketPrice);
+      const prizePoolAmount = Math.floor(totalLamports * DISTRIBUTION.PRIZE_POOL);
+      const treasuryAmount = Math.floor(totalLamports * DISTRIBUTION.TREASURY);
+      const affiliatesAmount = totalLamports - prizePoolAmount - treasuryAmount;
+
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: buyer,
+          toPubkey: lotteryPda,
+          lamports: prizePoolAmount,
+        })
+      );
+
       transaction.add(
         SystemProgram.transfer({
           fromPubkey: buyer,
           toPubkey: this.treasury,
-          lamports: Number(ticketPrice),
+          lamports: treasuryAmount,
         })
       );
 
-      logger.info({ buyer: buyer.toBase58(), lotteryId, ticketNumber }, 'Purchase transaction built');
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: buyer,
+          toPubkey: this.affiliatesPool,
+          lamports: affiliatesAmount,
+        })
+      );
+
+      logger.info({
+        buyer: buyer.toBase58(),
+        lotteryId,
+        ticketNumber,
+        prizePoolAmount,
+        treasuryAmount,
+        affiliatesAmount,
+      }, 'Purchase transaction built with 40/30/30 split');
 
       return transaction;
     } catch (error) {

@@ -51,17 +51,17 @@ export function SolanaCandlestickChart() {
     setCurrentPrice(basePrice);
   }, []);
 
+  // Update candles in real-time
   useEffect(() => {
     const interval = setInterval(() => {
       setCandles(prev => {
         const lastCandle = prev[prev.length - 1];
-        if (!lastCandle) return prev;
-        const newOpen = lastCandle.close;
+        const newOpen = lastCandle?.close || currentPrice;
         const priceChange = (Math.random() - 0.5) * 4;
         const newClose = newOpen + priceChange;
         const newHigh = Math.max(newOpen, newClose) + Math.random() * 2;
         const newLow = Math.min(newOpen, newClose) - Math.random() * 2;
-
+        
         const newCandle: CandleData = {
           id: Date.now(),
           open: newOpen,
@@ -70,15 +70,17 @@ export function SolanaCandlestickChart() {
           close: newClose,
           timestamp: Date.now(),
         };
-
+        
         setCurrentPrice(newClose);
-
-        return [...prev.slice(-19), newCandle];
+        
+        // Keep only last 20 candles
+        const newCandles = [...prev.slice(-19), newCandle];
+        return newCandles;
       });
-    }, 2000);
+    }, 2000); // Update every 2 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [currentPrice]);
 
   const { maxPrice, minPrice, priceRange } = chartMetrics;
   const chartHeight = 120;

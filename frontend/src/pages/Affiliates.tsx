@@ -127,12 +127,8 @@ export function Affiliates() {
 
   const checkApplicationStatus = useCallback(async () => {
     if (!walletAddress) return;
-    try {
-      const status = await affiliateDashboardService.checkApplicationStatus(walletAddress);
-      setApplicationStatus(status);
-    } catch (error) {
-      console.error('Failed to check application status:', error);
-    }
+    const status = await affiliateDashboardService.checkApplicationStatus(walletAddress);
+    setApplicationStatus(status);
   }, [walletAddress]);
 
   useEffect(() => {
@@ -425,7 +421,7 @@ export function Affiliates() {
             const Icon = stat.icon;
             return (
               <motion.div
-                key={stat.label}
+                key={index}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, delay: 0.8 + index * 0.1 }}

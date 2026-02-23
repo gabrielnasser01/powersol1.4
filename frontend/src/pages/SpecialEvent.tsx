@@ -38,24 +38,22 @@ export function SpecialEvent() {
 
   // Valentine's countdown
   useEffect(() => {
-    let cancelled = false;
+    // Load both pool states
     const loadPoolState = async () => {
       try {
         const [localState, globalState] = await Promise.all([
           chainAdapter.getPoolState(),
           chainAdapter.getGlobalPoolState()
         ]);
-        if (!cancelled) {
-          setPoolState(localState);
-          setGlobalPool(globalState);
-        }
+        setPoolState(localState);
+        setGlobalPool(globalState);
       } catch (error) {
         console.error('Failed to load pool state:', error);
       }
     };
-
+    
     loadPoolState();
-    const poolInterval = setInterval(loadPoolState, 10000);
+    const poolInterval = setInterval(loadPoolState, 10000); // Update every 10 seconds
 
     const updateCountdown = () => {
       const valentines = new Date('2026-04-05T23:59:00Z').getTime();
@@ -68,16 +66,15 @@ export function SpecialEvent() {
         const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-        if (!cancelled) setTimeLeft({ days, hours, minutes, seconds });
+        setTimeLeft({ days, hours, minutes, seconds });
       } else {
-        if (!cancelled) setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       }
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => {
-      cancelled = true;
       clearInterval(interval);
       clearInterval(poolInterval);
     };

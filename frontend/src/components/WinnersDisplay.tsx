@@ -19,10 +19,13 @@ export function WinnersDisplay({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadWinners = async () => {
-      setLoading(true);
+      if (!cancelled) setLoading(true);
       try {
         const data = await winnersService.getLatestRoundWinners(lotteryType);
+        if (cancelled) return;
 
         let filteredWinners = data;
 
@@ -44,17 +47,20 @@ export function WinnersDisplay({
       } catch (error) {
         console.error('Error loading winners:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadWinners();
     const interval = setInterval(loadWinners, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [lotteryType]);
 
-  const sortedWinners = winners.sort((a, b) => b.prizeSol - a.prizeSol);
+  const sortedWinners = [...winners].sort((a, b) => b.prizeSol - a.prizeSol);
 
   return (
     <motion.div

@@ -119,8 +119,9 @@ class AffiliateService {
     });
 
     if (!prepareResponse.ok) {
-      const error = await prepareResponse.json();
-      throw new Error(error.error || 'Failed to prepare withdrawal');
+      let message = 'Failed to prepare withdrawal';
+      try { const err = await prepareResponse.json(); message = err.error || message; } catch {}
+      throw new Error(message);
     }
 
     const prepareResult: PrepareWithdrawResponse = await prepareResponse.json();
@@ -139,8 +140,9 @@ class AffiliateService {
     });
 
     if (!submitResponse.ok) {
-      const error = await submitResponse.json();
-      throw new Error(error.error || 'Failed to submit withdrawal');
+      let message = 'Failed to submit withdrawal';
+      try { const err = await submitResponse.json(); message = err.error || message; } catch {}
+      throw new Error(message);
     }
 
     const submitResult: SubmitWithdrawResponse = await submitResponse.json();

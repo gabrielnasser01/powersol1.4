@@ -71,12 +71,23 @@ class WalletBalanceService {
   }
 
   async getAllLotteryBalances(): Promise<AllWalletBalances> {
-    const [triDaily, jackpot, grandPrize, special] = await Promise.all([
+    const defaultBalance = (type: LotteryType): WalletBalance => ({
+      address: LOTTERY_WALLETS[type],
+      balanceLamports: 0,
+      balanceSol: 0,
+    });
+
+    const results = await Promise.allSettled([
       this.getLotteryPoolBalance('tri-daily'),
       this.getLotteryPoolBalance('jackpot'),
       this.getLotteryPoolBalance('grand-prize'),
       this.getLotteryPoolBalance('special-event'),
     ]);
+
+    const triDaily = results[0].status === 'fulfilled' ? results[0].value : defaultBalance('tri-daily');
+    const jackpot = results[1].status === 'fulfilled' ? results[1].value : defaultBalance('jackpot');
+    const grandPrize = results[2].status === 'fulfilled' ? results[2].value : defaultBalance('grand-prize');
+    const special = results[3].status === 'fulfilled' ? results[3].value : defaultBalance('special-event');
 
     const totalSol = triDaily.balanceSol + jackpot.balanceSol + grandPrize.balanceSol + special.balanceSol;
 

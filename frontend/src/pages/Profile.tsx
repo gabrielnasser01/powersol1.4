@@ -205,6 +205,7 @@ export function Profile() {
   }, [connected]);
 
   useEffect(() => {
+    let cancelled = false;
     if (isConnected) {
       loadTickets();
       loadPrizes();
@@ -212,6 +213,7 @@ export function Profile() {
       loadAffiliateData();
       loadUserProfile();
     }
+    return () => { cancelled = true; };
   }, [walletPublicKey, isConnected]);
 
   // Listen for ticket purchases

@@ -257,19 +257,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [publicKey, connected, signTransaction, signAllTransactions]);
 
   useEffect(() => {
-    const savedUser = userStorage.get();
-    if (savedUser.publicKey) {
-      setPublicKey(savedUser.publicKey);
-      setConnected(true);
-
-      const phantom = getPhantomProvider();
-      if (phantom?.isConnected && phantom.publicKey?.toBase58() === savedUser.publicKey) {
-        setProvider(phantom);
-      }
-
-      solanaService.getBalance(savedUser.publicKey).then(setBalance);
-      claimDailyLoginPoints(savedUser.publicKey);
-    }
+    userStorage.clear();
   }, []);
 
   useEffect(() => {

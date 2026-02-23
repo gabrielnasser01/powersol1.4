@@ -170,10 +170,10 @@ export function Profile() {
 
       if (error) throw error;
 
-      alert('Configuracoes salvas com sucesso!');
+      alert('Settings saved successfully!');
     } catch (error) {
       console.error('Failed to save user profile:', error);
-      alert('Erro ao salvar configuracoes. Tente novamente.');
+      alert('Failed to save settings. Please try again.');
     } finally {
       setSavingConfig(false);
     }
@@ -1183,7 +1183,7 @@ export function Profile() {
                             PUSH_NOTIFICATIONS
                           </span>
                           <span className="font-mono text-[10px] block" style={{ color: notificationsEnabled ? '#00ff88' : '#888' }}>
-                            {notificationsEnabled ? 'Ativo - receba alertas de premios' : 'Desativado'}
+                            {notificationsEnabled ? 'Active - receive prize alerts' : 'Disabled'}
                           </span>
                         </div>
                       </div>
@@ -1241,7 +1241,7 @@ export function Profile() {
                     }}
                     onClick={saveUserProfile}
                   >
-                    {savingConfig ? 'Salvando...' : 'Save Changes'}
+                    {savingConfig ? 'Saving...' : 'Save Changes'}
                   </motion.button>
                 </div>
               </div>
@@ -1376,12 +1376,12 @@ export function Profile() {
                                   color: ticket.status === 'expired' ? '#ef4444' : lotteryGroup.color,
                                 }}
                               >
-                                {ticket.status === 'expired' ? 'SORTEADO' : 'ATIVO'}
+                                {ticket.status === 'expired' ? 'DRAWN' : 'ACTIVE'}
                               </div>
                             </div>
                             <div className="space-y-1 text-xs font-mono text-zinc-400">
-                              <div>Compra: {ticket.purchaseDate}</div>
-                              <div>Sorteio: {ticket.drawDate}</div>
+                              <div>Purchased: {ticket.purchaseDate}</div>
+                              <div>Draw: {ticket.drawDate}</div>
                             </div>
                           </motion.div>
                         ))}

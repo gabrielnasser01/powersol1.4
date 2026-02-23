@@ -161,22 +161,29 @@ export function Jackpot() {
 
       const roundId = currentLottery?.lottery_id || null;
 
-      await supabase.from('ticket_purchases').insert({
+      const { data: purchaseData, error: purchaseError } = await supabase.from('ticket_purchases').insert({
         wallet_address: publicKey,
         lottery_type: 'jackpot',
         quantity: depositAmount,
         total_sol: totalSol,
         transaction_signature: signature,
         lottery_round_id: roundId,
-      });
+      }).select('id').maybeSingle();
 
-      const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-      await supabase.from('house_earnings').insert({
-        wallet_address: publicKey,
-        lottery_type: 'jackpot',
-        amount_lamports: houseEarningsLamports,
-        transaction_signature: signature,
-      });
+      if (purchaseError) {
+        console.error('Failed to save ticket purchase:', purchaseError);
+      }
+
+      if (purchaseData) {
+        const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
+        await supabase.from('house_earnings').insert({
+          ticket_purchase_id: purchaseData.id,
+          wallet_address: publicKey,
+          lottery_type: 'jackpot',
+          amount_lamports: houseEarningsLamports,
+          transaction_signature: signature,
+        });
+      }
 
       await ticketsStorage.add(depositAmount, 'jackpot', roundId || undefined);
 

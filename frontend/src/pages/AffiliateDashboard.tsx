@@ -624,20 +624,20 @@ export function AffiliateDashboard() {
                         </div>
                         <div className="min-w-0">
                           <div className="font-mono text-sm sm:text-base md:text-lg truncate" style={{ color: '#ffffff' }}>
-                            {referral.wallet_address?.slice(0, 4)}...{referral.wallet_address?.slice(-4)}
+                            {referral.wallet?.slice(0, 4)}...{referral.wallet?.slice(-4)}
                           </div>
                           <div className="text-[10px] sm:text-xs md:text-sm text-zinc-400 font-mono">
-                            {new Date(referral.created_at).toLocaleDateString()}
+                            {referral.signupDate}
                           </div>
                         </div>
                       </div>
 
                       <div className="text-right flex-shrink-0 ml-2">
                         <div className="text-sm sm:text-lg md:text-xl font-bold" style={{ color: '#00ff88' }}>
-                          {referral.tickets_bought || 0}
+                          {referral.totalSpent?.toFixed(2) || '0.00'}
                         </div>
                         <div className="text-[10px] sm:text-xs md:text-sm text-zinc-400 font-mono">
-                          tickets
+                          SOL spent
                         </div>
                       </div>
                     </motion.div>

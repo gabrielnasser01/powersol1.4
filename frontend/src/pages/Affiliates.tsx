@@ -135,7 +135,7 @@ export function Affiliates() {
     checkApplicationStatus();
   }, [checkApplicationStatus]);
 
-  const canAccessDashboard = connected && applicationStatus.hasApplied && applicationStatus.status !== 'rejected';
+  const canAccessDashboard = connected && applicationStatus.hasApplied && applicationStatus.status === 'approved';
   const needsWalletConnection = !connected;
   const needsApplication = connected && !applicationStatus.hasApplied;
 

@@ -121,6 +121,11 @@ export function TicketPurchaseCard() {
   const handlePurchase = async () => {
     if (!connected || !publicKey) return;
 
+    if (balance < totalSol) {
+      setError(`Insufficient SOL balance. You need ${totalSol.toFixed(2)} SOL but only have ${balance.toFixed(4)} SOL.`);
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
@@ -202,11 +207,9 @@ export function TicketPurchaseCard() {
 
       try {
         await apiClient.recordTicketPurchase(publicKey, {
-          lottery_type: 'tri_daily',
+          lottery_type: 'tri-daily',
           ticket_count: quantity,
           transaction_signature: signature,
-          wallet_address: publicKey,
-          total_sol: totalSol,
         });
       } catch (missionErr) {
         console.error('Mission update failed:', missionErr);

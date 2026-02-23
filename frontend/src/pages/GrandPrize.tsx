@@ -24,7 +24,7 @@ export function GrandPrize() {
   const [showSuccess, setShowSuccess] = useOptimizedState(false);
   const [txId, setTxId] = useOptimizedState('');
   const [error, setError] = useOptimizedState('');
-  const [globalPool, setGlobalPool] = useOptimizedState({ prizePoolUsd: 0, prizePoolSol: 0 });
+  const [globalPool, setGlobalPool] = useOptimizedState({ prizePoolUsd: 0, prizePoolSol: 0, ticketCount: 0 });
   const [liveContributors, setLiveContributors] = useOptimizedState(0);
   const [liveGrowthRate, setLiveGrowthRate] = useOptimizedState(0);
   const [liveDaysLeft, setLiveDaysLeft] = useOptimizedState(0);
@@ -166,22 +166,29 @@ export function GrandPrize() {
 
       const roundId = currentLottery?.lottery_id || null;
 
-      await supabase.from('ticket_purchases').insert({
+      const { data: purchaseData, error: purchaseError } = await supabase.from('ticket_purchases').insert({
         wallet_address: publicKey,
         lottery_type: 'grand-prize',
         quantity: ticketAmount,
         total_sol: totalSol,
         transaction_signature: signature,
         lottery_round_id: roundId,
-      });
+      }).select('id').maybeSingle();
 
-      const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-      await supabase.from('house_earnings').insert({
-        wallet_address: publicKey,
-        lottery_type: 'grand-prize',
-        amount_lamports: houseEarningsLamports,
-        transaction_signature: signature,
-      });
+      if (purchaseError) {
+        console.error('Failed to save ticket purchase:', purchaseError);
+      }
+
+      if (purchaseData) {
+        const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
+        await supabase.from('house_earnings').insert({
+          ticket_purchase_id: purchaseData.id,
+          wallet_address: publicKey,
+          lottery_type: 'grand-prize',
+          amount_lamports: houseEarningsLamports,
+          transaction_signature: signature,
+        });
+      }
 
       await ticketsStorage.add(ticketAmount, 'grand-prize', roundId || undefined);
 
@@ -537,7 +544,7 @@ export function GrandPrize() {
                     ease: 'linear',
                   }}
                 />
-                <span>{(globalPool.prizePoolUsd / 150).toFixed(2)} SOL</span>
+                <span>{globalPool.prizePoolSol.toFixed(2)} SOL</span>
               </div>
             </div>
 

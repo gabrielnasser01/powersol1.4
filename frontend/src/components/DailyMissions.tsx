@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Trophy, Gift, CheckCircle, Clock, Zap, Users, Shield, Activity, Terminal, Heart, Share2, TrendingUp, Calendar, Star, Coins, Lock, LogIn, Ticket, MessageCircle, Repeat, ShoppingCart, Twitter, Music, MessageSquare, Eye, ShoppingBag } from 'lucide-react';
 import { theme } from '../theme';
 import { missionsStorage, userStatsStorage, Mission, userStorage } from '../store/persist';
-import { useFrameLimiter } from '../hooks/useFrameLimiter';
 import { useWallet } from '../contexts/WalletContext';
 import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
@@ -44,7 +43,6 @@ export function DailyMissions() {
   const [loading, setLoading] = useState(true);
   const [donationAmount, setDonationAmount] = useState('0.05');
   const [showDonationModal, setShowDonationModal] = useState(false);
-  const { start, stop } = useFrameLimiter(30);
   const { publicKey: walletPubKey, connected: walletConnected, getWalletAdapter, refreshBalance } = useWallet();
 
   const isConnected = !!user.publicKey;
@@ -66,12 +64,11 @@ export function DailyMissions() {
   }, []);
 
   useEffect(() => {
-    start(() => {
+    const interval = setInterval(() => {
       setCurrentTime(new Date());
-    });
-
-    return () => stop();
-  }, [start, stop]);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleWalletChange = () => {
@@ -156,7 +153,7 @@ export function DailyMissions() {
 
       const now = new Date().toISOString();
       if (existingProgress) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('user_mission_progress')
           .update({
             completed: true,
@@ -164,8 +161,12 @@ export function DailyMissions() {
             last_reset: now,
           })
           .eq('id', existingProgress.id);
+        if (updateError) {
+          console.error('Failed to update mission progress:', updateError);
+          return false;
+        }
       } else {
-        await supabase
+        const { error: insertError } = await supabase
           .from('user_mission_progress')
           .insert({
             wallet_address: user.publicKey,
@@ -175,13 +176,11 @@ export function DailyMissions() {
             last_reset: now,
             progress: {},
           });
+        if (insertError) {
+          console.error('Failed to insert mission progress:', insertError);
+          return false;
+        }
       }
-
-      setMissions(prev => prev.map(m =>
-        m.id === mission.id
-          ? { ...m, user_progress: { completed: true, completed_at: now, progress: {} } }
-          : m
-      ));
 
       const result = await powerPointsService.addPoints(
         user.publicKey,
@@ -194,8 +193,14 @@ export function DailyMissions() {
 
       if (!result.success) {
         console.error('Failed to add power points:', result.error);
-        return true;
+        return false;
       }
+
+      setMissions(prev => prev.map(m =>
+        m.id === mission.id
+          ? { ...m, user_progress: { completed: true, completed_at: now, progress: {} } }
+          : m
+      ));
 
       userStatsStorage.addMissionPoints(mission.power_points);
       window.dispatchEvent(new CustomEvent('missionPointsChange'));
@@ -228,14 +233,42 @@ export function DailyMissions() {
         return;
       }
 
-      if (data?.already_claimed) {
+      const result = Array.isArray(data) ? data[0] : data;
+
+      if (result?.already_claimed) {
         alert('You already claimed your daily login points today!');
         return;
       }
 
-      const pointsEarned = data?.points_earned || 10;
+      const pointsEarned = result?.points_earned || 10;
 
-      await completeMissionAPI('daily_login');
+      setMissions(prev => prev.map(m =>
+        m.mission_key === 'daily_login'
+          ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: {} } }
+          : m
+      ));
+
+      const now = new Date().toISOString();
+      const mission = missions.find(m => m.mission_key === 'daily_login');
+      if (mission) {
+        const { data: existingProgress } = await supabase
+          .from('user_mission_progress')
+          .select('id')
+          .eq('wallet_address', user.publicKey)
+          .eq('mission_id', mission.id)
+          .maybeSingle();
+
+        if (existingProgress) {
+          await supabase
+            .from('user_mission_progress')
+            .update({ completed: true, completed_at: now, last_reset: now })
+            .eq('id', existingProgress.id);
+        } else {
+          await supabase
+            .from('user_mission_progress')
+            .insert({ wallet_address: user.publicKey, mission_id: mission.id, completed: true, completed_at: now, last_reset: now, progress: {} });
+        }
+      }
 
       userStatsStorage.addMissionPoints(pointsEarned);
       window.dispatchEvent(new CustomEvent('missionPointsChange'));
@@ -310,10 +343,36 @@ export function DailyMissions() {
         console.error('Donation record error:', donationError);
       }
 
-      const result = donationResult?.[0] || { points_earned: 50 };
-      const donationPoints = result.points_earned;
+      const donationResultRow = Array.isArray(donationResult) ? donationResult[0] : donationResult;
+      const donationPoints = donationResultRow?.points_earned || getDonationTierPoints(amount).points;
 
-      await completeMissionAPI('daily_donation');
+      const now = new Date().toISOString();
+      const mission = missions.find(m => m.mission_key === 'daily_donation');
+      if (mission) {
+        const { data: existingProgress } = await supabase
+          .from('user_mission_progress')
+          .select('id')
+          .eq('wallet_address', walletPubKey)
+          .eq('mission_id', mission.id)
+          .maybeSingle();
+
+        if (existingProgress) {
+          await supabase
+            .from('user_mission_progress')
+            .update({ completed: true, completed_at: now, last_reset: now })
+            .eq('id', existingProgress.id);
+        } else {
+          await supabase
+            .from('user_mission_progress')
+            .insert({ wallet_address: walletPubKey, mission_id: mission.id, completed: true, completed_at: now, last_reset: now, progress: {} });
+        }
+
+        setMissions(prev => prev.map(m =>
+          m.id === mission.id
+            ? { ...m, user_progress: { completed: true, completed_at: now, progress: {} } }
+            : m
+        ));
+      }
 
       userStatsStorage.addMissionPoints(donationPoints);
       window.dispatchEvent(new CustomEvent('missionPointsChange'));
@@ -1037,8 +1096,8 @@ export function DailyMissions() {
             </div>
             <div className="text-zinc-400">|</div>
             <div style={{ color: '#ffffff' }}>
-              <span className="hidden sm:inline">COMPLETION_RATE: {((completedCount/totalMissions)*100).toFixed(1)}%</span>
-              <span className="sm:hidden">RATE: {((completedCount/totalMissions)*100).toFixed(1)}%</span>
+              <span className="hidden sm:inline">COMPLETION_RATE: {(totalMissions > 0 ? ((completedCount/totalMissions)*100).toFixed(1) : '0.0')}%</span>
+              <span className="sm:hidden">RATE: {(totalMissions > 0 ? ((completedCount/totalMissions)*100).toFixed(1) : '0.0')}%</span>
             </div>
           </div>
         </motion.div>

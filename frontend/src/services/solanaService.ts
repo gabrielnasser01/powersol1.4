@@ -5,7 +5,7 @@ const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devne
 
 function getLotteryWalletForType(lotteryType?: string): string {
   const type = lotteryType || 'tri-daily';
-  const normalizedType = type.toLowerCase().replace('_', '-') as keyof typeof LOTTERY_WALLETS;
+  const normalizedType = type.toLowerCase().replace(/_/g, '-') as keyof typeof LOTTERY_WALLETS;
   return LOTTERY_WALLETS[normalizedType] || LOTTERY_WALLETS['tri-daily'];
 }
 
@@ -96,14 +96,12 @@ class SolanaService {
       { skipPreflight: false, preflightCommitment: 'processed' }
     );
 
-    try {
-      const result = await this.connection.getSignatureStatus(signature);
-      if (result.value?.err) {
-        throw new Error(`Transaction failed: ${JSON.stringify(result.value.err)}`);
-      }
-    } catch {
-      console.log('Could not verify status, but transaction was sent:', signature);
-    }
+    const latestBlockhash = await this.connection.getLatestBlockhash();
+    await this.connection.confirmTransaction({
+      signature,
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    }, 'confirmed');
 
     return signature;
   }

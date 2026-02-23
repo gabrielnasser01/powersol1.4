@@ -58,7 +58,7 @@ class WalletBalanceService {
   }
 
   async getLotteryPoolBalance(lotteryType: string): Promise<WalletBalance> {
-    const normalizedType = lotteryType.toLowerCase().replace('_', '-') as LotteryType;
+    const normalizedType = lotteryType.toLowerCase().replace(/_/g, '-') as LotteryType;
     const address = LOTTERY_WALLETS[normalizedType] || LOTTERY_WALLETS['tri-daily'];
 
     const balanceLamports = await this.getWalletBalance(address);

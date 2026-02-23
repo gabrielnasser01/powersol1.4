@@ -74,68 +74,16 @@ class RealChainAdapter implements ChainAdapter {
       };
     } catch (error) {
       console.error('Failed to purchase tickets:', error);
-
-      const txId = 'tx_' + Math.random().toString(36).substr(2, 9);
-      const totalSol = ticketPriceSol * amount;
-
-      const userDataStr = localStorage.getItem('powerSOL.user');
-      const userData = userDataStr ? JSON.parse(userDataStr) : {};
-      const walletAddress = userData.publicKey || 'unknown';
-
-      const { data: currentLottery } = await supabase
-        .from('blockchain_lotteries')
-        .select('lottery_id')
-        .eq('lottery_type', type)
-        .eq('is_drawn', false)
-        .order('draw_timestamp', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      const roundId = currentLottery?.lottery_id || null;
-
-      const ticketsToInsert = [];
-      for (let i = 0; i < amount; i++) {
-        ticketsToInsert.push({
-          wallet_address: walletAddress,
-          lottery_type: type,
-          quantity: 1,
-          total_sol: ticketPriceSol,
-          transaction_signature: `${txId}-${i}`,
-          lottery_round_id: roundId,
-        });
-      }
-
-      const { data: purchaseData } = await supabase
-        .from('ticket_purchases')
-        .insert(ticketsToInsert)
-        .select('id');
-
-      if (!affiliateCode && purchaseData && purchaseData.length > 0) {
-        const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-        await supabase.from('house_earnings').insert({
-          ticket_purchase_id: purchaseData[0].id,
-          wallet_address: walletAddress,
-          lottery_type: type,
-          amount_lamports: houseEarningsLamports,
-          transaction_signature: txId,
-        });
-      }
-
-      return { txId, success: true };
+      throw error;
     }
   }
 
   async fundJackpot({ amountSol }: { amountSol: number }) {
     const txId = 'fund_' + Math.random().toString(36).substr(2, 9);
 
-    await supabase
-      .from('solana_lottery_state')
-      .update({
-        jackpot_pool_lamports: supabase.rpc('increment_jackpot', {
-          amount: Math.floor(amountSol * 0.4 * 1e9)
-        })
-      })
-      .eq('is_active', true);
+    await supabase.rpc('increment_jackpot', {
+      amount: Math.floor(amountSol * 0.4 * 1e9)
+    });
 
     return { txId, success: true };
   }
@@ -174,11 +122,11 @@ class RealChainAdapter implements ChainAdapter {
     const walletBalance = await walletBalanceService.getLotteryPoolBalance(type);
     const prizePoolSol = walletBalance.balanceSol;
 
-    const { data: tickets } = await supabase
+    const { count } = await supabase
       .from('blockchain_tickets')
-      .select('id', { count: 'exact' });
+      .select('id', { count: 'exact', head: true });
 
-    const totalTickets = tickets?.length || 0;
+    const totalTickets = count || 0;
 
     return {
       totalSol: prizePoolSol,

@@ -28,7 +28,7 @@ export function Profile() {
   const [copied, setCopied] = useState(false);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
-  const [claimingPrize, setClaimingPrize] = useState<number | null>(null);
+  const [claimingPrize, setClaimingPrize] = useState<string | null>(null);
   const [affiliateStats, setAffiliateStats] = useState<DashboardStats | null>(null);
   const [loadingAffiliate, setLoadingAffiliate] = useState(false);
   const [claimingAffiliate, setClaimingAffiliate] = useState(false);
@@ -355,8 +355,8 @@ export function Profile() {
   };
 
   const handleCopyWallet = () => {
-    if (user.publicKey) {
-      navigator.clipboard.writeText(user.publicKey);
+    if (walletPublicKey) {
+      navigator.clipboard.writeText(walletPublicKey).catch(() => {});
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -372,15 +372,21 @@ export function Profile() {
   };
 
   const handleClaimPrize = async (prizeId: string) => {
-    if (!user.publicKey) {
+    if (!walletPublicKey) {
       alert('Please connect your wallet first');
       return;
     }
 
-    setClaimingPrize(prizeId as any);
+    const wallet = getWalletAdapter();
+    if (!wallet || !wallet.signTransaction) {
+      alert('Wallet adapter not available. Please reconnect your wallet.');
+      return;
+    }
+
+    setClaimingPrize(prizeId);
 
     try {
-      const result = await prizeService.claimPrize(prizeId, user.publicKey);
+      const result = await prizeService.claimPrize(prizeId, walletPublicKey, wallet.signTransaction.bind(wallet));
 
       alert(`Prize claimed successfully! Transaction: ${result.data.signature}`);
 
@@ -394,7 +400,7 @@ export function Profile() {
   };
 
   const handleClaimAffiliate = async () => {
-    if (!user.publicKey || !affiliateStats) {
+    if (!walletPublicKey || !affiliateStats) {
       alert('Please connect your wallet first');
       return;
     }
@@ -417,7 +423,7 @@ export function Profile() {
       const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
       const result = await claimService.claimAllAvailableAffiliateRewards(
-        user.publicKey,
+        walletPublicKey,
         wallet.signTransaction.bind(wallet),
         connection
       );

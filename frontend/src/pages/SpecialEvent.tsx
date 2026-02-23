@@ -125,8 +125,7 @@ export function SpecialEvent() {
 
   const stats = [
     { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString()}`, icon: Trophy, color: '#FF8EC8' },
-    { label: 'Participants', value: '666', icon: Users, color: '#FF8EC8' },
-    { label: 'Participants', value: '666', icon: Users, color: '#FF8EC8' },
+    { label: 'Participants', value: globalPool.ticketCount.toString(), icon: Users, color: '#FF8EC8' },
     { label: 'Days Left', value: timeLeft.days.toString(), icon: Calendar, color: '#FF8EC8' },
     { label: 'Easter Spirit', value: '100%', icon: Ghost, color: '#FF8EC8' },
   ];
@@ -182,22 +181,29 @@ export function SpecialEvent() {
 
       const roundId = currentLottery?.lottery_id || null;
 
-      await supabase.from('ticket_purchases').insert({
+      const { data: purchaseData, error: purchaseError } = await supabase.from('ticket_purchases').insert({
         wallet_address: publicKey,
         lottery_type: 'special-event',
         quantity: quantity,
         total_sol: totalSol,
         transaction_signature: signature,
         lottery_round_id: roundId,
-      });
+      }).select('id').maybeSingle();
 
-      const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-      await supabase.from('house_earnings').insert({
-        wallet_address: publicKey,
-        lottery_type: 'special-event',
-        amount_lamports: houseEarningsLamports,
-        transaction_signature: signature,
-      });
+      if (purchaseError) {
+        console.error('Failed to save ticket purchase:', purchaseError);
+      }
+
+      if (purchaseData) {
+        const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
+        await supabase.from('house_earnings').insert({
+          ticket_purchase_id: purchaseData.id,
+          wallet_address: publicKey,
+          lottery_type: 'special-event',
+          amount_lamports: houseEarningsLamports,
+          transaction_signature: signature,
+        });
+      }
 
       await ticketsStorage.add(quantity, 'special-event', roundId || undefined);
 

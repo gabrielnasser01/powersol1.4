@@ -33,11 +33,10 @@ export function Jackpot() {
   useMagnetic(depositButtonRef);
 
   useEffect(() => {
-    let cancelled = false;
     const loadGlobalPool = async () => {
       try {
         const globalState = await chainAdapter.getGlobalPoolState();
-        if (!cancelled) setGlobalPool(globalState);
+        setGlobalPool(globalState);
       } catch (error) {
         console.error('Failed to load global pool state:', error);
       }
@@ -46,10 +45,7 @@ export function Jackpot() {
     loadGlobalPool();
     const interval = setInterval(loadGlobalPool, 10000);
 
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

@@ -219,7 +219,10 @@ export function TicketPurchaseCard() {
         detail: { quantity, signature, ticketNumbers, isOnChain, affiliateCode: currentAffiliateCode }
       }));
 
-      await refreshBalance();
+      try {
+        await refreshBalance();
+      } catch {
+      }
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 10000);

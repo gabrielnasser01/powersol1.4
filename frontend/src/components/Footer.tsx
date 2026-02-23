@@ -210,7 +210,7 @@ export function Footer() {
         <div className="mt-16 pt-8 border-t border-zinc-800">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
             <div className="text-zinc-400 text-center md:text-left">
-              <p>Responsible Play • 18+ • Check local laws • © 2025 powerSOL</p>
+              <p>Responsible Play • 18+ • Check local laws • © {currentYear} powerSOL</p>
             </div>
             
             <div className="flex items-center space-x-4 text-sm text-zinc-500">

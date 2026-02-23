@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { Menu, X, Zap, Home, Activity, Users, User, Shield, Target } from 'lucide-react';
+import { Menu, X, Zap, Home, Ticket, Trophy, Crown, Sparkles, Users, LayoutDashboard, User, Shield, Target, HelpCircle, FileText, Lock, ScrollText } from 'lucide-react';
 import { WalletConnection } from './WalletConnection';
 import { theme } from '../theme';
 import { useThrottledScroll } from '../hooks/useSpotifyOptimizations';
@@ -87,14 +87,27 @@ export function Header() {
     setIsScrolled(scrollY > 20);
   }, 8); // 120fps for ultra-smooth header
 
-  const navItems = [
+  const mainNavItems = [
     { name: 'Home', path: '/', icon: Home },
-    { name: 'Lottery', path: '/lottery', icon: Activity },
+    { name: 'Lottery', path: '/lottery', icon: Ticket },
+    { name: 'Jackpot', path: '/jackpot', icon: Trophy },
+    { name: 'Grand Prize', path: '/grandprize', icon: Crown },
+    { name: 'Special Event', path: '/specialevent', icon: Sparkles },
     { name: 'Affiliates', path: '/affiliates', icon: Users },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Profile', path: '/profile', icon: User },
     { name: 'Transparency', path: '/transparency', icon: Shield },
     { name: 'Missions', path: '/missions', icon: Target },
   ];
+
+  const secondaryNavItems = [
+    { name: 'Privacy Policy', path: '/privacypolicy', icon: Lock },
+    { name: 'Terms of Service', path: '/termsofservice', icon: ScrollText },
+    { name: 'FAQ', path: '/faq', icon: HelpCircle },
+    { name: 'Whitepaper', path: '/whitepaper', icon: FileText },
+  ];
+
+  const navItems = mainNavItems;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -149,22 +162,22 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-4">
+          <nav className="hidden xl:flex items-center space-x-0.5">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
-              
+
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-300"
+                  className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg font-medium text-xs transition-all duration-300 whitespace-nowrap"
                   style={{
                     color: active ? theme.colors.neonBlue : theme.colors.textMuted,
                     background: active ? `${theme.colors.neonBlue}20` : 'transparent',
                   }}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   <span>{item.name}</span>
                 </Link>
               );
@@ -174,7 +187,7 @@ export function Header() {
           {/* Mission Points Display - Desktop */}
           <Link to="/missions">
             <motion.div
-              className="hidden lg:flex items-center space-x-2 px-4 py-2 rounded-xl ml-auto mr-4 cursor-pointer"
+              className="hidden xl:flex items-center space-x-2 px-3 py-1.5 rounded-xl ml-auto mr-3 cursor-pointer"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.3 }}
             >
@@ -201,12 +214,12 @@ export function Header() {
           </Link>
 
           {/* Desktop Wallet Connection */}
-          <div className="hidden lg:block">
+          <div className="hidden xl:block">
             <WalletConnection />
           </div>
 
           {/* Mobile: Mission Points and Menu Button */}
-          <div className="lg:hidden flex items-center space-x-3">
+          <div className="xl:hidden flex items-center space-x-3">
             {/* Mission Points - Mobile */}
             <Link to="/missions">
               <motion.div
@@ -278,7 +291,7 @@ export function Header() {
         <AnimatePresence>
           {isMenuOpen && (
             <motion.div
-              className="lg:hidden border-t relative overflow-hidden max-h-[calc(100vh-4rem)]"
+              className="xl:hidden border-t relative overflow-hidden max-h-[calc(100vh-4rem)]"
               style={{ 
                 borderColor: theme.colors.border,
                 background: `
@@ -310,85 +323,67 @@ export function Header() {
               />
               
               <div className="py-3 px-2 overflow-y-auto max-h-[calc(100vh-5rem)]">
-                <nav className="flex flex-col space-y-1 mb-4">
+                <nav className="flex flex-col space-y-1 mb-3">
                   {navItems.map((item, index) => {
                     const Icon = item.icon;
                     const active = isActive(item.path);
-                    
+
                     return (
                       <motion.div
                         key={item.path}
                         initial={{ opacity: 0, x: -30 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ 
-                          duration: 0.4, 
-                          delay: index * 0.1,
+                        transition={{
+                          duration: 0.4,
+                          delay: index * 0.06,
                           ease: [0.4, 0, 0.2, 1]
                         }}
                       >
                         <Link
                           to={item.path}
                           onClick={handleNavClick}
-                          className="group flex items-center space-x-3 px-3 py-3 mx-2 rounded-xl transition-all duration-300 relative overflow-hidden"
+                          className="group flex items-center space-x-3 px-3 py-2.5 mx-2 rounded-xl transition-all duration-300 relative overflow-hidden"
                           style={{
                             color: active ? theme.colors.neonBlue : theme.colors.text,
-                            background: active 
+                            background: active
                               ? `linear-gradient(135deg, ${theme.colors.neonBlue}15, ${theme.colors.neonBlue}08)`
                               : 'transparent',
-                            border: active 
-                              ? `1px solid ${theme.colors.neonBlue}40` 
+                            border: active
+                              ? `1px solid ${theme.colors.neonBlue}40`
                               : '1px solid transparent',
-                            boxShadow: active 
+                            boxShadow: active
                               ? `0 0 20px ${theme.colors.neonBlue}20, inset 0 1px 0 ${theme.colors.neonBlue}30`
                               : 'none',
                           }}
                         >
-                          {/* Hover effect background */}
-                          <motion.div
-                            className="absolute inset-0 rounded-xl"
-                            style={{
-                              background: `linear-gradient(135deg, ${theme.colors.neonBlue}10, transparent)`,
-                              opacity: 0,
-                            }}
-                            whileHover={{ opacity: 1 }}
-                            transition={{ duration: 0.3 }}
-                          />
-                          
-                          {/* Icon with glow effect */}
                           <motion.div
                             className="relative z-10 p-1.5 rounded-lg"
                             style={{
-                              background: active 
-                                ? `${theme.colors.neonBlue}20` 
+                              background: active
+                                ? `${theme.colors.neonBlue}20`
                                 : 'rgba(255, 255, 255, 0.05)',
                               border: `1px solid ${active ? theme.colors.neonBlue : 'rgba(255, 255, 255, 0.1)'}40`,
-                            }}
-                            whileHover={{ 
-                              scale: 1.1,
-                              boxShadow: `0 0 15px ${theme.colors.neonBlue}40`,
                             }}
                             whileTap={{ scale: 0.95 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <Icon 
-                              className="w-4 h-4" 
+                            <Icon
+                              className="w-4 h-4"
                               style={{
                                 filter: active ? `drop-shadow(0 0 8px ${theme.colors.neonBlue})` : 'none'
                               }}
                             />
                           </motion.div>
-                          
-                          {/* Text with glow */}
-                          <span 
-                            className="font-semibold text-base relative z-10"
+
+                          <span
+                            className="font-semibold text-sm relative z-10"
                             style={{
                               textShadow: active ? `0 0 10px ${theme.colors.neonBlue}60` : 'none'
                             }}
                           >
                             {item.name}
                           </span>
-                          
-                          {/* Active indicator */}
+
                           {active && (
                             <motion.div
                               className="absolute right-3 w-2 h-2 rounded-full"
@@ -404,34 +399,63 @@ export function Header() {
                               }}
                             />
                           )}
-                          
-                          {/* Ripple effect on tap */}
-                          <motion.div
-                            className="absolute inset-0 rounded-xl"
-                            style={{
-                              background: `radial-gradient(circle, ${theme.colors.neonBlue}30 0%, transparent 70%)`,
-                              opacity: 0,
-                            }}
-                            whileTap={{ 
-                              opacity: [0, 0.5, 0],
-                              scale: [0.8, 1.2, 1],
-                            }}
-                            transition={{ duration: 0.4 }}
-                          />
                         </Link>
                       </motion.div>
                     );
                   })}
                 </nav>
-                
-                {/* Wallet Connection - Mobile */}
+
+                <div
+                  className="mx-4 my-3 border-t"
+                  style={{ borderColor: theme.colors.border }}
+                />
+
+                <nav className="flex flex-col space-y-1 mb-3">
+                  {secondaryNavItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.path);
+
+                    return (
+                      <motion.div
+                        key={item.path}
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{
+                          duration: 0.4,
+                          delay: (navItems.length + index) * 0.06,
+                          ease: [0.4, 0, 0.2, 1]
+                        }}
+                      >
+                        <Link
+                          to={item.path}
+                          onClick={handleNavClick}
+                          className="group flex items-center space-x-3 px-3 py-2 mx-2 rounded-xl transition-all duration-300"
+                          style={{
+                            color: active ? theme.colors.neonBlue : theme.colors.textMuted,
+                          }}
+                        >
+                          <div
+                            className="p-1 rounded-lg"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.03)',
+                            }}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-sm">{item.name}</span>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </nav>
+
                 <motion.div
                   className="px-3 mt-2"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
                     duration: 0.4,
-                    delay: navItems.length * 0.1 + 0.1,
+                    delay: (navItems.length + secondaryNavItems.length) * 0.06 + 0.1,
                     ease: [0.4, 0, 0.2, 1]
                   }}
                 >

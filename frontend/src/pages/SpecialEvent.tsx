@@ -88,8 +88,8 @@ export function SpecialEvent() {
       subtitle: 'System Enhanced',
       color: '#FF8EC8',
       gradient: `linear-gradient(135deg, rgba(255, 142, 200, 0.2), rgba(255, 105, 180, 0.15))`,
-      onClick: () => navigate('/special-event'),
-      path: '/special-event',
+      onClick: () => navigate('/specialevent'),
+      path: '/specialevent',
     },
     {
       id: 2,
@@ -118,8 +118,8 @@ export function SpecialEvent() {
       subtitle: 'Annual Event',
       color: '#ffffff',
       gradient: `linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(233, 236, 239, 0.2))`,
-      onClick: () => navigate('/grand-prize'),
-      path: '/grand-prize',
+      onClick: () => navigate('/grandprize'),
+      path: '/grandprize',
     },
   ];
 
@@ -299,7 +299,7 @@ export function SpecialEvent() {
                 scale: 1.05,
                 boxShadow: '0 0 30px rgba(135, 206, 250, 0.6)',
               }}
-              onClick={() => navigate('/special-event')}
+              onClick={() => navigate('/specialevent')}
               className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
                 background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.35), rgba(135, 206, 250, 0.3))',
@@ -395,7 +395,7 @@ export function SpecialEvent() {
                 scale: 1.05,
                 boxShadow: '0 0 30px rgba(248, 249, 250, 0.6)',
               }}
-              onClick={() => navigate('/grand-prize')}
+              onClick={() => navigate('/grandprize')}
               className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
                 background: 'linear-gradient(135deg, rgba(248, 249, 250, 0.2), rgba(233, 236, 239, 0.2))',

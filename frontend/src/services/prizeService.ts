@@ -98,9 +98,8 @@ class PrizeService {
     });
 
     if (!prepareResponse.ok) {
-      let message = 'Failed to prepare claim';
-      try { const err = await prepareResponse.json(); message = err.error || message; } catch {}
-      throw new Error(message);
+      const error = await prepareResponse.json();
+      throw new Error(error.error || 'Failed to prepare claim');
     }
 
     const prepareResult: PrepareClaimResponse = await prepareResponse.json();
@@ -121,9 +120,8 @@ class PrizeService {
     });
 
     if (!submitResponse.ok) {
-      let message = 'Failed to submit claim';
-      try { const err = await submitResponse.json(); message = err.error || message; } catch {}
-      throw new Error(message);
+      const error = await submitResponse.json();
+      throw new Error(error.error || 'Failed to submit claim');
     }
 
     return await submitResponse.json();

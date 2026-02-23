@@ -95,12 +95,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const refreshBalance = useCallback(async () => {
     if (publicKey) {
-      try {
-        const bal = await solanaService.getBalance(publicKey);
-        setBalance(bal);
-      } catch (error) {
-        console.error('Failed to refresh balance:', error);
-      }
+      const bal = await solanaService.getBalance(publicKey);
+      setBalance(bal);
     }
   }, [publicKey]);
 

@@ -773,19 +773,19 @@ export function DailyMissions() {
                     }
 
                     if (mission.mission_key === 'social_join_discord' || mission.mission_key === 'social_discord_join') {
-                      completeMissionAPI(mission.mission_key).catch(() => {});
+                      completeMissionAPI(mission.mission_key);
                       window.open('https://discord.gg/powersol', '_blank');
                       return;
                     }
 
                     if (mission.mission_key === 'social_twitter_follow') {
-                      completeMissionAPI('social_twitter_follow').catch(() => {});
+                      completeMissionAPI('social_twitter_follow');
                       window.open('https://twitter.com/powersol_io', '_blank');
                       return;
                     }
 
                     if (mission.mission_key === 'social_tiktok_follow') {
-                      completeMissionAPI('social_tiktok_follow').catch(() => {});
+                      completeMissionAPI('social_tiktok_follow');
                       window.open('https://tiktok.com/@powersol', '_blank');
                       return;
                     }
@@ -793,7 +793,7 @@ export function DailyMissions() {
                     if (mission.mission_key === 'social_share') {
                       const shareUrl = 'https://powersol.io';
                       const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
-                      completeMissionAPI('social_share').catch(() => {});
+                      completeMissionAPI('social_share');
                       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       return;
                     }

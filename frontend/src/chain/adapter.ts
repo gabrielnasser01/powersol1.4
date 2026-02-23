@@ -79,7 +79,7 @@ class RealChainAdapter implements ChainAdapter {
   }
 
   async fundJackpot({ amountSol }: { amountSol: number }) {
-    const txId = 'fund_' + Math.random().toString(36).slice(2, 11);
+    const txId = 'fund_' + Math.random().toString(36).substr(2, 9);
 
     await supabase.rpc('increment_jackpot', {
       amount: Math.floor(amountSol * 0.4 * 1e9)
@@ -263,5 +263,5 @@ export function maskPublicKey(pk: string): string {
 }
 
 export function generateTxId(): string {
-  return Math.random().toString(36).slice(2, 11);
+  return Math.random().toString(36).substr(2, 9);
 }

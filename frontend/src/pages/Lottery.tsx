@@ -14,17 +14,28 @@ export function Lottery() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const loadStats = async () => {
-      setLoading(true);
-      const data = await statsService.getLotteryStats();
-      setLotteryStats(data);
-      setLoading(false);
+      try {
+        if (!cancelled) setLoading(true);
+        const data = await statsService.getLotteryStats();
+        if (!cancelled) {
+          setLotteryStats(data);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Failed to load lottery stats:', error);
+        if (!cancelled) setLoading(false);
+      }
     };
 
     loadStats();
     const interval = setInterval(loadStats, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const stats = [

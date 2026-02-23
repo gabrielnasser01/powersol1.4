@@ -36,10 +36,11 @@ export function GrandPrize() {
   useMagnetic(purchaseButtonRef);
 
   useEffect(() => {
+    let cancelled = false;
     const loadGlobalPool = async () => {
       try {
         const globalState = await chainAdapter.getGlobalPoolState();
-        setGlobalPool(globalState);
+        if (!cancelled) setGlobalPool(globalState);
       } catch (error) {
         console.error('Failed to load global pool state:', error);
       }
@@ -48,7 +49,10 @@ export function GrandPrize() {
     loadGlobalPool();
     const interval = setInterval(loadGlobalPool, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {

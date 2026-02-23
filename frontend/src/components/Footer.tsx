@@ -10,17 +10,15 @@ export function Footer() {
   const footerLinks = {
     platform: [
       { to: '/lottery', label: 'Lottery' },
-      { to: '/jackpot', label: 'Jackpot' },
-      { to: '/grandprize', label: 'Grand Prize' },
-      { to: '/specialevent', label: 'Special Event' },
       { to: '/affiliates', label: 'Affiliates' },
       { to: '/transparency', label: 'Transparency' },
+      { to: '/profile', label: 'Profile' },
     ],
     legal: [
-      { to: '/termsofservice', label: 'Terms of Service', isExternal: false },
-      { to: '/privacypolicy', label: 'Privacy Policy', isExternal: false },
+      { to: '/terms', label: 'Terms of Service', isExternal: false },
+      { to: '/privacy', label: 'Privacy Policy', isExternal: false },
       { to: '/faq', label: 'FAQ', isExternal: false },
-      { to: '/whitepaper', label: 'Whitepaper', isExternal: false },
+      { to: '/powersol_whitepaper_v1.0.6.pdf', label: 'Whitepaper', isExternal: true },
     ],
     social: [
       { href: 'https://x.com/PowerS0L', icon: () => (

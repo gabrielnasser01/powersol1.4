@@ -29,9 +29,9 @@ export interface ChainAdapter {
 
 function getLotteryTypeFromPath(): string {
   const currentPath = window.location.pathname;
-  if (currentPath.includes('/specialevent')) return 'special-event';
+  if (currentPath.includes('/special-event')) return 'special-event';
   if (currentPath.includes('/jackpot')) return 'jackpot';
-  if (currentPath.includes('/grandprize')) return 'grand-prize';
+  if (currentPath.includes('/grand-prize')) return 'grand-prize';
   return 'tri-daily';
 }
 

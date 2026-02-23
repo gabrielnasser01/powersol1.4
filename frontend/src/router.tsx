@@ -15,7 +15,6 @@ import { SpecialEvent } from './pages/SpecialEvent';
 import { GrandPrize } from './pages/GrandPrize';
 import { Missions } from './pages/Missions';
 import { Privacy } from './pages/Privacy';
-import { Whitepaper } from './pages/Whitepaper';
 import { AffiliateDashboard } from './pages/AffiliateDashboard';
 import { AffiliateDashboardLevel3 } from './pages/AffiliateDashboardLevel3';
 import { DashboardHome, DashboardAnalytics, DashboardSupport } from './pages/dashboard';
@@ -29,21 +28,21 @@ export function AppRouter() {
           <Route path="/" element={<Home />} />
           <Route path="/lottery" element={<Lottery />} />
           <Route path="/jackpot" element={<Jackpot />} />
-          <Route path="/grandprize" element={<GrandPrize />} />
-          <Route path="/specialevent" element={<SpecialEvent />} />
           <Route path="/affiliates" element={<Affiliates />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/transparency" element={<Transparency />} />
-          <Route path="/missions" element={<Missions />} />
-          <Route path="/privacypolicy" element={<Privacy />} />
-          <Route path="/termsofservice" element={<Terms />} />
           <Route path="/faq" element={<FAQ />} />
-          <Route path="/whitepaper" element={<Whitepaper />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/special-event" element={<SpecialEvent />} />
+          <Route path="/valentines" element={<SpecialEvent />} />
+          <Route path="/grand-prize" element={<GrandPrize />} />
+          <Route path="/missions" element={<Missions />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/affiliate-dashboard" element={<AffiliateDashboard />} />
+          <Route path="/affiliate-dashboard-level3" element={<AffiliateDashboardLevel3 />} />
           <Route path="/dashboard" element={<DashboardHome />} />
           <Route path="/dashboard/analytics" element={<DashboardAnalytics />} />
           <Route path="/dashboard/support" element={<DashboardSupport />} />
-          <Route path="/affiliate-dashboard" element={<AffiliateDashboard />} />
-          <Route path="/affiliate-dashboard-level3" element={<AffiliateDashboardLevel3 />} />
         </Routes>
         <Footer />
         <BackToTop />

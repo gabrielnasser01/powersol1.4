@@ -194,7 +194,7 @@ export function DashboardSupport() {
             </a>
 
             <a
-              href="/termsofservice"
+              href="/terms"
               className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors group"
             >
               <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">

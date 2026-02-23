@@ -684,7 +684,7 @@ export function Profile() {
               className="relative"
             >
               <div
-                className="p-4 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center cursor-pointer"
+                className="p-3 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center cursor-pointer h-full"
                 style={{
                   background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(0, 20, 10, 0.95))',
                   borderColor: '#00ff88',
@@ -693,15 +693,15 @@ export function Profile() {
                 onClick={() => setShowTicketsModal(true)}
               >
                 <div
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg mb-3 sm:mb-4 flex items-center justify-center"
+                  className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg mb-2 sm:mb-4 flex items-center justify-center"
                   style={{
                     background: 'rgba(0, 255, 136, 0.2)',
                     border: '1px solid rgba(0, 255, 136, 0.4)',
                   }}
                 >
-                  <Trophy className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: '#00ff88' }} />
+                  <Trophy className="w-5 h-5 sm:w-8 sm:h-8" style={{ color: '#00ff88' }} />
                 </div>
-                <div className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#00ff88' }}>
+                <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#00ff88' }}>
                   {String(isConnected ? totalTickets : 0).padStart(3, '0')}
                 </div>
                 <p className="text-xs text-zinc-400 font-mono uppercase">
@@ -719,7 +719,7 @@ export function Profile() {
               className="relative"
             >
               <div
-                className="p-4 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center cursor-pointer"
+                className="p-3 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center cursor-pointer h-full"
                 style={{
                   background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(0, 10, 20, 0.95))',
                   borderColor: '#00bfff',
@@ -728,15 +728,15 @@ export function Profile() {
                 onClick={() => navigate('/missions')}
               >
                 <div
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg mb-3 sm:mb-4 flex items-center justify-center"
+                  className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg mb-2 sm:mb-4 flex items-center justify-center"
                   style={{
                     background: 'rgba(0, 191, 255, 0.2)',
                     border: '1px solid rgba(0, 191, 255, 0.4)',
                   }}
                 >
-                  <Target className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: '#00bfff' }} />
+                  <Target className="w-5 h-5 sm:w-8 sm:h-8" style={{ color: '#00bfff' }} />
                 </div>
-                <div className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#00bfff' }}>
+                <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#00bfff' }}>
                   {String(userStats.missionPoints || 0).padStart(3, '0')}
                 </div>
                 <p className="text-xs text-zinc-400 font-mono uppercase">
@@ -754,7 +754,7 @@ export function Profile() {
               className="relative"
             >
               <div
-                className="p-4 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center cursor-pointer"
+                className="p-3 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center cursor-pointer h-full"
                 style={{
                   background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(10, 0, 20, 0.95))',
                   borderColor: '#b347ff',
@@ -763,15 +763,15 @@ export function Profile() {
                 onClick={() => setShowRewardsModal(true)}
               >
                 <div
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg mb-3 sm:mb-4 flex items-center justify-center"
+                  className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg mb-2 sm:mb-4 flex items-center justify-center"
                   style={{
                     background: 'rgba(179, 71, 255, 0.2)',
                     border: '1px solid rgba(179, 71, 255, 0.4)',
                   }}
                 >
-                  <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: '#b347ff' }} />
+                  <TrendingUp className="w-5 h-5 sm:w-8 sm:h-8" style={{ color: '#b347ff' }} />
                 </div>
-                <div className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#b347ff' }}>
+                <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#b347ff' }}>
                   {isConnected ? prizeService.formatPrizeAmountUSD(totalPrizeAmount, 100) : '$0.00'}
                 </div>
                 <p className="text-xs text-zinc-400 font-mono uppercase">
@@ -789,7 +789,7 @@ export function Profile() {
               className="relative"
             >
               <div
-                className="p-4 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center"
+                className="p-3 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center h-full"
                 style={{
                   background: affiliateLevel === 1 ? 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(10, 20, 40, 0.95))' : affiliateLevel === 2 ? 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(20, 0, 10, 0.95))' : affiliateLevel === 3 ? 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(0, 20, 20, 0.95))' : 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(20, 0, 30, 0.95))',
                   borderColor: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7',
@@ -797,15 +797,15 @@ export function Profile() {
                 }}
               >
                 <div
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg mb-3 sm:mb-4 flex items-center justify-center"
+                  className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg mb-2 sm:mb-4 flex items-center justify-center"
                   style={{
                     background: affiliateLevel === 1 ? 'rgba(59, 130, 246, 0.2)' : affiliateLevel === 2 ? 'rgba(255, 20, 147, 0.2)' : affiliateLevel === 3 ? 'rgba(47, 255, 234, 0.2)' : 'rgba(168, 85, 247, 0.2)',
                     border: affiliateLevel === 1 ? '1px solid rgba(59, 130, 246, 0.4)' : affiliateLevel === 2 ? '1px solid rgba(255, 20, 147, 0.4)' : affiliateLevel === 3 ? '1px solid rgba(47, 255, 234, 0.4)' : '1px solid rgba(168, 85, 247, 0.4)',
                   }}
                 >
-                  <Zap className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: isConnected && affiliateLevel === 1 ? '#3b82f6' : isConnected && affiliateLevel === 2 ? '#ff1493' : isConnected && affiliateLevel === 3 ? '#2fffea' : isConnected && affiliateLevel === 4 ? '#a855f7' : '#3b82f6' }} />
+                  <Zap className="w-5 h-5 sm:w-8 sm:h-8" style={{ color: isConnected && affiliateLevel === 1 ? '#3b82f6' : isConnected && affiliateLevel === 2 ? '#ff1493' : isConnected && affiliateLevel === 3 ? '#2fffea' : isConnected && affiliateLevel === 4 ? '#a855f7' : '#3b82f6' }} />
                 </div>
-                <div className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: isConnected && affiliateLevel === 1 ? '#3b82f6' : isConnected && affiliateLevel === 2 ? '#ff1493' : isConnected && affiliateLevel === 3 ? '#2fffea' : isConnected && affiliateLevel === 4 ? '#a855f7' : '#3b82f6' }}>
+                <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: isConnected && affiliateLevel === 1 ? '#3b82f6' : isConnected && affiliateLevel === 2 ? '#ff1493' : isConnected && affiliateLevel === 3 ? '#2fffea' : isConnected && affiliateLevel === 4 ? '#a855f7' : '#3b82f6' }}>
                   LVL_0{isConnected ? affiliateLevel : 1}
                 </div>
                 <p className="text-xs text-zinc-400 font-mono uppercase">

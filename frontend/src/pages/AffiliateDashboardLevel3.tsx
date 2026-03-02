@@ -37,7 +37,7 @@ export function AffiliateDashboardLevel3() {
   });
 
   const user = userStorage.get();
-  const affiliateLink = user.publicKey ? `https://powersol.io?ref=${user.publicKey}` : '';
+  const affiliateLink = user.publicKey ? `https://powersol1-4-mjc2.vercel.app?ref=${user.publicKey}` : '';
   const userLevel = 3;
   const commissionRate = 20;
 

@@ -1,6 +1,6 @@
 {
   "buildCommand": "vite build",
-  "outputDirectory": "frontend/dist",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

@@ -20,7 +20,7 @@ export function Transparency() {
     },
     {
       icon: CheckCircle,
-      title: 'BLOCKCHAIN_LEDGER.DB',
+      title: 'POOLPRIZE_LEDGER.DB',
       description: 'All draws are recorded on the Solana blockchain, making them permanent and unchangeable. Distributed ledger security.',
       terminalCode: '> solana_scan.check_transaction()',
     },

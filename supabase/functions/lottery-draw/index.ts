@@ -44,6 +44,21 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
     ticketPriceLamports: 100000000,
     maxTickets: 1000,
   },
+  "weekly": {
+    type: "weekly",
+    winnersSelectionType: "PERCENTAGE",
+    totalWinnersPercentage: 5,
+    winnerTiers: [
+      { tierNumber: 1, winnersPercentage: 1, poolPercentage: 20, description: "Tier 1 - Grand Prize" },
+      { tierNumber: 2, winnersPercentage: 2, poolPercentage: 10, description: "Tier 2 - Major Prize" },
+      { tierNumber: 3, winnersPercentage: 6, poolPercentage: 12.5, description: "Tier 3 - Medium Prize" },
+      { tierNumber: 4, winnersPercentage: 36, poolPercentage: 27.5, description: "Tier 4 - Small Prize" },
+      { tierNumber: 5, winnersPercentage: 55, poolPercentage: 30, description: "Tier 5 - Mini Prize" },
+    ],
+    revenueDistribution: { prizePool: 40, treasury: 30, affiliates: 30 },
+    ticketPriceLamports: 150000000,
+    maxTickets: 2000,
+  },
   "jackpot": {
     type: "jackpot",
     winnersSelectionType: "FIXED",
@@ -149,38 +164,112 @@ function calculateWinnersPerTier(
   return results;
 }
 
+interface ExpandedTicket {
+  wallet_address: string;
+  ticket_number: number;
+  purchase_id: string;
+}
+
+function expandPurchasesToTickets(purchases: any[]): ExpandedTicket[] {
+  const tickets: ExpandedTicket[] = [];
+  let ticketCounter = 1;
+
+  for (const purchase of purchases) {
+    const qty = purchase.quantity || 1;
+    for (let i = 0; i < qty; i++) {
+      tickets.push({
+        wallet_address: purchase.wallet_address,
+        ticket_number: ticketCounter,
+        purchase_id: purchase.id,
+      });
+      ticketCounter++;
+    }
+  }
+
+  return tickets;
+}
+
 async function executeDraw(supabase: any, lottery: any) {
   const config = LOTTERY_CONFIGS[lottery.lottery_type];
   if (!config) {
-    throw new Error(`Unknown lottery type: ${lottery.lottery_type}`);
+    await supabase
+      .from("blockchain_lotteries")
+      .update({ is_drawn: true, winning_ticket: null })
+      .eq("id", lottery.id);
+
+    return {
+      lottery_id: lottery.lottery_id,
+      status: "skipped_unknown_type",
+      lottery_type: lottery.lottery_type,
+      winners: [],
+    };
   }
 
-  const { data: tickets, error: ticketsError } = await supabase
+  const { data: purchases, error: purchasesError } = await supabase
+    .from("ticket_purchases")
+    .select("*")
+    .eq("lottery_round_id", lottery.lottery_id)
+    .eq("lottery_type", lottery.lottery_type)
+    .eq("is_drawn", false);
+
+  if (purchasesError) throw purchasesError;
+
+  const { data: blockchainTickets, error: btError } = await supabase
     .from("blockchain_tickets")
     .select("*")
     .eq("lottery_id", lottery.lottery_id);
 
-  if (ticketsError) throw ticketsError;
+  if (btError) throw btError;
 
-  if (!tickets || tickets.length === 0) {
+  const hasBlockchainTickets = blockchainTickets && blockchainTickets.length > 0;
+  const hasPurchases = purchases && purchases.length > 0;
+
+  if (!hasBlockchainTickets && !hasPurchases) {
     await supabase
       .from("blockchain_lotteries")
-      .update({
-        is_drawn: true,
-        winning_ticket: null
-      })
+      .update({ is_drawn: true, winning_ticket: null })
       .eq("id", lottery.id);
 
     return { lottery_id: lottery.lottery_id, status: "no_tickets", winners: [] };
   }
 
-  const totalRevenue = BigInt(tickets.length) * BigInt(config.ticketPriceLamports);
+  let allTickets: ExpandedTicket[] = [];
+
+  if (hasBlockchainTickets) {
+    for (const bt of blockchainTickets) {
+      const { data: userData } = await supabase
+        .from("blockchain_users")
+        .select("wallet_address")
+        .eq("id", bt.user_id)
+        .maybeSingle();
+
+      allTickets.push({
+        wallet_address: userData?.wallet_address || `unknown_${bt.user_id}`,
+        ticket_number: bt.ticket_number,
+        purchase_id: `blockchain_${bt.id}`,
+      });
+    }
+  }
+
+  if (hasPurchases) {
+    const purchaseTickets = expandPurchasesToTickets(purchases);
+    const offset = allTickets.length;
+    for (const pt of purchaseTickets) {
+      allTickets.push({
+        ...pt,
+        ticket_number: pt.ticket_number + offset,
+      });
+    }
+  }
+
+  const totalTickets = allTickets.length;
+  const totalRevenue = BigInt(totalTickets) * BigInt(config.ticketPriceLamports);
   const prizePool = (totalRevenue * BigInt(config.revenueDistribution.prizePool)) / BigInt(100);
 
-  const totalWinners = calculateTotalWinners(config, tickets.length);
+  const totalWinners = calculateTotalWinners(config, totalTickets);
   const tiersWithWinners = calculateWinnersPerTier(config, totalWinners);
 
-  const shuffledTickets = shuffleArray(tickets);
+  const shuffledTickets = shuffleArray(allTickets);
   const winners: any[] = [];
   let ticketIndex = 0;
 
@@ -192,28 +281,14 @@ async function executeDraw(supabase: any, lottery: any) {
       const winningTicket = shuffledTickets[ticketIndex];
       ticketIndex++;
 
-      const { data: userData } = await supabase
-        .from("blockchain_users")
-        .select("wallet_address")
-        .eq("id", winningTicket.user_id)
-        .maybeSingle();
-
-      const winnerWallet = userData?.wallet_address || `unknown_${winningTicket.user_id}`;
-
       winners.push({
         lottery_id: lottery.lottery_id,
-        ticket_id: winningTicket.id,
         ticket_number: winningTicket.ticket_number,
         tier: tier.tierNumber,
         tier_description: tier.description,
         prize_lamports: prizePerWinner.toString(),
-        wallet_address: winnerWallet,
+        wallet_address: winningTicket.wallet_address,
       });
-
-      await supabase
-        .from("blockchain_tickets")
-        .update({ is_winner: true })
-        .eq("id", winningTicket.id);
     }
   }
 
@@ -236,6 +311,7 @@ async function executeDraw(supabase: any, lottery: any) {
     .single();
 
   if (drawError) {
+    console.error("Draw record insert error:", drawError);
   }
 
   for (const winner of winners) {
@@ -254,6 +330,7 @@ async function executeDraw(supabase: any, lottery: any) {
       });
 
     if (prizeError) {
+      console.error("Prize insert error:", prizeError);
     }
   }
 
@@ -262,14 +339,37 @@ async function executeDraw(supabase: any, lottery: any) {
     .update({
       is_drawn: true,
       winning_ticket: winners.length > 0 ? winners[0].ticket_number : null,
+      prize_pool: Number(prizePool),
     })
     .eq("id", lottery.id);
+
+  if (hasPurchases) {
+    const purchaseIds = purchases.map((p: any) => p.id);
+    await supabase
+      .from("ticket_purchases")
+      .update({ is_drawn: true })
+      .in("id", purchaseIds);
+  }
+
+  if (hasBlockchainTickets) {
+    for (const winner of winners) {
+      const matchingBt = blockchainTickets.find(
+        (bt: any) => bt.ticket_number === winner.ticket_number
+      );
+      if (matchingBt) {
+        await supabase
+          .from("blockchain_tickets")
+          .update({ is_winner: true })
+          .eq("id", matchingBt.id);
+      }
+    }
+  }
 
   return {
     lottery_id: lottery.lottery_id,
     lottery_type: lottery.lottery_type,
     status: "completed",
-    total_tickets: tickets.length,
+    total_tickets: totalTickets,
     total_winners: winners.length,
     prize_pool: prizePool.toString(),
     winners: winners.map((w) => ({
@@ -292,6 +392,13 @@ function calculateNextDrawTimestamp(lotteryType: string, currentDrawTimestamp: n
     case "tri-daily": {
       const nextDate = new Date(currentDrawTimestamp * 1000);
       nextDate.setUTCDate(nextDate.getUTCDate() + 3);
+      nextDate.setUTCHours(23, 59, 59, 0);
+      return Math.floor(nextDate.getTime() / 1000);
+    }
+
+    case "weekly": {
+      const nextDate = new Date(currentDrawTimestamp * 1000);
+      nextDate.setUTCDate(nextDate.getUTCDate() + 7);
       nextDate.setUTCHours(23, 59, 59, 0);
       return Math.floor(nextDate.getTime() / 1000);
     }
@@ -336,6 +443,19 @@ async function createNextLottery(supabase: any, lottery: any) {
     return null;
   }
 
+  const { data: existing } = await supabase
+    .from("blockchain_lotteries")
+    .select("id")
+    .eq("lottery_type", lottery.lottery_type)
+    .eq("is_drawn", false)
+    .gt("draw_timestamp", lottery.draw_timestamp)
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    return null;
+  }
+
   const { data: maxLottery } = await supabase
     .from("blockchain_lotteries")
     .select("lottery_id")
@@ -361,6 +481,7 @@ async function createNextLottery(supabase: any, lottery: any) {
     .single();
 
   if (error) {
+    console.error("Create next lottery error:", error);
     return null;
   }
 
@@ -390,14 +511,16 @@ async function processDraws() {
       const drawResult = await executeDraw(supabase, lottery);
       results.push(drawResult);
 
-      const nextLottery = await createNextLottery(supabase, lottery);
-      if (nextLottery) {
-        results.push({
-          action: "created_next_lottery",
-          lottery_type: lottery.lottery_type,
-          next_lottery_id: nextLottery.lottery_id,
-          next_draw_timestamp: nextLottery.draw_timestamp,
-        });
+      if (drawResult.status !== "skipped_unknown_type") {
+        const nextLottery = await createNextLottery(supabase, lottery);
+        if (nextLottery) {
+          results.push({
+            action: "created_next_lottery",
+            lottery_type: lottery.lottery_type,
+            next_lottery_id: nextLottery.lottery_id,
+            next_draw_timestamp: nextLottery.draw_timestamp,
+          });
+        }
       }
     } catch (err) {
       results.push({

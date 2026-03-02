@@ -20,7 +20,7 @@ powersol_claim = "DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

@@ -18,6 +18,7 @@ import { Privacy } from './pages/Privacy';
 import { AffiliateDashboard } from './pages/AffiliateDashboard';
 import { AffiliateDashboardLevel3 } from './pages/AffiliateDashboardLevel3';
 import { DashboardHome, DashboardAnalytics, DashboardSupport } from './pages/dashboard';
+import { Whitepaper } from './pages/Whitepaper';
 
 export function AppRouter() {
   return (
@@ -33,11 +34,16 @@ export function AppRouter() {
           <Route path="/transparency" element={<Transparency />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/termsofservice" element={<Terms />} />
           <Route path="/special-event" element={<SpecialEvent />} />
+          <Route path="/specialevent" element={<SpecialEvent />} />
           <Route path="/valentines" element={<SpecialEvent />} />
           <Route path="/grand-prize" element={<GrandPrize />} />
+          <Route path="/grandprize" element={<GrandPrize />} />
           <Route path="/missions" element={<Missions />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/privacypolicy" element={<Privacy />} />
+          <Route path="/whitepaper" element={<Whitepaper />} />
           <Route path="/affiliate-dashboard" element={<AffiliateDashboard />} />
           <Route path="/affiliate-dashboard-level3" element={<AffiliateDashboardLevel3 />} />
           <Route path="/dashboard" element={<DashboardHome />} />

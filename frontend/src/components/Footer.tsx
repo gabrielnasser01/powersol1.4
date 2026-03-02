@@ -18,7 +18,7 @@ export function Footer() {
       { to: '/terms', label: 'Terms of Service', isExternal: false },
       { to: '/privacy', label: 'Privacy Policy', isExternal: false },
       { to: '/faq', label: 'FAQ', isExternal: false },
-      { to: '/powersol_whitepaper_v1.0.6.pdf', label: 'Whitepaper', isExternal: true },
+      { to: '/whitepaper', label: 'Whitepaper', isExternal: false },
     ],
     social: [
       { href: 'https://x.com/PowerS0L', icon: () => (

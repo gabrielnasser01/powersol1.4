@@ -98,7 +98,18 @@ export function TicketPurchaseCard() {
         return retryData;
       }
 
-      if (!affCode && purchaseData) {
+      if (affCode && purchaseData) {
+        try {
+          await apiClient.processAffiliateCommission({
+            buyer_wallet: walletAddress,
+            quantity: qty,
+            total_sol: sol,
+            transaction_signature: sig,
+          });
+        } catch (commErr) {
+          console.error('Failed to process affiliate commission:', commErr);
+        }
+      } else if (!affCode && purchaseData) {
         const houseEarningsLamports = Math.floor(sol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
         await supabase.from('house_earnings').insert({
           ticket_purchase_id: purchaseData.id,

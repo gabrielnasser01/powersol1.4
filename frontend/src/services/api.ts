@@ -88,6 +88,19 @@ class ApiClient {
     return { token: wallet, user: { wallet } };
   }
 
+  async processAffiliateCommission(data: {
+    buyer_wallet: string;
+    quantity: number;
+    total_sol: number;
+    transaction_signature: string;
+  }): Promise<any> {
+    this.requireValidWallet(data.buyer_wallet);
+    return this.request('affiliates', '/process-commission', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getAffiliateInfo(userId: string): Promise<any> {
     const wallet = this.requireValidWallet(userId);
     return this.request('affiliates', `/info?user_id=${encodeURIComponent(wallet)}`);

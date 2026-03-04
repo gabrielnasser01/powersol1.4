@@ -321,6 +321,178 @@ async function processReferral(
   return { success: true, message: "Referral registered" };
 }
 
+const LAMPORTS_PER_SOL = 1_000_000_000;
+const COMMISSION_RATES: Record<number, number> = { 1: 0.05, 2: 0.10, 3: 0.20, 4: 0.30 };
+
+async function processCommission(req: Request) {
+  const body = await req.json();
+  const { buyer_wallet, quantity, total_sol, transaction_signature } = body;
+
+  if (!isValidWallet(buyer_wallet)) {
+    throw new Error("Invalid wallet address");
+  }
+  if (typeof quantity !== "number" || quantity < 1 || quantity > 1000) {
+    throw new Error("Invalid quantity");
+  }
+  if (typeof total_sol !== "number" || total_sol <= 0) {
+    throw new Error("Invalid total_sol");
+  }
+
+  const supabase = getServiceClient();
+
+  const { data: buyerUser } = await supabase
+    .from("users")
+    .select("id")
+    .eq("wallet_address", buyer_wallet.trim())
+    .maybeSingle();
+
+  if (!buyerUser) {
+    return { success: false, message: "Buyer not found" };
+  }
+
+  const { data: referral } = await supabase
+    .from("referrals")
+    .select("*, affiliates!referrer_affiliate_id(id, user_id, manual_tier, referral_code, total_earned, pending_earnings)")
+    .eq("referred_user_id", buyerUser.id)
+    .maybeSingle();
+
+  if (!referral || !referral.affiliates) {
+    return { success: false, message: "No referral found for buyer" };
+  }
+
+  const affiliate = referral.affiliates as Record<string, unknown>;
+  const affiliateId = affiliate.id as string;
+  const tier = (affiliate.manual_tier as number) || 1;
+  const commissionRate = COMMISSION_RATES[tier] || 0.05;
+  const commissionSol = total_sol * commissionRate;
+  const commissionLamports = Math.floor(commissionSol * LAMPORTS_PER_SOL);
+
+  const isFirstPurchase = !referral.is_validated;
+
+  await supabase
+    .from("referrals")
+    .update({
+      is_validated: true,
+      first_purchase_at: isFirstPurchase ? new Date().toISOString() : referral.first_purchase_at,
+      total_tickets_purchased: (referral.total_tickets_purchased || 0) + quantity,
+      total_value_sol: Number(referral.total_value_sol || 0) + total_sol,
+      total_commission_earned: Number(referral.total_commission_earned || 0) + commissionSol,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", referral.id);
+
+  const currentTotalEarned = Number(affiliate.total_earned || 0);
+  const currentPending = Number(affiliate.pending_earnings || 0);
+
+  await supabase
+    .from("affiliates")
+    .update({
+      total_earned: currentTotalEarned + commissionSol,
+      pending_earnings: currentPending + commissionSol,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", affiliateId);
+
+  const { data: affiliateUser } = await supabase
+    .from("users")
+    .select("wallet_address")
+    .eq("id", affiliate.user_id as string)
+    .maybeSingle();
+
+  const affiliateWallet = affiliateUser?.wallet_address || (affiliate.referral_code as string);
+
+  await supabase
+    .from("solana_affiliate_earnings")
+    .insert({
+      affiliate_wallet: affiliateWallet,
+      commission_lamports: commissionLamports,
+      transaction_signature: transaction_signature || null,
+    });
+
+  const { data: pendingRewards } = await supabase
+    .from("affiliate_pending_rewards")
+    .select("*")
+    .eq("affiliate_wallet", affiliateWallet)
+    .maybeSingle();
+
+  if (pendingRewards) {
+    await supabase
+      .from("affiliate_pending_rewards")
+      .update({
+        pending_lamports: (pendingRewards.pending_lamports || 0) + commissionLamports,
+        total_earned_lamports: (pendingRewards.total_earned_lamports || 0) + commissionLamports,
+        tier: tier,
+        referral_count: (pendingRewards.referral_count || 0) + (isFirstPurchase ? 1 : 0),
+        last_updated: new Date().toISOString(),
+      })
+      .eq("id", pendingRewards.id);
+  } else {
+    await supabase
+      .from("affiliate_pending_rewards")
+      .insert({
+        affiliate_wallet: affiliateWallet,
+        pending_lamports: commissionLamports,
+        tier: tier,
+        referral_count: 1,
+        total_earned_lamports: commissionLamports,
+        total_claimed_lamports: 0,
+        next_claim_nonce: 0,
+      });
+  }
+
+  const weekStart = getWeekStart();
+  const weekNumber = Math.floor(weekStart.getTime() / (7 * 24 * 60 * 60 * 1000));
+
+  const { data: weeklyAcc } = await supabase
+    .from("affiliate_weekly_accumulator")
+    .select("*")
+    .eq("affiliate_wallet", affiliateWallet)
+    .eq("week_number", weekNumber)
+    .maybeSingle();
+
+  if (weeklyAcc) {
+    await supabase
+      .from("affiliate_weekly_accumulator")
+      .update({
+        pending_lamports: (weeklyAcc.pending_lamports || 0) + commissionLamports,
+        referral_count: (weeklyAcc.referral_count || 0) + (isFirstPurchase ? 1 : 0),
+        tier: tier,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", weeklyAcc.id);
+  } else {
+    await supabase
+      .from("affiliate_weekly_accumulator")
+      .insert({
+        affiliate_wallet: affiliateWallet,
+        week_number: weekNumber,
+        pending_lamports: commissionLamports,
+        tier: tier,
+        referral_count: isFirstPurchase ? 1 : 0,
+        is_released: false,
+      });
+  }
+
+  return {
+    success: true,
+    commission_sol: commissionSol,
+    commission_lamports: commissionLamports,
+    tier,
+    commission_rate: commissionRate,
+    is_first_purchase: isFirstPurchase,
+  };
+}
+
+function getWeekStart(): Date {
+  const now = new Date();
+  const day = now.getUTCDay();
+  const diff = day >= 3 ? day - 3 : day + 4;
+  const weekStart = new Date(now);
+  weekStart.setUTCDate(now.getUTCDate() - diff);
+  weekStart.setUTCHours(0, 0, 0, 0);
+  return weekStart;
+}
+
 async function getAffiliateStats(walletAddress: string) {
   if (!isValidWallet(walletAddress)) {
     throw new Error("Invalid wallet address");
@@ -388,7 +560,9 @@ Deno.serve(async (req: Request) => {
 
     let result: unknown;
 
-    if (req.method === "POST" && path === "/register-referral") {
+    if (req.method === "POST" && path === "/process-commission") {
+      result = await processCommission(req);
+    } else if (req.method === "POST" && path === "/register-referral") {
       result = await registerReferral(req);
     } else if (req.method === "POST" && (path === "/submit" || path === "" || path === "/")) {
       result = await submitApplication(req);

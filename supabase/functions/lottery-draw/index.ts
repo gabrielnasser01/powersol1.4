@@ -7,6 +7,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+const SOLANA_RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
+
+const LOTTERY_WALLETS: Record<string, string> = {
+  "tri-daily": "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx",
+  "weekly": "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
+  "jackpot": "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
+  "grand-prize": "nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C",
+  "special-event": "AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk",
+};
+
+async function getWalletBalanceLamports(walletAddress: string): Promise<bigint> {
+  try {
+    const response = await fetch(SOLANA_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getBalance",
+        params: [walletAddress],
+      }),
+    });
+    const data = await response.json();
+    return BigInt(data.result?.value || 0);
+  } catch (error) {
+    console.error(`Failed to fetch wallet balance for ${walletAddress}:`, error);
+    return BigInt(0);
+  }
+}
+
 interface LotteryConfig {
   type: string;
   winnersSelectionType: "PERCENTAGE" | "FIXED";
@@ -19,11 +49,6 @@ interface LotteryConfig {
     poolPercentage: number;
     description: string;
   }[];
-  revenueDistribution: {
-    prizePool: number;
-    treasury: number;
-    affiliates: number;
-  };
   ticketPriceLamports: number;
   maxTickets: number;
 }
@@ -40,7 +65,6 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
       { tierNumber: 4, winnersPercentage: 36, poolPercentage: 27.5, description: "Tier 4 - Small Prize" },
       { tierNumber: 5, winnersPercentage: 55, poolPercentage: 30, description: "Tier 5 - Mini Prize" },
     ],
-    revenueDistribution: { prizePool: 40, treasury: 30, affiliates: 30 },
     ticketPriceLamports: 100000000,
     maxTickets: 1000,
   },
@@ -55,7 +79,6 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
       { tierNumber: 4, winnersPercentage: 36, poolPercentage: 27.5, description: "Tier 4 - Small Prize" },
       { tierNumber: 5, winnersPercentage: 55, poolPercentage: 30, description: "Tier 5 - Mini Prize" },
     ],
-    revenueDistribution: { prizePool: 40, treasury: 30, affiliates: 30 },
     ticketPriceLamports: 150000000,
     maxTickets: 2000,
   },
@@ -70,7 +93,6 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
       { tierNumber: 4, winnersCount: 36, poolPercentage: 27.5, description: "Tier 4 - Top 50" },
       { tierNumber: 5, winnersCount: 55, poolPercentage: 30, description: "Tier 5 - Top 100" },
     ],
-    revenueDistribution: { prizePool: 40, treasury: 30, affiliates: 30 },
     ticketPriceLamports: 200000000,
     maxTickets: 5000,
   },
@@ -83,7 +105,6 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
       { tierNumber: 2, winnersCount: 1, poolPercentage: 30, description: "2nd Place - Runner-up" },
       { tierNumber: 3, winnersCount: 1, poolPercentage: 20, description: "3rd Place - Third" },
     ],
-    revenueDistribution: { prizePool: 40, treasury: 30, affiliates: 30 },
     ticketPriceLamports: 330000000,
     maxTickets: 10000,
   },
@@ -98,7 +119,6 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
       { tierNumber: 4, winnersPercentage: 36, poolPercentage: 27.5, description: "Tier 4 - Small Prize" },
       { tierNumber: 5, winnersPercentage: 55, poolPercentage: 30, description: "Tier 5 - Mini Prize" },
     ],
-    revenueDistribution: { prizePool: 40, treasury: 30, affiliates: 30 },
     ticketPriceLamports: 200000000,
     maxTickets: 7500,
   },
@@ -263,8 +283,10 @@ async function executeDraw(supabase: any, lottery: any) {
   }
 
   const totalTickets = allTickets.length;
-  const totalRevenue = BigInt(totalTickets) * BigInt(config.ticketPriceLamports);
-  const prizePool = (totalRevenue * BigInt(config.revenueDistribution.prizePool)) / BigInt(100);
+  const walletAddress = LOTTERY_WALLETS[lottery.lottery_type];
+  const prizePool = walletAddress
+    ? await getWalletBalanceLamports(walletAddress)
+    : BigInt(0);
 
   const totalWinners = calculateTotalWinners(config, totalTickets);
   const tiersWithWinners = calculateWinnersPerTier(config, totalWinners);

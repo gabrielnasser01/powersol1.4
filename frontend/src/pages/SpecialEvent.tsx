@@ -124,7 +124,7 @@ export function SpecialEvent() {
   ];
 
   const stats = [
-    { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString()}`, icon: Trophy, color: '#FF8EC8' },
+    { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Trophy, color: '#FF8EC8' },
     { label: 'Participants', value: globalPool.ticketCount.toString(), icon: Users, color: '#FF8EC8' },
     { label: 'Days Left', value: timeLeft.days.toString(), icon: Calendar, color: '#FF8EC8' },
     { label: 'Easter Spirit', value: '100%', icon: Ghost, color: '#FF8EC8' },
@@ -548,7 +548,7 @@ export function SpecialEvent() {
                       }}
                     />
                   </motion.div>
-                  <span>${globalPool.prizePoolUsd.toLocaleString()}</span>
+                  <span>${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
               <div className="flex items-center justify-center space-x-2 text-lg font-mono" style={{

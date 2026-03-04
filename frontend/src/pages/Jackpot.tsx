@@ -207,7 +207,7 @@ export function Jackpot() {
   };
 
   const stats = [
-    { label: 'Current Jackpot', value: `$${globalPool.prizePoolUsd.toLocaleString()}`, icon: Trophy, color: '#0099ff' },
+    { label: 'Current Jackpot', value: `$${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Trophy, color: '#0099ff' },
     { label: 'Contributors', value: liveContributors.toLocaleString(), icon: Users, color: '#00ccff' },
     { label: 'Days Left', value: (liveDaysLeft || daysLeft).toString(), icon: Calendar, color: '#0066ff' },
     { label: 'Growth Rate', value: `${liveGrowthRate >= 0 ? '+' : ''}${liveGrowthRate}%`, icon: TrendingUp, color: '#3399ff' },
@@ -528,7 +528,7 @@ export function Jackpot() {
                   >
                     $
                   </motion.div>
-                  <span>${globalPool.prizePoolUsd.toLocaleString()}</span>
+                  <span>${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
               <div className="flex items-center justify-center space-x-2 text-xl" style={{ color: '#00ccff' }}>
@@ -559,7 +559,7 @@ export function Jackpot() {
             <div className="mb-6">
               <div className="flex justify-between text-sm mb-2">
                 <span style={{ color: '#ffffff' }}>Jackpot Pool Growth</span>
-                <span style={{ color: '#0099ff' }}>${globalPool.prizePoolUsd.toLocaleString()}</span>
+                <span style={{ color: '#0099ff' }}>${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div 
                 className="w-full h-4 rounded-full overflow-hidden"

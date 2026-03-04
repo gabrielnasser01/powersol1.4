@@ -116,7 +116,7 @@ export function GrandPrize() {
   ];
 
   const stats = [
-    { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString()}`, icon: Trophy, color: '#f8f9fa' },
+    { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Trophy, color: '#f8f9fa' },
     { label: 'Participants', value: liveContributors.toLocaleString(), icon: Users, color: '#e9ecef' },
     { label: 'Days Until Draw', value: liveDaysLeft.toString(), icon: Calendar, color: '#dee2e6' },
     { label: 'Growth Rate', value: `${liveGrowthRate >= 0 ? '+' : ''}${liveGrowthRate}%`, icon: TrendingUp, color: '#ced4da' },
@@ -527,7 +527,7 @@ export function GrandPrize() {
                       }}
                     />
                   </motion.div>
-                  <span>${globalPool.prizePoolUsd.toLocaleString()}</span>
+                  <span>${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
               <div className="flex items-center justify-center space-x-2 text-xl" style={{ color: '#e9ecef' }}>

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Minus, Loader, ExternalLink, AlertCircle, Link } from 'lucide-react';
 import { theme } from '../theme';
-import { formatSol, formatUsd, solToUsd, LOTTERY_TICKET_PRICE_SOL, LAMPORTS_PER_SOL, HOUSE_COMMISSION_RATE } from '../chain/adapter';
+import { formatSol, formatUsd, solToUsd, LOTTERY_TICKET_PRICE_SOL } from '../chain/adapter';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { ticketStorage } from '../store/ticketStorage';
 import { useWallet } from '../contexts/WalletContext';
@@ -21,7 +21,6 @@ export function TicketPurchaseCard() {
   const [error, setError] = useState('');
   const [isOnChain, setIsOnChain] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
-  const [affiliateCode, setAffiliateCode] = useState<string | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useMagnetic(buttonRef);
@@ -31,7 +30,6 @@ export function TicketPurchaseCard() {
 
   useEffect(() => {
     initAffiliateTracking();
-    setAffiliateCode(getActiveAffiliateCode());
     checkOnChainLottery();
   }, []);
 
@@ -63,7 +61,7 @@ export function TicketPurchaseCard() {
     setQuantity(Math.max(1, Math.min(1000, quantity + delta)));
   };
 
-  const saveTicketPurchase = async (walletAddress: string, qty: number, sol: number, sig: string, affCode: string | null) => {
+  const saveTicketPurchase = async (walletAddress: string, qty: number, sol: number, sig: string) => {
     try {
       const insertData = {
         wallet_address: walletAddress,
@@ -96,28 +94,6 @@ export function TicketPurchaseCard() {
 
         await ticketStorage.add(qty, 'tri-daily', currentRound);
         return retryData;
-      }
-
-      if (affCode && purchaseData) {
-        try {
-          await apiClient.processAffiliateCommission({
-            buyer_wallet: walletAddress,
-            quantity: qty,
-            total_sol: sol,
-            transaction_signature: sig,
-          });
-        } catch (commErr) {
-          console.error('Failed to process affiliate commission:', commErr);
-        }
-      } else if (!affCode && purchaseData) {
-        const houseEarningsLamports = Math.floor(sol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-        await supabase.from('house_earnings').insert({
-          ticket_purchase_id: purchaseData.id,
-          wallet_address: walletAddress,
-          lottery_type: 'tri-daily',
-          amount_lamports: houseEarningsLamports,
-          transaction_signature: sig,
-        });
       }
 
       await ticketStorage.add(qty, 'tri-daily', currentRound);
@@ -190,7 +166,7 @@ export function TicketPurchaseCard() {
     if (transactionSucceeded && signature) {
       setTxId(signature);
 
-      await saveTicketPurchase(publicKey, quantity, totalSol, signature, currentAffiliateCode);
+      await saveTicketPurchase(publicKey, quantity, totalSol, signature);
 
       if (isOnChain && ticketNumbers.length > 0) {
         try {

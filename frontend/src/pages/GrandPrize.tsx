@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Coins, Plus, Minus, Loader, Calendar, Users, TrendingUp, X, Crown, Star, AlertTriangle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { chainAdapter, formatSol, formatUsd, solToUsd, GRAND_PRIZE_TICKET_PRICE_SOL, LAMPORTS_PER_SOL, HOUSE_COMMISSION_RATE } from '../chain/adapter';
+import { chainAdapter, formatSol, formatUsd, solToUsd, GRAND_PRIZE_TICKET_PRICE_SOL } from '../chain/adapter';
 import { ticketsStorage } from '../store/ticketStorage';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { theme } from '../theme';
@@ -177,17 +177,6 @@ export function GrandPrize() {
 
       if (purchaseError) {
         console.error('Failed to save ticket purchase:', purchaseError);
-      }
-
-      if (purchaseData) {
-        const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-        await supabase.from('house_earnings').insert({
-          ticket_purchase_id: purchaseData.id,
-          wallet_address: publicKey,
-          lottery_type: 'grand-prize',
-          amount_lamports: houseEarningsLamports,
-          transaction_signature: signature,
-        });
       }
 
       await ticketsStorage.add(ticketAmount, 'grand-prize', roundId || undefined);

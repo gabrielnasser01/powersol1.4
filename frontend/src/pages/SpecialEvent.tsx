@@ -11,8 +11,6 @@ import { useWallet } from '../contexts/WalletContext';
 import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
 
-const LAMPORTS_PER_SOL = 1_000_000_000;
-const HOUSE_COMMISSION_RATE = 0.30;
 
 export function SpecialEvent() {
   const navigate = useNavigate();
@@ -192,17 +190,6 @@ export function SpecialEvent() {
 
       if (purchaseError) {
         console.error('Failed to save ticket purchase:', purchaseError);
-      }
-
-      if (purchaseData) {
-        const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-        await supabase.from('house_earnings').insert({
-          ticket_purchase_id: purchaseData.id,
-          wallet_address: publicKey,
-          lottery_type: 'special-event',
-          amount_lamports: houseEarningsLamports,
-          transaction_signature: signature,
-        });
       }
 
       await ticketsStorage.add(quantity, 'special-event', roundId || undefined);

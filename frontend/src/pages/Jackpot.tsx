@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Coins, Plus, Minus, Loader, Calendar, Users, TrendingUp, X, Zap, Shield, Crown } from 'lucide-react';
 import { theme } from '../theme';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { chainAdapter, formatSol, formatUsd, solToUsd, JACKPOT_TICKET_PRICE_SOL, LAMPORTS_PER_SOL, HOUSE_COMMISSION_RATE } from '../chain/adapter';
+import { chainAdapter, formatSol, formatUsd, solToUsd, JACKPOT_TICKET_PRICE_SOL } from '../chain/adapter';
 import { ticketsStorage } from '../store/ticketStorage';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { WinnersDisplay } from '../components/WinnersDisplay';
@@ -172,17 +172,6 @@ export function Jackpot() {
 
       if (purchaseError) {
         console.error('Failed to save ticket purchase:', purchaseError);
-      }
-
-      if (purchaseData) {
-        const houseEarningsLamports = Math.floor(totalSol * LAMPORTS_PER_SOL * HOUSE_COMMISSION_RATE);
-        await supabase.from('house_earnings').insert({
-          ticket_purchase_id: purchaseData.id,
-          wallet_address: publicKey,
-          lottery_type: 'jackpot',
-          amount_lamports: houseEarningsLamports,
-          transaction_signature: signature,
-        });
       }
 
       await ticketsStorage.add(depositAmount, 'jackpot', roundId || undefined);

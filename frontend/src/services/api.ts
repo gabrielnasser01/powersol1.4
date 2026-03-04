@@ -70,6 +70,21 @@ class ApiClient {
 
   async login(walletAddress: string, _signature: string, referralCode?: string): Promise<{ token: string; user: any }> {
     const wallet = this.requireValidWallet(walletAddress);
+
+    if (referralCode) {
+      try {
+        await this.request('affiliates', '/register-referral', {
+          method: 'POST',
+          body: JSON.stringify({
+            wallet_address: wallet,
+            referral_code: referralCode,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to register referral:', err);
+      }
+    }
+
     return { token: wallet, user: { wallet } };
   }
 

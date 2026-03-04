@@ -170,14 +170,31 @@ async function updateApplicationStatus(applicationId: string, body: Record<strin
       .single();
 
     if (app) {
-      await supabase
-        .from("affiliates")
-        .upsert({
-          wallet_address: app.wallet_address,
-          tier: 1,
-          commission_rate: 0.05,
-          is_active: true,
-        }, { onConflict: "wallet_address" });
+      const { data: user } = await supabase
+        .from("users")
+        .select("id")
+        .eq("wallet_address", app.wallet_address)
+        .maybeSingle();
+
+      if (user) {
+        const { data: existing } = await supabase
+          .from("affiliates")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!existing) {
+          await supabase
+            .from("affiliates")
+            .insert({
+              user_id: user.id,
+              referral_code: app.wallet_address,
+              total_earned: 0,
+              pending_earnings: 0,
+              manual_tier: 1,
+            });
+        }
+      }
     }
   }
 
@@ -199,6 +216,111 @@ async function deleteApplication(applicationId: string) {
   return { success: true };
 }
 
+async function registerReferral(req: Request) {
+  const body = await req.json();
+  const { wallet_address, referral_code } = body;
+
+  if (!isValidWallet(wallet_address)) {
+    throw new Error("Invalid wallet address");
+  }
+  if (!referral_code || typeof referral_code !== "string" || referral_code.trim().length < 2) {
+    throw new Error("Invalid referral code");
+  }
+
+  const supabase = getServiceClient();
+
+  const { data: user } = await supabase
+    .from("users")
+    .select("id")
+    .eq("wallet_address", wallet_address.trim())
+    .maybeSingle();
+
+  if (!user) {
+    const { data: newUser, error: createErr } = await supabase
+      .from("users")
+      .insert({ wallet_address: wallet_address.trim() })
+      .select("id")
+      .single();
+
+    if (createErr || !newUser) {
+      throw new Error("Failed to create user");
+    }
+
+    return await processReferral(supabase, newUser.id, referral_code.trim());
+  }
+
+  return await processReferral(supabase, user.id, referral_code.trim());
+}
+
+async function processReferral(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  referralCode: string
+) {
+  const { data: existingRef } = await supabase
+    .from("referrals")
+    .select("id")
+    .eq("referred_user_id", userId)
+    .maybeSingle();
+
+  if (existingRef) {
+    return { success: true, message: "Referral already registered" };
+  }
+
+  let affiliate = null;
+
+  const { data: byCode } = await supabase
+    .from("affiliates")
+    .select("id, user_id")
+    .eq("referral_code", referralCode)
+    .maybeSingle();
+
+  if (byCode) {
+    affiliate = byCode;
+  } else if (SOLANA_ADDR_RE.test(referralCode)) {
+    const { data: refUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("wallet_address", referralCode)
+      .maybeSingle();
+
+    if (refUser) {
+      const { data: byUser } = await supabase
+        .from("affiliates")
+        .select("id, user_id")
+        .eq("user_id", refUser.id)
+        .maybeSingle();
+
+      if (byUser) {
+        affiliate = byUser;
+      }
+    }
+  }
+
+  if (!affiliate) {
+    return { success: false, message: "Affiliate not found" };
+  }
+
+  if (affiliate.user_id === userId) {
+    return { success: false, message: "Cannot refer yourself" };
+  }
+
+  const { error: insertErr } = await supabase
+    .from("referrals")
+    .insert({
+      referred_user_id: userId,
+      referrer_affiliate_id: affiliate.id,
+      referral_code_used: referralCode,
+      is_validated: false,
+    });
+
+  if (insertErr) {
+    throw new Error("Failed to register referral");
+  }
+
+  return { success: true, message: "Referral registered" };
+}
+
 async function getAffiliateStats(walletAddress: string) {
   if (!isValidWallet(walletAddress)) {
     throw new Error("Invalid wallet address");
@@ -206,37 +328,46 @@ async function getAffiliateStats(walletAddress: string) {
 
   const supabase = getServiceClient();
 
+  const { data: user } = await supabase
+    .from("users")
+    .select("id")
+    .eq("wallet_address", walletAddress.trim())
+    .maybeSingle();
+
+  if (!user) {
+    return { is_affiliate: false };
+  }
+
   const { data: affiliate } = await supabase
     .from("affiliates")
     .select("*")
-    .eq("wallet_address", walletAddress.trim())
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (!affiliate) {
     return { is_affiliate: false };
   }
 
-  const { data: earnings } = await supabase
-    .from("solana_affiliate_earnings")
+  const { data: referrals } = await supabase
+    .from("referrals")
     .select("*")
-    .eq("affiliate_wallet", walletAddress.trim())
+    .eq("referrer_affiliate_id", affiliate.id)
     .order("created_at", { ascending: false })
     .limit(100);
 
-  const totalEarnings = (earnings || []).reduce((sum: number, e: Record<string, number>) => sum + (e.commission_amount || 0), 0);
-  const pendingEarnings = (earnings || [])
-    .filter((e: Record<string, string>) => e.status === "pending")
-    .reduce((sum: number, e: Record<string, number>) => sum + (e.commission_amount || 0), 0);
+  const totalReferrals = referrals?.length || 0;
+  const validatedReferrals = (referrals || []).filter((r: Record<string, boolean>) => r.is_validated).length;
 
   return {
     is_affiliate: true,
     affiliate,
     stats: {
-      total_earnings: totalEarnings,
-      pending_earnings: pendingEarnings,
-      total_referrals: earnings?.length || 0,
+      total_earnings: affiliate.total_earned || 0,
+      pending_earnings: affiliate.pending_earnings || 0,
+      total_referrals: totalReferrals,
+      validated_referrals: validatedReferrals,
     },
-    recent_earnings: earnings?.slice(0, 10) || [],
+    recent_referrals: referrals?.slice(0, 10) || [],
   };
 }
 
@@ -257,7 +388,9 @@ Deno.serve(async (req: Request) => {
 
     let result: unknown;
 
-    if (req.method === "POST" && (path === "/submit" || path === "" || path === "/")) {
+    if (req.method === "POST" && path === "/register-referral") {
+      result = await registerReferral(req);
+    } else if (req.method === "POST" && (path === "/submit" || path === "" || path === "/")) {
       result = await submitApplication(req);
     } else if (req.method === "GET" && path === "/my-application") {
       const wallet = url.searchParams.get("wallet");

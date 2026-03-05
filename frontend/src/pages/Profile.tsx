@@ -388,11 +388,24 @@ export function Profile() {
     setClaimingPrize(prizeId);
 
     try {
-      const result = await prizeService.claimPrize(prizeId, walletPublicKey, wallet.signTransaction.bind(wallet));
+      const connection = new Connection(
+        import.meta.env.VITE_SOLANA_RPC_URL || clusterApiUrl('devnet'),
+        'confirmed'
+      );
 
-      alert(`Prize claimed successfully! Transaction: ${result.data.signature}`);
+      const result = await claimService.claimPrize(
+        walletPublicKey,
+        prizeId,
+        wallet.signTransaction.bind(wallet),
+        connection
+      );
 
-      await loadPrizes();
+      if (result.success) {
+        alert(`Prize claimed successfully! Transaction: ${result.txSignature}`);
+        await loadPrizes();
+      } else {
+        alert(result.error || 'Failed to claim prize. Please try again.');
+      }
     } catch (error) {
       console.error('Failed to claim prize:', error);
       alert(error instanceof Error ? error.message : 'Failed to claim prize. Please try again.');

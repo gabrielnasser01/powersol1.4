@@ -114,6 +114,14 @@ export const ticketStorage = {
     localStorage.removeItem(getStorageKey());
   },
 
+  removeExpired(): number {
+    const all = this.getAll();
+    const expired = all.filter(t => t.status === 'expired');
+    const remaining = all.filter(t => t.status !== 'expired');
+    localStorage.setItem(getStorageKey(), JSON.stringify(remaining));
+    return expired.length;
+  },
+
   async syncFromDatabase(walletAddress: string): Promise<void> {
     try {
       const storageKey = `${STORAGE_KEY_PREFIX}${walletAddress}`;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check } from 'lucide-react';
+import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { userStorage, userStatsStorage } from '../store/persist';
 import { ticketStorage, MockTicket } from '../store/ticketStorage';
@@ -43,6 +43,7 @@ export function Profile() {
   const [userPrizes, setUserPrizes] = useState<Prize[]>([]);
   const [loadingPrizes, setLoadingPrizes] = useState(false);
   const [totalPrizeAmount, setTotalPrizeAmount] = useState(0);
+  const [showDeleteExpiredConfirm, setShowDeleteExpiredConfirm] = useState(false);
 
   const isConnected = connected && !!walletPublicKey;
 
@@ -73,6 +74,16 @@ export function Profile() {
     setUserTickets(grouped);
     setTotalTickets(allTickets.length);
   };
+
+  const handleDeleteExpiredTickets = () => {
+    ticketStorage.removeExpired();
+    loadTickets();
+    setShowDeleteExpiredConfirm(false);
+  };
+
+  const hasExpiredTickets = userTickets.some(group =>
+    group.tickets.some(t => t.status === 'expired')
+  );
 
   const loadPrizes = async () => {
     if (!walletPublicKey) return;
@@ -1287,18 +1298,84 @@ export function Profile() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowTicketsModal(false)}
-                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all"
-                  style={{
-                    background: 'rgba(255, 20, 147, 0.2)',
-                    border: '1px solid rgba(255, 20, 147, 0.4)',
-                    color: '#ff1493',
-                  }}
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center space-x-2">
+                  {hasExpiredTickets && (
+                    <button
+                      onClick={() => setShowDeleteExpiredConfirm(true)}
+                      className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                        color: '#ef4444',
+                      }}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowTicketsModal(false)}
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all"
+                    style={{
+                      background: 'rgba(255, 20, 147, 0.2)',
+                      border: '1px solid rgba(255, 20, 147, 0.4)',
+                      color: '#ff1493',
+                    }}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
+              {/* Delete Expired Confirmation */}
+              <AnimatePresence>
+                {showDeleteExpiredConfirm && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div
+                      className="mx-4 sm:mx-6 mt-4 p-4 rounded-xl border"
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        borderColor: 'rgba(239, 68, 68, 0.3)',
+                      }}
+                    >
+                      <div className="flex items-center space-x-3 mb-3">
+                        <Trash2 className="w-5 h-5 flex-shrink-0" style={{ color: '#ef4444' }} />
+                        <p className="font-mono text-sm sm:text-base" style={{ color: '#fca5a5' }}>
+                          Do you want to delete all your expired tickets?
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-3 justify-end">
+                        <button
+                          onClick={() => setShowDeleteExpiredConfirm(false)}
+                          className="px-5 py-2 rounded-lg font-mono text-sm font-bold transition-all hover:scale-105"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: '#d4d4d8',
+                          }}
+                        >
+                          No
+                        </button>
+                        <button
+                          onClick={handleDeleteExpiredTickets}
+                          className="px-5 py-2 rounded-lg font-mono text-sm font-bold transition-all hover:scale-105"
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.3)',
+                            border: '1px solid rgba(239, 68, 68, 0.6)',
+                            color: '#ef4444',
+                          }}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Modal Content */}
               <div className="overflow-y-auto max-h-[calc(80vh-120px)] p-4 sm:p-6">

@@ -1,4 +1,5 @@
 import { Transaction } from '@solana/web3.js';
+import { supabase } from '../lib/supabase';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -52,16 +53,33 @@ interface PrepareClaimResponse {
 type SignTransaction = (transaction: Transaction) => Promise<Transaction>;
 
 class PrizeService {
+  private async fetchFromBackend(url: string): Promise<any> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!response.ok) throw new Error('Backend unavailable');
+      return await response.json();
+    } catch {
+      clearTimeout(timeout);
+      return null;
+    }
+  }
+
   async getUserPrizes(wallet: string): Promise<Prize[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/prizes?wallet=${wallet}`);
+      const backendResult = await this.fetchFromBackend(`${API_BASE_URL}/api/prizes?wallet=${wallet}`);
+      if (backendResult?.data) return backendResult.data;
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch prizes');
-      }
+      const { data, error } = await supabase
+        .from('prizes')
+        .select('*')
+        .eq('user_wallet', wallet)
+        .order('draw_date', { ascending: false });
 
-      const result = await response.json();
-      return result.data || [];
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error fetching prizes:', error);
       return [];
@@ -70,14 +88,18 @@ class PrizeService {
 
   async getUnclaimedPrizes(wallet: string): Promise<Prize[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/prizes/unclaimed?wallet=${wallet}`);
+      const backendResult = await this.fetchFromBackend(`${API_BASE_URL}/api/prizes/unclaimed?wallet=${wallet}`);
+      if (backendResult?.data) return backendResult.data;
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch unclaimed prizes');
-      }
+      const { data, error } = await supabase
+        .from('prizes')
+        .select('*')
+        .eq('user_wallet', wallet)
+        .eq('claimed', false)
+        .order('draw_date', { ascending: false });
 
-      const result = await response.json();
-      return result.data || [];
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error fetching unclaimed prizes:', error);
       return [];
@@ -131,14 +153,17 @@ class PrizeService {
 
   async getClaimHistory(wallet: string): Promise<PrizeClaim[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/prizes/claims?wallet=${wallet}`);
+      const backendResult = await this.fetchFromBackend(`${API_BASE_URL}/api/prizes/claims?wallet=${wallet}`);
+      if (backendResult?.data) return backendResult.data;
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch claim history');
-      }
+      const { data, error } = await supabase
+        .from('prize_claims')
+        .select('*')
+        .eq('user_wallet', wallet)
+        .order('created_at', { ascending: false });
 
-      const result = await response.json();
-      return result.data || [];
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error fetching claim history:', error);
       return [];

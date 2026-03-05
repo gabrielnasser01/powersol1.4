@@ -4,6 +4,37 @@ import { supabase } from '../lib/supabase';
 const CLAIM_PROGRAM_ID = new PublicKey(import.meta.env.VITE_CLAIM_PROGRAM_ID || 'DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK');
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
+const encoder = new TextEncoder();
+
+function toBytes(str: string): Uint8Array {
+  return encoder.encode(str);
+}
+
+function u64ToLEBytes(value: bigint): Uint8Array {
+  const buf = new ArrayBuffer(8);
+  const view = new DataView(buf);
+  view.setBigUint64(0, value, true);
+  return new Uint8Array(buf);
+}
+
+function u32ToLEBytes(value: number): Uint8Array {
+  const buf = new ArrayBuffer(4);
+  const view = new DataView(buf);
+  view.setUint32(0, value, true);
+  return new Uint8Array(buf);
+}
+
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const totalLength = arrays.reduce((sum, a) => sum + a.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
+
 interface ClaimableAffiliateWeek {
   week_number: number;
   pending_lamports: number;
@@ -28,7 +59,7 @@ interface NextRelease {
   time_until_release: string;
 }
 
-function findPDA(seeds: (Buffer | Uint8Array)[], programId: PublicKey): [PublicKey, number] {
+function findPDA(seeds: Uint8Array[], programId: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(seeds, programId);
 }
 
@@ -95,36 +126,37 @@ export const claimService = {
       const walletPubkey = new PublicKey(walletAddress);
 
       const [affiliatePoolPDA] = findPDA(
-        [Buffer.from('affiliate_pool')],
+        [toBytes('affiliate_pool')],
         CLAIM_PROGRAM_ID
       );
 
       const [affiliateVaultPDA] = findPDA(
-        [Buffer.from('affiliate_vault')],
+        [toBytes('affiliate_vault')],
         CLAIM_PROGRAM_ID
       );
 
       const [accumulatorPDA] = findPDA(
-        [Buffer.from('accumulator'), walletPubkey.toBuffer()],
+        [toBytes('accumulator'), walletPubkey.toBytes()],
         CLAIM_PROGRAM_ID
       );
 
-      const weekBuffer = Buffer.alloc(8);
-      weekBuffer.writeBigUInt64LE(BigInt(weekNumber));
+      const weekBytes = u64ToLEBytes(BigInt(weekNumber));
 
       const [affiliateClaimPDA] = findPDA(
-        [Buffer.from('affiliate_claim'), walletPubkey.toBuffer(), weekBuffer],
+        [toBytes('affiliate_claim'), walletPubkey.toBytes(), weekBytes],
         CLAIM_PROGRAM_ID
       );
 
       const tx = new Transaction();
 
-      const instructionData = Buffer.alloc(26);
-      instructionData.writeUInt8(8, 0);
-      instructionData.writeBigUInt64LE(BigInt(weekData.pending_lamports), 1);
-      instructionData.writeUInt8(weekData.tier, 9);
-      instructionData.writeBigUInt64LE(BigInt(weekNumber), 10);
-      instructionData.writeUInt32LE(weekData.referral_count, 18);
+      const instructionData = concatBytes(
+        new Uint8Array([8]),
+        u64ToLEBytes(BigInt(weekData.pending_lamports)),
+        new Uint8Array([weekData.tier]),
+        u64ToLEBytes(BigInt(weekNumber)),
+        u32ToLEBytes(weekData.referral_count),
+        new Uint8Array(4)
+      );
 
       tx.add({
         keys: [
@@ -227,30 +259,30 @@ export const claimService = {
       const lotteryTypeNum = lotteryTypeMap[prize.lottery_type] || 0;
 
       const [prizePoolPDA] = findPDA(
-        [Buffer.from('prize_pool'), Buffer.from([lotteryTypeNum])],
+        [toBytes('prize_pool'), new Uint8Array([lotteryTypeNum])],
         CLAIM_PROGRAM_ID
       );
 
       const [prizeVaultPDA] = findPDA(
-        [Buffer.from('prize_vault'), prizePoolPDA.toBuffer()],
+        [toBytes('prize_vault'), prizePoolPDA.toBytes()],
         CLAIM_PROGRAM_ID
       );
 
-      const roundBuffer = Buffer.alloc(8);
-      roundBuffer.writeBigUInt64LE(BigInt(prize.lottery_round));
+      const roundBytes = u64ToLEBytes(BigInt(prize.lottery_round));
 
       const [prizeClaimPDA] = findPDA(
-        [Buffer.from('prize_claim'), walletPubkey.toBuffer(), prizePoolPDA.toBuffer(), roundBuffer],
+        [toBytes('prize_claim'), walletPubkey.toBytes(), prizePoolPDA.toBytes(), roundBytes],
         CLAIM_PROGRAM_ID
       );
 
       const tx = new Transaction();
 
-      const instructionData = Buffer.alloc(18);
-      instructionData.writeUInt8(7, 0);
-      instructionData.writeBigUInt64LE(BigInt(prize.amount_lamports), 1);
-      instructionData.writeUInt8(prize.tier, 9);
-      instructionData.writeBigUInt64LE(BigInt(prize.lottery_round), 10);
+      const instructionData = concatBytes(
+        new Uint8Array([7]),
+        u64ToLEBytes(BigInt(prize.amount_lamports)),
+        new Uint8Array([prize.tier]),
+        u64ToLEBytes(BigInt(prize.lottery_round))
+      );
 
       tx.add({
         keys: [

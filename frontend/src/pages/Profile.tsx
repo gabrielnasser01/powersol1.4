@@ -10,11 +10,10 @@ import { claimService } from '../services/claimService';
 import { supabase } from '../lib/supabase';
 import { useWallet } from '../contexts/WalletContext';
 import { useNotifications } from '../hooks/useNotifications';
-import { Connection, clusterApiUrl } from '@solana/web3.js';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { publicKey: walletPublicKey, connected, disconnect, getWalletAdapter } = useWallet();
+  const { publicKey: walletPublicKey, connected, disconnect } = useWallet();
   const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
   const [userStats, setUserStats] = useState(userStatsStorage.get());
@@ -379,29 +378,16 @@ export function Profile() {
       return;
     }
 
-    const wallet = getWalletAdapter();
-    if (!wallet || !wallet.signTransaction) {
-      alert('Wallet adapter not available. Please reconnect your wallet.');
-      return;
-    }
-
     setClaimingPrize(prizeId);
 
     try {
-      const connection = new Connection(
-        import.meta.env.VITE_SOLANA_RPC_URL || clusterApiUrl('devnet'),
-        'confirmed'
-      );
-
       const result = await claimService.claimPrize(
         walletPublicKey,
-        prizeId,
-        wallet.signTransaction.bind(wallet),
-        connection
+        prizeId
       );
 
       if (result.success) {
-        alert(`Prize claimed successfully! Transaction: ${result.txSignature}`);
+        alert('Prize claimed successfully! Your reward will be sent to your wallet shortly.');
         await loadPrizes();
       } else {
         alert(result.error || 'Failed to claim prize. Please try again.');
@@ -429,23 +415,13 @@ export function Profile() {
     setClaimingAffiliate(true);
 
     try {
-      const wallet = getWalletAdapter();
-      if (!wallet || !wallet.signTransaction) {
-        alert('Wallet adapter not available. Please reconnect your wallet.');
-        return;
-      }
-
-      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-
       const result = await claimService.claimAllAvailableAffiliateRewards(
-        walletPublicKey,
-        wallet.signTransaction.bind(wallet),
-        connection
+        walletPublicKey
       );
 
       if (result.success) {
         const solAmount = claimService.lamportsToSol(result.totalAmount);
-        alert(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)!\n\nTransactions:\n${result.txSignatures.join('\n')}`);
+        alert(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)! Your reward will be sent to your wallet shortly.`);
         await loadAffiliateData();
       } else {
         alert(`Failed to claim some rewards:\n${result.errors.join('\n')}`);

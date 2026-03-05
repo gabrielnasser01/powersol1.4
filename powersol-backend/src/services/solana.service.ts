@@ -13,6 +13,7 @@ import {
   getAuthorityKeypair,
   getTreasuryPublicKey,
   getAffiliatesPoolPublicKey,
+  getDeltaPublicKey,
   DISTRIBUTION,
   PROGRAM_IDS,
 } from '@config/solana.js';
@@ -43,6 +44,7 @@ export class SolanaService {
   private authority = getAuthorityKeypair();
   private treasury = getTreasuryPublicKey();
   private affiliatesPool = getAffiliatesPoolPublicKey();
+  private delta = getDeltaPublicKey();
   private coreProgram: Program | null = null;
   private claimProgram: Program | null = null;
 
@@ -197,7 +199,8 @@ export class SolanaService {
     buyer: PublicKey,
     lotteryId: number,
     ticketNumber: number,
-    ticketPrice: bigint
+    ticketPrice: bigint,
+    affiliateCommissionPct: number = 0
   ): Promise<Transaction> {
     try {
       const [lotteryPda] = PublicKey.findProgramAddressSync(
@@ -211,7 +214,10 @@ export class SolanaService {
       const totalLamports = Number(ticketPrice);
       const prizePoolAmount = Math.floor(totalLamports * DISTRIBUTION.PRIZE_POOL);
       const treasuryAmount = Math.floor(totalLamports * DISTRIBUTION.TREASURY);
-      const affiliatesAmount = totalLamports - prizePoolAmount - treasuryAmount;
+      const affiliatesReserved = totalLamports - prizePoolAmount - treasuryAmount;
+
+      const affiliateCommission = Math.floor(totalLamports * affiliateCommissionPct);
+      const deltaAmount = affiliatesReserved - affiliateCommission;
 
       transaction.add(
         SystemProgram.transfer({
@@ -229,13 +235,25 @@ export class SolanaService {
         })
       );
 
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: buyer,
-          toPubkey: this.affiliatesPool,
-          lamports: affiliatesAmount,
-        })
-      );
+      if (affiliateCommission > 0) {
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: buyer,
+            toPubkey: this.affiliatesPool,
+            lamports: affiliateCommission,
+          })
+        );
+      }
+
+      if (deltaAmount > 0) {
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: buyer,
+            toPubkey: this.delta,
+            lamports: deltaAmount,
+          })
+        );
+      }
 
       logger.info({
         buyer: buyer.toBase58(),
@@ -243,8 +261,10 @@ export class SolanaService {
         ticketNumber,
         prizePoolAmount,
         treasuryAmount,
-        affiliatesAmount,
-      }, 'Purchase transaction built with 40/30/30 split');
+        affiliateCommission,
+        deltaAmount,
+        affiliateCommissionPct,
+      }, 'Purchase transaction built with delta split');
 
       return transaction;
     } catch (error) {

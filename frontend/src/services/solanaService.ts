@@ -1,14 +1,19 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { LOTTERY_WALLETS } from './walletBalanceService';
 import { TREASURY_WALLET, AFFILIATES_POOL_WALLET } from './anchorService';
+import { supabase } from '../lib/supabase';
 
 const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+
+export const DELTA_WALLET = new PublicKey(import.meta.env.VITE_DELTA_WALLET || '2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU');
 
 const DISTRIBUTION = {
   PRIZE_POOL: 40,
   TREASURY: 30,
-  AFFILIATES: 30,
+  AFFILIATES_MAX: 30,
 } as const;
+
+const COMMISSION_RATES: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 30 };
 
 function getLotteryWalletForType(lotteryType?: string): string {
   const type = lotteryType || 'tri-daily';
@@ -44,6 +49,30 @@ class SolanaService {
     }
   }
 
+  async getAffiliateTierForBuyer(buyerWallet: string): Promise<number> {
+    try {
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('wallet_address', buyerWallet)
+        .maybeSingle();
+
+      if (!user) return 0;
+
+      const { data: referral } = await supabase
+        .from('referrals')
+        .select('referrer_affiliate_id, affiliates!referrer_affiliate_id(manual_tier)')
+        .eq('referred_user_id', user.id)
+        .maybeSingle();
+
+      if (!referral || !(referral as any).affiliates) return 0;
+
+      return (referral as any).affiliates.manual_tier || 1;
+    } catch {
+      return 0;
+    }
+  }
+
   async createTicketPurchaseTransaction(
     buyerPublicKey: string,
     amountSol: number,
@@ -56,7 +85,12 @@ class SolanaService {
 
     const prizePoolAmount = Math.floor((totalLamports * DISTRIBUTION.PRIZE_POOL) / 100);
     const treasuryAmount = Math.floor((totalLamports * DISTRIBUTION.TREASURY) / 100);
-    const affiliatesAmount = totalLamports - prizePoolAmount - treasuryAmount;
+    const affiliatesReserved = totalLamports - prizePoolAmount - treasuryAmount;
+
+    const tier = await this.getAffiliateTierForBuyer(buyerPublicKey);
+    const commissionPct = tier > 0 ? (COMMISSION_RATES[tier] || 5) : 0;
+    const affiliateCommission = Math.floor((totalLamports * commissionPct) / 100);
+    const deltaAmount = affiliatesReserved - affiliateCommission;
 
     const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
 
@@ -82,13 +116,25 @@ class SolanaService {
       })
     );
 
-    transaction.add(
-      SystemProgram.transfer({
-        fromPubkey: buyer,
-        toPubkey: AFFILIATES_POOL_WALLET,
-        lamports: affiliatesAmount,
-      })
-    );
+    if (affiliateCommission > 0) {
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: buyer,
+          toPubkey: AFFILIATES_POOL_WALLET,
+          lamports: affiliateCommission,
+        })
+      );
+    }
+
+    if (deltaAmount > 0) {
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: buyer,
+          toPubkey: DELTA_WALLET,
+          lamports: deltaAmount,
+        })
+      );
+    }
 
     return transaction;
   }

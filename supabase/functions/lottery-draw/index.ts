@@ -510,9 +510,34 @@ async function createNextLottery(supabase: any, lottery: any) {
   return newLottery;
 }
 
+async function sweepUnclaimedAffiliateRewards(supabase: ReturnType<typeof getSupabaseClient>) {
+  try {
+    const { data, error } = await supabase.rpc("sweep_unclaimed_affiliate_rewards_to_delta", {
+      p_deadline_weeks_ago: 1,
+    });
+
+    if (error) {
+      console.error("Sweep unclaimed rewards error:", error);
+      return { swept: false, error: error.message };
+    }
+
+    const result = data?.[0] || { swept_count: 0, total_swept_lamports: 0 };
+    return {
+      swept: true,
+      swept_count: result.swept_count,
+      total_swept_lamports: result.total_swept_lamports,
+    };
+  } catch (err) {
+    console.error("Sweep unclaimed rewards exception:", err);
+    return { swept: false, error: err instanceof Error ? err.message : "Unknown" };
+  }
+}
+
 async function processDraws() {
   const supabase = getSupabaseClient();
   const nowTimestamp = Math.floor(Date.now() / 1000);
+
+  const sweepResult = await sweepUnclaimedAffiliateRewards(supabase);
 
   const { data: lotteriesReady, error } = await supabase
     .from("blockchain_lotteries")
@@ -523,7 +548,7 @@ async function processDraws() {
   if (error) throw error;
 
   if (!lotteriesReady || lotteriesReady.length === 0) {
-    return { message: "No lotteries ready for draw", processed: 0 };
+    return { message: "No lotteries ready for draw", processed: 0, sweep: sweepResult };
   }
 
   const results: any[] = [];
@@ -557,6 +582,7 @@ async function processDraws() {
     message: `Processed ${lotteriesReady.length} lottery draws`,
     processed: lotteriesReady.length,
     results,
+    sweep: sweepResult,
   };
 }
 

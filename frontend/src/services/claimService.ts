@@ -2,6 +2,13 @@ import { supabase } from '../lib/supabase';
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
+const PRIZE_CLAIM_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/prize-claim`;
+
+const edgeFunctionHeaders = {
+  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+  'Content-Type': 'application/json',
+};
+
 interface ClaimableAffiliateWeek {
   week_number: number;
   pending_lamports: number;
@@ -26,10 +33,13 @@ interface NextRelease {
   time_until_release: string;
 }
 
-function generateClaimRef(): string {
-  const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).substring(2, 10);
-  return `claim_${ts}_${rand}`;
+interface EdgeClaimResponse {
+  success: boolean;
+  error?: string;
+  signature?: string;
+  amount_lamports?: number;
+  amount_sol?: number;
+  explorer_url?: string;
 }
 
 export const claimService = {
@@ -79,27 +89,22 @@ export const claimService = {
     weekNumber: number
   ): Promise<{ success: boolean; claimRef?: string; error?: string; amount?: number }> {
     try {
-      const claimRef = generateClaimRef();
-
-      const { data, error } = await supabase.rpc('process_affiliate_claim_v2', {
-        p_wallet: walletAddress,
-        p_week_number: weekNumber,
-        p_tx_signature: claimRef
+      const response = await fetch(`${PRIZE_CLAIM_URL}/affiliate`, {
+        method: 'POST',
+        headers: edgeFunctionHeaders,
+        body: JSON.stringify({ wallet_address: walletAddress, week_number: weekNumber }),
       });
 
-      if (error) {
-        return { success: false, error: error.message };
-      }
+      const result: EdgeClaimResponse = await response.json();
 
-      const result = Array.isArray(data) ? data[0] : data;
-      if (result && !result.success) {
-        return { success: false, error: result.error_message || 'Claim failed' };
+      if (!result.success) {
+        return { success: false, error: result.error || 'Claim failed' };
       }
 
       return {
         success: true,
-        claimRef,
-        amount: result?.amount_claimed || 0
+        claimRef: result.signature,
+        amount: result.amount_lamports || 0
       };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Claim failed';
@@ -143,27 +148,25 @@ export const claimService = {
   async claimPrize(
     walletAddress: string,
     prizeId: string
-  ): Promise<{ success: boolean; claimRef?: string; error?: string }> {
+  ): Promise<{ success: boolean; claimRef?: string; error?: string; explorerUrl?: string }> {
     try {
-      const prizes = await this.getUnclaimedPrizes(walletAddress);
-      const prize = prizes.find(p => p.prize_id === prizeId);
-
-      if (!prize) {
-        return { success: false, error: 'Prize not found or already claimed' };
-      }
-
-      const claimRef = generateClaimRef();
-
-      const { error } = await supabase.rpc('mark_prize_claimed', {
-        p_winner_id: prizeId,
-        p_tx_signature: claimRef
+      const response = await fetch(`${PRIZE_CLAIM_URL}/prize`, {
+        method: 'POST',
+        headers: edgeFunctionHeaders,
+        body: JSON.stringify({ prize_id: prizeId, wallet_address: walletAddress }),
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      const result: EdgeClaimResponse = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error || 'Claim failed' };
       }
 
-      return { success: true, claimRef };
+      return {
+        success: true,
+        claimRef: result.signature,
+        explorerUrl: result.explorer_url
+      };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Claim failed';
       return { success: false, error: errorMessage };

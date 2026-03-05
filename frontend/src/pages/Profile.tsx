@@ -13,7 +13,7 @@ import { useNotifications } from '../hooks/useNotifications';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { publicKey: walletPublicKey, connected, disconnect, signTransaction } = useWallet();
+  const { publicKey: walletPublicKey, connected, disconnect } = useWallet();
   const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
   const [userStats, setUserStats] = useState(userStatsStorage.get());
@@ -383,8 +383,7 @@ export function Profile() {
     try {
       const result = await claimService.claimPrize(
         walletPublicKey,
-        prizeId,
-        signTransaction
+        prizeId
       );
 
       if (result.success) {
@@ -417,8 +416,7 @@ export function Profile() {
 
     try {
       const result = await claimService.claimAllAvailableAffiliateRewards(
-        walletPublicKey,
-        signTransaction
+        walletPublicKey
       );
 
       if (result.success) {

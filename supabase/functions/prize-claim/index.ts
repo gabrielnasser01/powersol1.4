@@ -6,7 +6,6 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
-  sendAndConfirmTransaction,
 } from "npm:@solana/web3.js@1.98.4";
 
 const corsHeaders = {
@@ -68,7 +67,10 @@ function successResponse(data: Record<string, unknown>) {
   });
 }
 
-async function handleClaimPrize(prizeId: string, walletAddress: string) {
+async function handlePreparePrizeClaim(
+  prizeId: string,
+  walletAddress: string
+) {
   const supabase = getSupabaseClient();
 
   const { data: prize, error: prizeError } = await supabase
@@ -118,11 +120,9 @@ async function handleClaimPrize(prizeId: string, walletAddress: string) {
   const amountLamports = prize.prize_amount_lamports;
 
   const senderBalance = await connection.getBalance(senderKeypair.publicKey);
-  const minRequired = amountLamports + 10000;
-
-  if (senderBalance < minRequired) {
+  if (senderBalance < amountLamports) {
     console.error(
-      `Insufficient balance in ${lotteryType} wallet. Has: ${senderBalance}, needs: ${minRequired}`
+      `Insufficient balance in ${lotteryType} wallet. Has: ${senderBalance}, needs: ${amountLamports}`
     );
     return errorResponse(
       "Prize pool wallet has insufficient balance. Please contact support.",
@@ -130,7 +130,14 @@ async function handleClaimPrize(prizeId: string, walletAddress: string) {
     );
   }
 
-  const transaction = new Transaction().add(
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash("confirmed");
+
+  const transaction = new Transaction({
+    feePayer: recipientPubkey,
+    blockhash,
+    lastValidBlockHeight,
+  }).add(
     SystemProgram.transfer({
       fromPubkey: senderKeypair.publicKey,
       toPubkey: recipientPubkey,
@@ -138,16 +145,60 @@ async function handleClaimPrize(prizeId: string, walletAddress: string) {
     })
   );
 
-  let signature: string;
+  transaction.partialSign(senderKeypair);
+
+  const serializedTx = transaction
+    .serialize({ requireAllSignatures: false })
+    .toString("base64");
+
+  return successResponse({
+    serialized_tx: serializedTx,
+    amount_lamports: amountLamports,
+    amount_sol: amountLamports / 1_000_000_000,
+    prize_id: prizeId,
+  });
+}
+
+async function handleConfirmPrizeClaim(
+  prizeId: string,
+  signature: string
+) {
+  const supabase = getSupabaseClient();
+
+  const { data: prize, error: prizeError } = await supabase
+    .from("prizes")
+    .select("id, claimed")
+    .eq("id", prizeId)
+    .maybeSingle();
+
+  if (prizeError || !prize) {
+    return errorResponse("Prize not found", 404);
+  }
+
+  if (prize.claimed) {
+    return errorResponse("Prize already claimed");
+  }
+
+  const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+
   try {
-    signature = await sendAndConfirmTransaction(connection, transaction, [
-      senderKeypair,
-    ]);
-  } catch (txError: unknown) {
-    const msg =
-      txError instanceof Error ? txError.message : "Transaction failed";
-    console.error("Solana transaction failed:", msg);
-    return errorResponse(`Transfer failed: ${msg}`, 500);
+    const txInfo = await connection.getTransaction(signature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+
+    if (!txInfo) {
+      return errorResponse(
+        "Transaction not found on chain. It may still be processing. Please try again in a few seconds.",
+        404
+      );
+    }
+
+    if (txInfo.meta?.err) {
+      return errorResponse("Transaction failed on chain", 400);
+    }
+  } catch (verifyError: unknown) {
+    console.error("Failed to verify transaction:", verifyError);
   }
 
   const { error: updateError } = await supabase.rpc("mark_prize_claimed", {
@@ -156,21 +207,17 @@ async function handleClaimPrize(prizeId: string, walletAddress: string) {
   });
 
   if (updateError) {
-    console.error(
-      "Failed to mark prize claimed in DB (but SOL was sent!):",
-      updateError
-    );
+    console.error("Failed to mark prize claimed in DB:", updateError);
+    return errorResponse("Failed to update claim status", 500);
   }
 
   return successResponse({
     signature,
-    amount_lamports: amountLamports,
-    amount_sol: amountLamports / 1_000_000_000,
     explorer_url: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
   });
 }
 
-async function handleClaimAffiliateRewards(
+async function handlePrepareAffiliateClaim(
   walletAddress: string,
   weekNumber: number
 ) {
@@ -178,9 +225,7 @@ async function handleClaimAffiliateRewards(
 
   const { data, error } = await supabase.rpc(
     "get_claimable_affiliate_balance_v2",
-    {
-      p_wallet: walletAddress,
-    }
+    { p_wallet: walletAddress }
   );
 
   if (error || !data) {
@@ -188,7 +233,11 @@ async function handleClaimAffiliateRewards(
   }
 
   const week = data.find(
-    (w: { week_number: number; is_available: boolean; pending_lamports: number }) =>
+    (w: {
+      week_number: number;
+      is_available: boolean;
+      pending_lamports: number;
+    }) =>
       w.week_number === weekNumber && w.is_available && w.pending_lamports > 0
   );
 
@@ -211,16 +260,21 @@ async function handleClaimAffiliateRewards(
   const amountLamports = week.pending_lamports;
 
   const senderBalance = await connection.getBalance(senderKeypair.publicKey);
-  const minRequired = amountLamports + 10000;
-
-  if (senderBalance < minRequired) {
+  if (senderBalance < amountLamports) {
     return errorResponse(
       "Affiliate pool has insufficient balance. Please contact support.",
       503
     );
   }
 
-  const transaction = new Transaction().add(
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash("confirmed");
+
+  const transaction = new Transaction({
+    feePayer: recipientPubkey,
+    blockhash,
+    lastValidBlockHeight,
+  }).add(
     SystemProgram.transfer({
       fromPubkey: senderKeypair.publicKey,
       toPubkey: recipientPubkey,
@@ -228,16 +282,47 @@ async function handleClaimAffiliateRewards(
     })
   );
 
-  let signature: string;
+  transaction.partialSign(senderKeypair);
+
+  const serializedTx = transaction
+    .serialize({ requireAllSignatures: false })
+    .toString("base64");
+
+  return successResponse({
+    serialized_tx: serializedTx,
+    amount_lamports: amountLamports,
+    amount_sol: amountLamports / 1_000_000_000,
+    week_number: weekNumber,
+  });
+}
+
+async function handleConfirmAffiliateClaim(
+  walletAddress: string,
+  weekNumber: number,
+  signature: string
+) {
+  const supabase = getSupabaseClient();
+
+  const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+
   try {
-    signature = await sendAndConfirmTransaction(connection, transaction, [
-      senderKeypair,
-    ]);
-  } catch (txError: unknown) {
-    const msg =
-      txError instanceof Error ? txError.message : "Transaction failed";
-    console.error("Affiliate transfer failed:", msg);
-    return errorResponse(`Transfer failed: ${msg}`, 500);
+    const txInfo = await connection.getTransaction(signature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+
+    if (!txInfo) {
+      return errorResponse(
+        "Transaction not found on chain. It may still be processing. Please try again in a few seconds.",
+        404
+      );
+    }
+
+    if (txInfo.meta?.err) {
+      return errorResponse("Transaction failed on chain", 400);
+    }
+  } catch (verifyError: unknown) {
+    console.error("Failed to verify affiliate transaction:", verifyError);
   }
 
   const { error: claimError } = await supabase.rpc(
@@ -250,16 +335,12 @@ async function handleClaimAffiliateRewards(
   );
 
   if (claimError) {
-    console.error(
-      "Failed to mark affiliate claim in DB (but SOL was sent!):",
-      claimError
-    );
+    console.error("Failed to mark affiliate claim in DB:", claimError);
+    return errorResponse("Failed to update claim status", 500);
   }
 
   return successResponse({
     signature,
-    amount_lamports: amountLamports,
-    amount_sol: amountLamports / 1_000_000_000,
     explorer_url: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
   });
 }
@@ -280,20 +361,42 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
 
-    if (path === "/prize" || path === "" || path === "/") {
+    if (path === "/prepare" || path === "/prize" || path === "" || path === "/") {
       const { prize_id, wallet_address } = body;
       if (!prize_id || !wallet_address) {
         return errorResponse("prize_id and wallet_address are required");
       }
-      return await handleClaimPrize(prize_id, wallet_address);
+      return await handlePreparePrizeClaim(prize_id, wallet_address);
     }
 
-    if (path === "/affiliate") {
+    if (path === "/confirm") {
+      const { prize_id, signature } = body;
+      if (!prize_id || !signature) {
+        return errorResponse("prize_id and signature are required");
+      }
+      return await handleConfirmPrizeClaim(prize_id, signature);
+    }
+
+    if (path === "/affiliate/prepare") {
       const { wallet_address, week_number } = body;
       if (!wallet_address || week_number === undefined) {
         return errorResponse("wallet_address and week_number are required");
       }
-      return await handleClaimAffiliateRewards(wallet_address, week_number);
+      return await handlePrepareAffiliateClaim(wallet_address, week_number);
+    }
+
+    if (path === "/affiliate/confirm") {
+      const { wallet_address, week_number, signature } = body;
+      if (!wallet_address || week_number === undefined || !signature) {
+        return errorResponse(
+          "wallet_address, week_number, and signature are required"
+        );
+      }
+      return await handleConfirmAffiliateClaim(
+        wallet_address,
+        week_number,
+        signature
+      );
     }
 
     return errorResponse("Not found", 404);

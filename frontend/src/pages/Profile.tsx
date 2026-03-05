@@ -13,7 +13,7 @@ import { useNotifications } from '../hooks/useNotifications';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { publicKey: walletPublicKey, connected, disconnect } = useWallet();
+  const { publicKey: walletPublicKey, connected, disconnect, signTransaction } = useWallet();
   const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
   const [userStats, setUserStats] = useState(userStatsStorage.get());
@@ -383,11 +383,12 @@ export function Profile() {
     try {
       const result = await claimService.claimPrize(
         walletPublicKey,
-        prizeId
+        prizeId,
+        signTransaction
       );
 
       if (result.success) {
-        alert('Prize claimed successfully! Your reward will be sent to your wallet shortly.');
+        alert('Prize claimed successfully! SOL has been sent to your wallet.');
         await loadPrizes();
       } else {
         alert(result.error || 'Failed to claim prize. Please try again.');
@@ -416,12 +417,13 @@ export function Profile() {
 
     try {
       const result = await claimService.claimAllAvailableAffiliateRewards(
-        walletPublicKey
+        walletPublicKey,
+        signTransaction
       );
 
       if (result.success) {
         const solAmount = claimService.lamportsToSol(result.totalAmount);
-        alert(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)! Your reward will be sent to your wallet shortly.`);
+        alert(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)! SOL has been sent to your wallet.`);
         await loadAffiliateData();
       } else {
         alert(`Failed to claim some rewards:\n${result.errors.join('\n')}`);

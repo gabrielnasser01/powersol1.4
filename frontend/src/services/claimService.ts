@@ -1,4 +1,6 @@
+import { Transaction } from '@solana/web3.js';
 import { supabase } from '../lib/supabase';
+import { solanaService } from './solanaService';
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
@@ -8,6 +10,8 @@ const edgeFunctionHeaders = {
   'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
   'Content-Type': 'application/json',
 };
+
+type SignTransaction = (transaction: Transaction) => Promise<Transaction>;
 
 interface ClaimableAffiliateWeek {
   week_number: number;
@@ -33,13 +37,32 @@ interface NextRelease {
   time_until_release: string;
 }
 
-interface EdgeClaimResponse {
+interface PrepareResponse {
+  success: boolean;
+  error?: string;
+  serialized_tx?: string;
+  amount_lamports?: number;
+  amount_sol?: number;
+  prize_id?: string;
+  week_number?: number;
+}
+
+interface ConfirmResponse {
   success: boolean;
   error?: string;
   signature?: string;
-  amount_lamports?: number;
-  amount_sol?: number;
   explorer_url?: string;
+}
+
+async function signAndSendTransaction(
+  serializedTxBase64: string,
+  signTransaction: SignTransaction
+): Promise<string> {
+  const txBuffer = Buffer.from(serializedTxBase64, 'base64');
+  const transaction = Transaction.from(txBuffer);
+  const signedTransaction = await signTransaction(transaction);
+  const signature = await solanaService.sendAndConfirmTransaction(signedTransaction);
+  return signature;
 }
 
 export const claimService = {
@@ -84,27 +107,101 @@ export const claimService = {
     return data;
   },
 
+  async claimPrize(
+    walletAddress: string,
+    prizeId: string,
+    signTransaction: SignTransaction
+  ): Promise<{ success: boolean; signature?: string; error?: string; explorerUrl?: string }> {
+    try {
+      const prepareResponse = await fetch(`${PRIZE_CLAIM_URL}/prepare`, {
+        method: 'POST',
+        headers: edgeFunctionHeaders,
+        body: JSON.stringify({ prize_id: prizeId, wallet_address: walletAddress }),
+      });
+
+      const prepareResult: PrepareResponse = await prepareResponse.json();
+
+      if (!prepareResult.success || !prepareResult.serialized_tx) {
+        return { success: false, error: prepareResult.error || 'Failed to prepare claim transaction' };
+      }
+
+      const signature = await signAndSendTransaction(
+        prepareResult.serialized_tx,
+        signTransaction
+      );
+
+      const confirmResponse = await fetch(`${PRIZE_CLAIM_URL}/confirm`, {
+        method: 'POST',
+        headers: edgeFunctionHeaders,
+        body: JSON.stringify({ prize_id: prizeId, signature }),
+      });
+
+      const confirmResult: ConfirmResponse = await confirmResponse.json();
+
+      if (!confirmResult.success) {
+        return {
+          success: true,
+          signature,
+          explorerUrl: solanaService.getExplorerUrl(signature),
+          error: 'SOL sent but failed to update database. Contact support with your transaction signature.',
+        };
+      }
+
+      return {
+        success: true,
+        signature: confirmResult.signature || signature,
+        explorerUrl: confirmResult.explorer_url || solanaService.getExplorerUrl(signature),
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Claim failed';
+      return { success: false, error: errorMessage };
+    }
+  },
+
   async claimAffiliateRewards(
     walletAddress: string,
-    weekNumber: number
-  ): Promise<{ success: boolean; claimRef?: string; error?: string; amount?: number }> {
+    weekNumber: number,
+    signTransaction: SignTransaction
+  ): Promise<{ success: boolean; signature?: string; error?: string; amount?: number }> {
     try {
-      const response = await fetch(`${PRIZE_CLAIM_URL}/affiliate`, {
+      const prepareResponse = await fetch(`${PRIZE_CLAIM_URL}/affiliate/prepare`, {
         method: 'POST',
         headers: edgeFunctionHeaders,
         body: JSON.stringify({ wallet_address: walletAddress, week_number: weekNumber }),
       });
 
-      const result: EdgeClaimResponse = await response.json();
+      const prepareResult: PrepareResponse = await prepareResponse.json();
 
-      if (!result.success) {
-        return { success: false, error: result.error || 'Claim failed' };
+      if (!prepareResult.success || !prepareResult.serialized_tx) {
+        return { success: false, error: prepareResult.error || 'Failed to prepare claim transaction' };
+      }
+
+      const signature = await signAndSendTransaction(
+        prepareResult.serialized_tx,
+        signTransaction
+      );
+
+      const confirmResponse = await fetch(`${PRIZE_CLAIM_URL}/affiliate/confirm`, {
+        method: 'POST',
+        headers: edgeFunctionHeaders,
+        body: JSON.stringify({ wallet_address: walletAddress, week_number: weekNumber, signature }),
+      });
+
+      const confirmResult: ConfirmResponse = await confirmResponse.json();
+
+      if (!confirmResult.success) {
+        return {
+          success: true,
+          signature,
+          amount: prepareResult.amount_lamports || 0,
+          error: 'SOL sent but failed to update database. Contact support with your transaction signature.',
+        };
       }
 
       return {
         success: true,
-        claimRef: result.signature,
-        amount: result.amount_lamports || 0
+        signature,
+        amount: prepareResult.amount_lamports || 0,
       };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Claim failed';
@@ -113,23 +210,25 @@ export const claimService = {
   },
 
   async claimAllAvailableAffiliateRewards(
-    walletAddress: string
-  ): Promise<{ success: boolean; claimed: number; totalAmount: number; claimRefs: string[]; errors: string[] }> {
+    walletAddress: string,
+    signTransaction: SignTransaction
+  ): Promise<{ success: boolean; claimed: number; totalAmount: number; signatures: string[]; errors: string[] }> {
     const weeks = await this.getClaimableAffiliateRewards(walletAddress);
     const availableWeeks = weeks.filter(w => w.is_available && w.pending_lamports > 0);
 
-    const claimRefs: string[] = [];
+    const signatures: string[] = [];
     const errors: string[] = [];
     let totalAmount = 0;
 
     for (const week of availableWeeks) {
       const result = await this.claimAffiliateRewards(
         walletAddress,
-        week.week_number
+        week.week_number,
+        signTransaction
       );
 
-      if (result.success && result.claimRef) {
-        claimRefs.push(result.claimRef);
+      if (result.success && result.signature) {
+        signatures.push(result.signature);
         totalAmount += result.amount || 0;
       } else if (result.error) {
         errors.push(`Week ${week.week_number}: ${result.error}`);
@@ -138,52 +237,25 @@ export const claimService = {
 
     return {
       success: errors.length === 0,
-      claimed: claimRefs.length,
+      claimed: signatures.length,
       totalAmount,
-      claimRefs,
+      signatures,
       errors
     };
   },
 
-  async claimPrize(
-    walletAddress: string,
-    prizeId: string
-  ): Promise<{ success: boolean; claimRef?: string; error?: string; explorerUrl?: string }> {
-    try {
-      const response = await fetch(`${PRIZE_CLAIM_URL}/prize`, {
-        method: 'POST',
-        headers: edgeFunctionHeaders,
-        body: JSON.stringify({ prize_id: prizeId, wallet_address: walletAddress }),
-      });
-
-      const result: EdgeClaimResponse = await response.json();
-
-      if (!result.success) {
-        return { success: false, error: result.error || 'Claim failed' };
-      }
-
-      return {
-        success: true,
-        claimRef: result.signature,
-        explorerUrl: result.explorer_url
-      };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Claim failed';
-      return { success: false, error: errorMessage };
-    }
-  },
-
   async claimAllPrizes(
-    walletAddress: string
-  ): Promise<{ success: boolean; claimed: number; claimRefs: string[]; errors: string[] }> {
+    walletAddress: string,
+    signTransaction: SignTransaction
+  ): Promise<{ success: boolean; claimed: number; signatures: string[]; errors: string[] }> {
     const prizes = await this.getUnclaimedPrizes(walletAddress);
-    const claimRefs: string[] = [];
+    const signatures: string[] = [];
     const errors: string[] = [];
 
     for (const prize of prizes) {
-      const result = await this.claimPrize(walletAddress, prize.prize_id);
-      if (result.success && result.claimRef) {
-        claimRefs.push(result.claimRef);
+      const result = await this.claimPrize(walletAddress, prize.prize_id, signTransaction);
+      if (result.success && result.signature) {
+        signatures.push(result.signature);
       } else if (result.error) {
         errors.push(`${prize.lottery_type}: ${result.error}`);
       }
@@ -191,8 +263,8 @@ export const claimService = {
 
     return {
       success: errors.length === 0,
-      claimed: claimRefs.length,
-      claimRefs,
+      claimed: signatures.length,
+      signatures,
       errors
     };
   },

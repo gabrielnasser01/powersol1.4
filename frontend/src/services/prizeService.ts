@@ -53,25 +53,8 @@ interface PrepareClaimResponse {
 type SignTransaction = (transaction: Transaction) => Promise<Transaction>;
 
 class PrizeService {
-  private async fetchFromBackend(url: string): Promise<any> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-      if (!response.ok) throw new Error('Backend unavailable');
-      return await response.json();
-    } catch {
-      clearTimeout(timeout);
-      return null;
-    }
-  }
-
   async getUserPrizes(wallet: string): Promise<Prize[]> {
     try {
-      const backendResult = await this.fetchFromBackend(`${API_BASE_URL}/api/prizes?wallet=${wallet}`);
-      if (backendResult?.data) return backendResult.data;
-
       const { data, error } = await supabase
         .from('prizes')
         .select('*')
@@ -88,9 +71,6 @@ class PrizeService {
 
   async getUnclaimedPrizes(wallet: string): Promise<Prize[]> {
     try {
-      const backendResult = await this.fetchFromBackend(`${API_BASE_URL}/api/prizes/unclaimed?wallet=${wallet}`);
-      if (backendResult?.data) return backendResult.data;
-
       const { data, error } = await supabase
         .from('prizes')
         .select('*')
@@ -111,7 +91,7 @@ class PrizeService {
     wallet: string,
     signTransaction: SignTransaction
   ): Promise<ClaimResponse> {
-    const prepareResponse = await fetch(`${API_BASE_URL}/api/prizes/${prizeId}/claim/prepare`, {
+    const prepareResponse = await fetch(`${API_BASE_URL}/prizes/${prizeId}/claim/prepare`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -134,7 +114,7 @@ class PrizeService {
     const signedTransaction = await signTransaction(transaction);
     const signedTxBase64 = signedTransaction.serialize().toString('base64');
 
-    const submitResponse = await fetch(`${API_BASE_URL}/api/prizes/claim/submit`, {
+    const submitResponse = await fetch(`${API_BASE_URL}/prizes/claim/submit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -153,9 +133,6 @@ class PrizeService {
 
   async getClaimHistory(wallet: string): Promise<PrizeClaim[]> {
     try {
-      const backendResult = await this.fetchFromBackend(`${API_BASE_URL}/api/prizes/claims?wallet=${wallet}`);
-      if (backendResult?.data) return backendResult.data;
-
       const { data, error } = await supabase
         .from('prize_claims')
         .select('*')

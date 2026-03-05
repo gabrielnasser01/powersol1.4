@@ -149,13 +149,13 @@ export const claimService = {
 
       const tx = new Transaction();
 
+      const CLAIM_AFFILIATE_DISC = new Uint8Array([236, 78, 118, 172, 249, 251, 103, 175]);
       const instructionData = concatBytes(
-        new Uint8Array([8]),
+        CLAIM_AFFILIATE_DISC,
         u64ToLEBytes(BigInt(weekData.pending_lamports)),
         new Uint8Array([weekData.tier]),
         u64ToLEBytes(BigInt(weekNumber)),
-        u32ToLEBytes(weekData.referral_count),
-        new Uint8Array(4)
+        u32ToLEBytes(weekData.referral_count)
       );
 
       tx.add({
@@ -277,8 +277,9 @@ export const claimService = {
 
       const tx = new Transaction();
 
+      const CLAIM_PRIZE_DISC = new Uint8Array([52, 56, 145, 142, 169, 97, 28, 116]);
       const instructionData = concatBytes(
-        new Uint8Array([7]),
+        CLAIM_PRIZE_DISC,
         u64ToLEBytes(BigInt(prize.amount_lamports)),
         new Uint8Array([prize.tier]),
         u64ToLEBytes(BigInt(prize.lottery_round))

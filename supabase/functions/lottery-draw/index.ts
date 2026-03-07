@@ -209,6 +209,47 @@ function expandPurchasesToTickets(purchases: any[]): ExpandedTicket[] {
   return tickets;
 }
 
+async function sweepExpiredPrizes(supabase: any, lotteryType: string) {
+  try {
+    const { data, error } = await supabase.rpc("sweep_expired_prizes", {
+      p_lottery_type: lotteryType,
+    });
+
+    if (error) {
+      console.error("Sweep expired prizes error:", error);
+      return { swept_count: 0, total_swept_lamports: 0 };
+    }
+
+    const result = data?.[0] || { swept_count: 0, total_swept_lamports: 0 };
+    if (result.swept_count > 0) {
+      console.log(
+        `Swept ${result.swept_count} expired prizes for ${lotteryType}, total: ${result.total_swept_lamports} lamports`
+      );
+    }
+    return result;
+  } catch (err) {
+    console.error("Sweep expired prizes exception:", err);
+    return { swept_count: 0, total_swept_lamports: 0 };
+  }
+}
+
+async function getNextDrawTimestampForType(supabase: any, lotteryType: string, currentLotteryId: number): Promise<string | null> {
+  const { data } = await supabase
+    .from("blockchain_lotteries")
+    .select("draw_timestamp")
+    .eq("lottery_type", lotteryType)
+    .eq("is_drawn", false)
+    .gt("lottery_id", currentLotteryId)
+    .order("draw_timestamp", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (data?.draw_timestamp) {
+    return new Date(data.draw_timestamp * 1000).toISOString();
+  }
+  return null;
+}
+
 async function executeDraw(supabase: any, lottery: any) {
   const config = LOTTERY_CONFIGS[lottery.lottery_type];
   if (!config) {
@@ -224,6 +265,8 @@ async function executeDraw(supabase: any, lottery: any) {
       winners: [],
     };
   }
+
+  const expiredSweep = await sweepExpiredPrizes(supabase, lottery.lottery_type);
 
   const { data: purchases, error: purchasesError } = await supabase
     .from("ticket_purchases")
@@ -336,8 +379,9 @@ async function executeDraw(supabase: any, lottery: any) {
     console.error("Draw record insert error:", drawError);
   }
 
+  const prizeIds: string[] = [];
   for (const winner of winners) {
-    const { error: prizeError } = await supabase
+    const { data: prizeData, error: prizeError } = await supabase
       .from("prizes")
       .insert({
         draw_id: drawRecord?.id || null,
@@ -349,10 +393,15 @@ async function executeDraw(supabase: any, lottery: any) {
         lottery_type: lottery.lottery_type,
         draw_date: drawTimestamp,
         claimed: false,
-      });
+        expired: false,
+      })
+      .select("id")
+      .maybeSingle();
 
     if (prizeError) {
       console.error("Prize insert error:", prizeError);
+    } else if (prizeData?.id) {
+      prizeIds.push(prizeData.id);
     }
   }
 
@@ -394,6 +443,8 @@ async function executeDraw(supabase: any, lottery: any) {
     total_tickets: totalTickets,
     total_winners: winners.length,
     prize_pool: prizePool.toString(),
+    prize_ids: prizeIds,
+    expired_sweep: expiredSweep,
     winners: winners.map((w) => ({
       tier: w.tier,
       ticket_number: w.ticket_number,
@@ -567,6 +618,18 @@ async function processDraws() {
             next_lottery_id: nextLottery.lottery_id,
             next_draw_timestamp: nextLottery.draw_timestamp,
           });
+
+          if (drawResult.prize_ids && drawResult.prize_ids.length > 0) {
+            const expiresAt = new Date(nextLottery.draw_timestamp * 1000).toISOString();
+            const { error: expiresError } = await supabase
+              .from("prizes")
+              .update({ expires_at: expiresAt })
+              .in("id", drawResult.prize_ids);
+
+            if (expiresError) {
+              console.error("Failed to set expires_at on prizes:", expiresError);
+            }
+          }
         }
       }
     } catch (err) {

@@ -87,6 +87,14 @@ async function handleClaimPrize(prizeId: string, walletAddress: string) {
     return errorResponse("Prize already claimed");
   }
 
+  if (prize.expired) {
+    return errorResponse("Prize has expired. Unclaimed prizes are forfeited and added to the next draw.");
+  }
+
+  if (prize.expires_at && new Date(prize.expires_at) <= new Date()) {
+    return errorResponse("Prize claim deadline has passed. Unclaimed prizes are forfeited and added to the next draw.");
+  }
+
   if (prize.user_wallet !== walletAddress) {
     return errorResponse("This prize belongs to a different wallet", 403);
   }

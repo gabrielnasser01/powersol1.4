@@ -25,6 +25,7 @@ interface ClaimablePrize {
   tier: number;
   amount_lamports: number;
   won_at: string;
+  expires_at: string | null;
 }
 
 interface NextRelease {

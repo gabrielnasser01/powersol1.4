@@ -1571,6 +1571,23 @@ export function Profile() {
                         'grand-prize': '#9ca3af',
                       };
                       const color = lotteryColors[prize.lottery_type] || '#b347ff';
+                      const isExpired = prize.expired || (prize.expires_at && new Date(prize.expires_at) <= new Date());
+                      const canClaim = !prize.claimed && !isExpired;
+
+                      const getTimeRemaining = (expiresAt: string) => {
+                        const diff = new Date(expiresAt).getTime() - Date.now();
+                        if (diff <= 0) return null;
+                        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        if (days > 0) return `${days}d ${hours}h`;
+                        if (hours > 0) return `${hours}h ${minutes}m`;
+                        return `${minutes}m`;
+                      };
+
+                      const timeRemaining = !prize.claimed && prize.expires_at && !isExpired
+                        ? getTimeRemaining(prize.expires_at)
+                        : null;
 
                       return (
                         <motion.div
@@ -1581,13 +1598,14 @@ export function Profile() {
                           whileHover={{ scale: 1.02 }}
                           className="p-4 sm:p-5 rounded-lg border"
                           style={{
-                            background: 'rgba(0, 0, 0, 0.6)',
-                            borderColor: `${color}4d`,
+                            background: isExpired ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.6)',
+                            borderColor: isExpired ? 'rgba(239, 68, 68, 0.3)' : `${color}4d`,
+                            opacity: isExpired ? 0.7 : 1,
                           }}
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div>
-                              <span className="text-xl sm:text-2xl font-bold font-mono" style={{ color }}>
+                              <span className="text-xl sm:text-2xl font-bold font-mono" style={{ color: isExpired ? '#ef4444' : color }}>
                                 #{prize.ticket_number}
                               </span>
                               <p className="text-xs font-mono text-zinc-400 mt-1">
@@ -1597,17 +1615,25 @@ export function Profile() {
                             <div
                               className="px-3 py-1.5 rounded text-xs font-mono font-bold"
                               style={{
-                                background: prize.claimed ? 'rgba(34, 197, 94, 0.2)' : `${color}33`,
-                                border: prize.claimed ? '1px solid rgba(34, 197, 94, 0.4)' : `1px solid ${color}66`,
-                                color: prize.claimed ? '#22c55e' : color,
+                                background: prize.claimed
+                                  ? 'rgba(34, 197, 94, 0.2)'
+                                  : isExpired
+                                    ? 'rgba(239, 68, 68, 0.2)'
+                                    : `${color}33`,
+                                border: prize.claimed
+                                  ? '1px solid rgba(34, 197, 94, 0.4)'
+                                  : isExpired
+                                    ? '1px solid rgba(239, 68, 68, 0.4)'
+                                    : `1px solid ${color}66`,
+                                color: prize.claimed ? '#22c55e' : isExpired ? '#ef4444' : color,
                               }}
                             >
-                              {prize.claimed ? 'CLAIMED' : prize.prize_position}
+                              {prize.claimed ? 'CLAIMED' : isExpired ? 'EXPIRED' : prize.prize_position}
                             </div>
                           </div>
 
                           <div className="mb-3">
-                            <div className="text-2xl sm:text-3xl font-bold font-mono mb-1" style={{ color }}>
+                            <div className="text-2xl sm:text-3xl font-bold font-mono mb-1" style={{ color: isExpired ? '#6b7280' : color }}>
                               {prizeService.formatPrizeAmount(prize.prize_amount_lamports)}
                             </div>
                             <div className="text-sm font-mono text-zinc-400">
@@ -1623,9 +1649,27 @@ export function Profile() {
                                 Claimed: {new Date(prize.claimed_at).toLocaleDateString()}
                               </div>
                             )}
+                            {isExpired && !prize.claimed && (
+                              <div className="text-red-400">
+                                Expired - forfeited to next draw
+                              </div>
+                            )}
+                            {timeRemaining && (
+                              <div className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded"
+                                style={{
+                                  background: 'rgba(251, 191, 36, 0.1)',
+                                  border: '1px solid rgba(251, 191, 36, 0.3)',
+                                }}
+                              >
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                <span className="text-amber-400 font-bold">
+                                  Claim within {timeRemaining}
+                                </span>
+                              </div>
+                            )}
                           </div>
 
-                          {!prize.claimed && (
+                          {canClaim && (
                             <motion.button
                               onClick={() => handleClaimPrize(prize.id)}
                               disabled={claimingPrize === prize.id}

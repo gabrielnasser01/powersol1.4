@@ -16,6 +16,8 @@ export interface Prize {
   claimed: boolean;
   claimed_at: string | null;
   claim_signature: string | null;
+  expires_at: string | null;
+  expired: boolean;
   created_at: string;
   updated_at: string;
 }

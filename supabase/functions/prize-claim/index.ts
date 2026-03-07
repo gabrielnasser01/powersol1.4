@@ -20,11 +20,11 @@ const SOLANA_RPC_URL =
   Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
 
 const LOTTERY_WALLET_SECRETS: Record<string, string> = {
-  "tri-daily": "LOTTERY_TRI_DAILY_PRIVATE_KEY",
-  weekly: "LOTTERY_WEEKLY_PRIVATE_KEY",
-  jackpot: "LOTTERY_WEEKLY_PRIVATE_KEY",
-  "grand-prize": "LOTTERY_GRAND_PRIZE_PRIVATE_KEY",
-  "special-event": "SPECIAL_EVENT_PRIVATE_KEY",
+  "tri-daily": "SOLANA_LOTTERY_TRI_DAILY_PRIVATE",
+  weekly: "SOLANA_LOTTERY_WEEKLY_PRIVATE",
+  jackpot: "SOLANA_LOTTERY_MEGA_PRIVATE",
+  "grand-prize": "SOLANA_LOTTERY_MEGA_PRIVATE",
+  "special-event": "SOLANA_SPECIAL_EVENT_PRIVATE",
 };
 
 const LOTTERY_WALLET_ADDRESSES: Record<string, string> = {
@@ -211,7 +211,7 @@ async function handleClaimAffiliate(
     return errorResponse("No claimable rewards for this week");
   }
 
-  const secretName = "AFFILIATES_POOL_PRIVATE_KEY";
+  const secretName = "SOLANA_AFFILIATES_POOL_PRIVATE";
   const senderKeypair = getKeypairFromSecret(secretName);
 
   if (!senderKeypair) {

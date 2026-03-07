@@ -8,6 +8,7 @@ export interface MockTicket {
   lotteryType: 'tri-daily' | 'special-event' | 'jackpot' | 'grand-prize';
   status: 'active' | 'claimed' | 'expired';
   lotteryRoundId?: number;
+  transactionSignature?: string;
 }
 
 const STORAGE_KEY_PREFIX = 'powersol_tickets_';
@@ -261,6 +262,7 @@ export const ticketStorage = {
             lotteryType: normalizedType,
             status,
             lotteryRoundId: roundId || undefined,
+            transactionSignature: purchase.transaction_signature || undefined,
           });
         }
       });

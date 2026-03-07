@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check, Trash2 } from 'lucide-react';
+import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check, Trash2, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { userStorage, userStatsStorage } from '../store/persist';
 import { ticketStorage, MockTicket } from '../store/ticketStorage';
@@ -1418,39 +1418,58 @@ export function Profile() {
 
                       {/* Tickets Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {lotteryGroup.tickets.map((ticket) => (
-                          <motion.div
-                            key={ticket.id}
-                            whileHover={{ scale: 1.02 }}
-                            className="p-3 sm:p-4 rounded-lg border"
-                            style={{
-                              background: 'rgba(0, 0, 0, 0.6)',
-                              borderColor: `${lotteryGroup.color}4d`,
-                            }}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-lg sm:text-xl font-bold font-mono" style={{ color: lotteryGroup.color }}>
-                                #{ticket.number}
-                              </span>
-                              <div
-                                className="px-2 py-1 rounded text-xs font-mono"
-                                style={{
-                                  background: ticket.status === 'expired'
-                                    ? 'rgba(239, 68, 68, 0.2)'
-                                    : `${lotteryGroup.color}33`,
-                                  border: `1px solid ${ticket.status === 'expired' ? 'rgba(239, 68, 68, 0.5)' : `${lotteryGroup.color}66`}`,
-                                  color: ticket.status === 'expired' ? '#ef4444' : lotteryGroup.color,
-                                }}
-                              >
-                                {ticket.status === 'expired' ? 'DRAWN' : 'ACTIVE'}
+                        {lotteryGroup.tickets.map((ticket) => {
+                          const solscanUrl = ticket.transactionSignature
+                            ? `https://solscan.io/tx/${ticket.transactionSignature}?cluster=devnet`
+                            : null;
+                          return (
+                            <motion.a
+                              key={ticket.id}
+                              href={solscanUrl || undefined}
+                              target={solscanUrl ? '_blank' : undefined}
+                              rel={solscanUrl ? 'noopener noreferrer' : undefined}
+                              whileHover={{ scale: 1.02 }}
+                              className={`p-3 sm:p-4 rounded-lg border block transition-colors ${solscanUrl ? 'cursor-pointer hover:border-opacity-80' : 'cursor-default'}`}
+                              style={{
+                                background: 'rgba(0, 0, 0, 0.6)',
+                                borderColor: `${lotteryGroup.color}4d`,
+                              }}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-lg sm:text-xl font-bold font-mono" style={{ color: lotteryGroup.color }}>
+                                  #{ticket.number}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {solscanUrl && (
+                                    <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                                  )}
+                                  <div
+                                    className="px-2 py-1 rounded text-xs font-mono"
+                                    style={{
+                                      background: ticket.status === 'expired'
+                                        ? 'rgba(239, 68, 68, 0.2)'
+                                        : `${lotteryGroup.color}33`,
+                                      border: `1px solid ${ticket.status === 'expired' ? 'rgba(239, 68, 68, 0.5)' : `${lotteryGroup.color}66`}`,
+                                      color: ticket.status === 'expired' ? '#ef4444' : lotteryGroup.color,
+                                    }}
+                                  >
+                                    {ticket.status === 'expired' ? 'DRAWN' : 'ACTIVE'}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                            <div className="space-y-1 text-xs font-mono text-zinc-400">
-                              <div>Purchased: {ticket.purchaseDate}</div>
-                              <div>Draw: {ticket.drawDate}</div>
-                            </div>
-                          </motion.div>
-                        ))}
+                              <div className="space-y-1 text-xs font-mono text-zinc-400">
+                                <div>Purchased: {ticket.purchaseDate}</div>
+                                <div>Draw: {ticket.drawDate}</div>
+                                {ticket.transactionSignature && (
+                                  <div className="flex items-center gap-1 pt-1" style={{ color: lotteryGroup.color }}>
+                                    <span>TX: {ticket.transactionSignature.slice(0, 16)}...</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </div>
+                                )}
+                              </div>
+                            </motion.a>
+                          );
+                        })}
                       </div>
                     </motion.div>
                   )))}

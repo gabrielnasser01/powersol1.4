@@ -11,6 +11,8 @@ export interface MockTicket {
 }
 
 const STORAGE_KEY_PREFIX = 'powersol_tickets_';
+const DISMISSED_KEY_PREFIX = 'powersol_dismissed_';
+const TICKET_NUMBERS_KEY_PREFIX = 'powersol_ticket_nums_';
 
 function getCurrentWallet(): string | null {
   try {
@@ -30,8 +32,55 @@ function getStorageKey(): string {
   return wallet ? `${STORAGE_KEY_PREFIX}${wallet}` : `${STORAGE_KEY_PREFIX}anonymous`;
 }
 
+function getDismissedKey(): string {
+  const wallet = getCurrentWallet();
+  return wallet ? `${DISMISSED_KEY_PREFIX}${wallet}` : `${DISMISSED_KEY_PREFIX}anonymous`;
+}
+
+function getTicketNumbersKey(): string {
+  const wallet = getCurrentWallet();
+  return wallet ? `${TICKET_NUMBERS_KEY_PREFIX}${wallet}` : `${TICKET_NUMBERS_KEY_PREFIX}anonymous`;
+}
+
+function getDismissedIds(): Set<string> {
+  try {
+    const stored = localStorage.getItem(getDismissedKey());
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDismissedIds(ids: Set<string>): void {
+  localStorage.setItem(getDismissedKey(), JSON.stringify([...ids]));
+}
+
+function getStableTicketNumbers(): Record<string, string> {
+  try {
+    const stored = localStorage.getItem(getTicketNumbersKey());
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStableTicketNumbers(map: Record<string, string>): void {
+  localStorage.setItem(getTicketNumbersKey(), JSON.stringify(map));
+}
+
 function generateTicketNumber(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function getOrCreateTicketNumber(ticketId: string): string {
+  const numbersMap = getStableTicketNumbers();
+  if (numbersMap[ticketId]) {
+    return numbersMap[ticketId];
+  }
+  const newNumber = generateTicketNumber();
+  numbersMap[ticketId] = newNumber;
+  saveStableTicketNumbers(numbersMap);
+  return newNumber;
 }
 
 function formatTimestamp(ts: number): string {
@@ -85,9 +134,10 @@ export const ticketStorage = {
 
     const newTickets: MockTicket[] = [];
     for (let i = 0; i < quantity; i++) {
+      const ticketId = `${Date.now()}-${i}`;
       newTickets.push({
-        id: `${Date.now()}-${i}`,
-        number: generateTicketNumber(),
+        id: ticketId,
+        number: getOrCreateTicketNumber(ticketId),
         purchaseDate: now,
         drawDate,
         lotteryType,
@@ -118,6 +168,11 @@ export const ticketStorage = {
     const all = this.getAll();
     const expired = all.filter(t => t.status === 'expired');
     const remaining = all.filter(t => t.status !== 'expired');
+
+    const dismissed = getDismissedIds();
+    expired.forEach(t => dismissed.add(t.id));
+    saveDismissedIds(dismissed);
+
     localStorage.setItem(getStorageKey(), JSON.stringify(remaining));
     return expired.length;
   },
@@ -161,6 +216,7 @@ export const ticketStorage = {
         }
       }
 
+      const dismissed = getDismissedIds();
       const dbTickets: MockTicket[] = [];
 
       purchases.forEach(purchase => {
@@ -191,9 +247,15 @@ export const ticketStorage = {
         }
 
         for (let i = 0; i < purchase.quantity; i++) {
+          const ticketId = `${purchase.id}-${i}`;
+
+          if (dismissed.has(ticketId)) {
+            continue;
+          }
+
           dbTickets.push({
-            id: `${purchase.id}-${i}`,
-            number: generateTicketNumber(),
+            id: ticketId,
+            number: getOrCreateTicketNumber(ticketId),
             purchaseDate,
             drawDate,
             lotteryType: normalizedType,

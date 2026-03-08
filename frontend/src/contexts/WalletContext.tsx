@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { solanaService, WalletAdapter } from '../services/solanaService';
 import { userStorage, userStatsStorage, ticketsStorage } from '../store/persist';
-import { getActiveAffiliateCode, initAffiliateTracking } from '../utils/affiliateTracking';
+import { getActiveAffiliateCode, getStoredAffiliateCode, initAffiliateTracking } from '../utils/affiliateTracking';
 import { apiClient } from '../services/api';
 import { powerPointsService } from '../services/powerPointsService';
 
@@ -22,14 +22,23 @@ function isInSolflareBrowser(): boolean {
   return !!(w.solflare);
 }
 
+function buildUrlWithRef(baseHref: string): string {
+  const url = new URL(baseHref);
+  const ref = getStoredAffiliateCode();
+  if (ref && !url.searchParams.has('ref')) {
+    url.searchParams.set('ref', ref);
+  }
+  return url.toString();
+}
+
 function openPhantomBrowseDeepLink() {
-  const currentUrl = encodeURIComponent(window.location.href);
-  window.location.href = `https://phantom.app/ul/browse/${currentUrl}`;
+  const targetUrl = encodeURIComponent(buildUrlWithRef(window.location.href));
+  window.location.href = `https://phantom.app/ul/browse/${targetUrl}`;
 }
 
 function openSolflareBrowseDeepLink() {
-  const currentUrl = encodeURIComponent(window.location.href);
-  window.location.href = `https://solflare.com/ul/v1/browse/${currentUrl}`;
+  const targetUrl = encodeURIComponent(buildUrlWithRef(window.location.href));
+  window.location.href = `https://solflare.com/ul/v1/browse/${targetUrl}`;
 }
 
 interface PhantomProvider {

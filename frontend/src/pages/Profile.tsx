@@ -1008,44 +1008,23 @@ export function Profile() {
                     </span>
                   </div>
 
-                  {/* Claim Button */}
                   <motion.button
-                    onClick={handleClaimAffiliate}
-                    disabled={claimingAffiliate || affiliateRewardsLamports === 0}
+                    onClick={() => navigate('/affiliates')}
                     className="w-full py-2.5 sm:py-3 rounded-lg font-mono text-xs sm:text-sm font-bold relative overflow-hidden"
                     style={{
-                      background: affiliateRewardsLamports > 0
-                        ? (affiliateLevel === 1 ? 'linear-gradient(135deg, #1e3a8a, #3b82f6)' : affiliateLevel === 2 ? 'linear-gradient(135deg, #ff1493, #ff69b4)' : affiliateLevel === 3 ? 'linear-gradient(135deg, #00bfff, #2fffea)' : 'linear-gradient(135deg, #9333ea, #a855f7)')
-                        : 'rgba(100, 100, 100, 0.3)',
-                      border: affiliateRewardsLamports > 0
-                        ? (affiliateLevel === 1 ? '2px solid #3b82f6' : affiliateLevel === 2 ? '2px solid #ff1493' : affiliateLevel === 3 ? '2px solid #2fffea' : '2px solid #a855f7')
-                        : '1px solid rgba(100, 100, 100, 0.5)',
-                      color: affiliateRewardsLamports > 0 ? '#fff' : '#666',
-                      boxShadow: affiliateRewardsLamports > 0
-                        ? (affiliateLevel === 1 ? '0 0 20px rgba(59, 130, 246, 0.4)' : affiliateLevel === 2 ? '0 0 20px rgba(255, 20, 147, 0.4)' : affiliateLevel === 3 ? '0 0 20px rgba(47, 255, 234, 0.4)' : '0 0 20px rgba(168, 85, 247, 0.4)')
-                        : 'none',
-                      cursor: affiliateRewardsLamports > 0 ? 'pointer' : 'not-allowed',
+                      background: affiliateLevel === 1 ? 'linear-gradient(135deg, #1e3a8a, #3b82f6)' : affiliateLevel === 2 ? 'linear-gradient(135deg, #ff1493, #ff69b4)' : affiliateLevel === 3 ? 'linear-gradient(135deg, #00bfff, #2fffea)' : 'linear-gradient(135deg, #9333ea, #a855f7)',
+                      border: affiliateLevel === 1 ? '2px solid #3b82f6' : affiliateLevel === 2 ? '2px solid #ff1493' : affiliateLevel === 3 ? '2px solid #2fffea' : '2px solid #a855f7',
+                      color: '#fff',
+                      boxShadow: affiliateLevel === 1 ? '0 0 20px rgba(59, 130, 246, 0.4)' : affiliateLevel === 2 ? '0 0 20px rgba(255, 20, 147, 0.4)' : affiliateLevel === 3 ? '0 0 20px rgba(47, 255, 234, 0.4)' : '0 0 20px rgba(168, 85, 247, 0.4)',
                     }}
-                    whileHover={affiliateRewardsLamports > 0 ? {
+                    whileHover={{
                       scale: 1.02,
                       boxShadow: affiliateLevel === 1 ? '0 0 30px rgba(59, 130, 246, 0.6)' : affiliateLevel === 2 ? '0 0 30px rgba(255, 20, 147, 0.6)' : affiliateLevel === 3 ? '0 0 30px rgba(47, 255, 234, 0.6)' : '0 0 30px rgba(168, 85, 247, 0.6)',
-                    } : {}}
-                    whileTap={affiliateRewardsLamports > 0 ? { scale: 0.98 } : {}}
+                    }}
+                    whileTap={{ scale: 0.98 }}
                     transition={transition30fps}
                   >
-                    {claimingAffiliate ? (
-                      <span className="flex items-center justify-center space-x-2">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                        >
-                          <Zap className="w-4 h-4" />
-                        </motion.div>
-                        <span>CLAIMING...</span>
-                      </span>
-                    ) : (
-                      '[+] CLAIM REWARDS'
-                    )}
+                    [+] AFFILIATE DASHBOARD
                   </motion.button>
                 </div>
               </motion.div>

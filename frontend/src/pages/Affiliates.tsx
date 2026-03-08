@@ -148,6 +148,7 @@ export function Affiliates() {
   const getDashboardButtonText = () => {
     if (needsWalletConnection) return '(connect wallet)';
     if (needsApplication) return '(apply first)';
+    if (applicationStatus.status === 'pending') return '(pending approval)';
     if (applicationStatus.status === 'rejected') return '(rejected)';
     return '';
   };

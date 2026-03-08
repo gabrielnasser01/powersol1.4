@@ -257,7 +257,44 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [publicKey, connected, signTransaction, signAllTransactions]);
 
   useEffect(() => {
-    userStorage.clear();
+    const tryAutoReconnect = async () => {
+      const saved = userStorage.get();
+      if (!saved.publicKey) return;
+
+      const phantom = getPhantomProvider();
+      if (phantom) {
+        try {
+          const resp = await phantom.connect();
+          const pubKey = resp.publicKey.toBase58();
+          setProvider(phantom);
+          setPublicKey(pubKey);
+          setConnected(true);
+          userStorage.set({ publicKey: pubKey, connectedAt: Date.now() });
+          const bal = await solanaService.getBalance(pubKey);
+          setBalance(bal);
+          return;
+        } catch {}
+      }
+
+      const solflare = getSolflareProvider();
+      if (solflare) {
+        try {
+          const resp = await solflare.connect();
+          const pubKey = resp.publicKey.toBase58();
+          setProvider(solflare);
+          setPublicKey(pubKey);
+          setConnected(true);
+          userStorage.set({ publicKey: pubKey, connectedAt: Date.now() });
+          const bal = await solanaService.getBalance(pubKey);
+          setBalance(bal);
+          return;
+        } catch {}
+      }
+
+      userStorage.clear();
+    };
+
+    tryAutoReconnect();
   }, []);
 
   useEffect(() => {

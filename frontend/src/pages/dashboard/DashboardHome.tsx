@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Users, Ticket, Coins, Clock, TrendingUp, Star, Crown, Sparkles } from 'lucide-react';
+import { Users, Ticket, Coins, Clock, TrendingUp, Star, Crown, Sparkles, Check, Loader2, Lock } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { affiliateDashboardService, DashboardStats, TopAffiliate } from '../../services/affiliateDashboardService';
+import { claimService } from '../../services/claimService';
 import { useWallet } from '../../contexts/WalletContext';
 import { Trophy } from 'lucide-react';
 
@@ -159,6 +160,11 @@ export function DashboardHome() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [claimAvailable, setClaimAvailable] = useState(false);
+  const [claimableWeeks, setClaimableWeeks] = useState<{ week_number: number; pending_lamports: number; is_available: boolean }[]>([]);
+  const [claiming, setClaiming] = useState(false);
+  const [claimSuccess, setClaimSuccess] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!connected) {
@@ -169,18 +175,47 @@ export function DashboardHome() {
   const loadStats = useCallback(async () => {
     if (!walletAddress) return;
     setLoading(true);
-    const [data, affiliates] = await Promise.all([
+    const [data, affiliates, weeks] = await Promise.all([
       affiliateDashboardService.getDashboardStats(walletAddress),
       affiliateDashboardService.getTopAffiliates(10),
+      claimService.getClaimableAffiliateRewards(walletAddress),
     ]);
     setStats(data);
     setTopAffiliates(affiliates);
+    setClaimableWeeks(weeks);
+    setClaimAvailable(weeks.some(w => w.is_available && w.pending_lamports > 0));
     setLoading(false);
   }, [walletAddress]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  const handleClaim = async () => {
+    if (!walletAddress || claiming || claimSuccess) return;
+    setClaiming(true);
+    setClaimError(null);
+
+    const availableWeeks = claimableWeeks.filter(w => w.is_available && w.pending_lamports > 0);
+    const errors: string[] = [];
+
+    for (const week of availableWeeks) {
+      const result = await claimService.claimAffiliateRewards(walletAddress, week.week_number);
+      if (!result.success) {
+        errors.push(result.error || 'Failed');
+      }
+    }
+
+    setClaiming(false);
+
+    if (errors.length > 0) {
+      setClaimError(errors[0]);
+    } else {
+      setClaimSuccess(true);
+      setClaimAvailable(false);
+      loadStats();
+    }
+  };
 
   if (!connected) {
     return null;
@@ -348,17 +383,57 @@ export function DashboardHome() {
               </div>
 
               {(stats?.pendingClaimableLamports || 0) > 0 && (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-3 rounded-lg font-mono font-bold text-black"
-                  style={{
-                    background: 'linear-gradient(135deg, #3ecbff, #2fffe2)',
-                    boxShadow: '0 0 20px rgba(62, 203, 255, 0.4)',
-                  }}
-                >
-                  CLAIM_REWARDS()
-                </motion.button>
+                <>
+                  {claimSuccess ? (
+                    <div
+                      className="w-full py-3 rounded-lg font-mono font-bold text-center flex items-center justify-center gap-2"
+                      style={{
+                        background: 'rgba(34, 197, 94, 0.15)',
+                        border: '1px solid rgba(34, 197, 94, 0.4)',
+                        color: '#22c55e',
+                      }}
+                    >
+                      <Check className="w-5 h-5" />
+                      CLAIMED_SUCCESSFULLY
+                    </div>
+                  ) : claimAvailable ? (
+                    <motion.button
+                      whileHover={!claiming ? { scale: 1.02 } : {}}
+                      whileTap={!claiming ? { scale: 0.98 } : {}}
+                      onClick={handleClaim}
+                      disabled={claiming}
+                      className="w-full py-3 rounded-lg font-mono font-bold text-black flex items-center justify-center gap-2 disabled:opacity-70"
+                      style={{
+                        background: 'linear-gradient(135deg, #3ecbff, #2fffe2)',
+                        boxShadow: '0 0 20px rgba(62, 203, 255, 0.4)',
+                      }}
+                    >
+                      {claiming ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          PROCESSING...
+                        </>
+                      ) : (
+                        'CLAIM_REWARDS()'
+                      )}
+                    </motion.button>
+                  ) : (
+                    <div
+                      className="w-full py-3 rounded-lg font-mono font-bold text-center flex items-center justify-center gap-2 cursor-not-allowed"
+                      style={{
+                        background: 'rgba(62, 203, 255, 0.08)',
+                        border: '1px solid rgba(62, 203, 255, 0.15)',
+                        color: 'rgba(62, 203, 255, 0.4)',
+                      }}
+                    >
+                      <Lock className="w-4 h-4" />
+                      AVAILABLE_ON_WEDNESDAY
+                    </div>
+                  )}
+                  {claimError && (
+                    <p className="text-red-400 text-xs font-mono text-center mt-2">{claimError}</p>
+                  )}
+                </>
               )}
             </div>
           )}

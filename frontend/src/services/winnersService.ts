@@ -13,6 +13,7 @@ export interface Winner {
   draw_date: string;
   timestamp: number;
   claimed: boolean;
+  claim_signature: string | null;
 }
 
 class WinnersService {
@@ -64,6 +65,7 @@ class WinnersService {
         draw_date: prize.draw_date,
         timestamp: new Date(prize.draw_date).getTime(),
         claimed: prize.claimed,
+        claim_signature: prize.claim_signature || null,
       }));
     } catch (error) {
       console.error('Error in getRecentWinners:', error);
@@ -105,6 +107,7 @@ class WinnersService {
         draw_date: prize.draw_date,
         timestamp: new Date(prize.draw_date).getTime(),
         claimed: prize.claimed,
+        claim_signature: prize.claim_signature || null,
       }));
     } catch (error) {
       console.error('Error in getWinnersByRound:', error);

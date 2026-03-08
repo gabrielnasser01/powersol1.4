@@ -1645,9 +1645,33 @@ export function Profile() {
                             <div>Draw Date: {new Date(prize.draw_date).toLocaleDateString()}</div>
                             <div>Round: #{prize.round}</div>
                             {prize.claimed_at && (
-                              <div className="text-green-400">
-                                Claimed: {new Date(prize.claimed_at).toLocaleDateString()}
-                              </div>
+                              prize.claim_signature ? (
+                                <a
+                                  href={`https://solscan.io/tx/${prize.claim_signature}?cluster=devnet`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors"
+                                >
+                                  <span>Claimed: {new Date(prize.claimed_at).toLocaleDateString()}</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                <div className="text-green-400">
+                                  Claimed: {new Date(prize.claimed_at).toLocaleDateString()}
+                                </div>
+                              )
+                            )}
+                            {prize.claim_signature && (
+                              <a
+                                href={`https://solscan.io/tx/${prize.claim_signature}?cluster=devnet`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 pt-1 hover:opacity-80 transition-opacity"
+                                style={{ color }}
+                              >
+                                <span>TX: {prize.claim_signature.slice(0, 16)}...</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
                             )}
                             {isExpired && !prize.claimed && (
                               <div className="text-red-400">

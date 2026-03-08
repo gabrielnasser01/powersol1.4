@@ -127,7 +127,7 @@ export function Affiliates() {
 
   const checkApplicationStatus = useCallback(async () => {
     if (!walletAddress) return;
-    const status = await affiliateDashboardService.checkApplicationStatus(walletAddress.toBase58());
+    const status = await affiliateDashboardService.checkApplicationStatus(walletAddress);
     setApplicationStatus(status);
   }, [walletAddress]);
 
@@ -141,7 +141,7 @@ export function Affiliates() {
 
   const handleDashboardClick = () => {
     if (canAccessDashboard) {
-      navigate('/affiliates');
+      navigate('/dashboard');
     }
   };
 

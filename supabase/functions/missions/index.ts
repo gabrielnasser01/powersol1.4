@@ -202,8 +202,6 @@ async function checkAndCompleteTicketMilestones(walletAddress: string) {
   });
 
   const milestones: [number, string][] = [
-    [1, "activity_first_ticket"],
-    [10, "activity_10_tickets"],
     [10, "activity_buy_10_tickets"],
     [50, "activity_50_tickets"],
     [100, "activity_100_tickets"],
@@ -214,11 +212,6 @@ async function checkAndCompleteTicketMilestones(walletAddress: string) {
       const result = await tryCompleteMission(walletAddress, key);
       if (result) completed.push(result);
     }
-  }
-
-  if (uniqueLotteries >= 4) {
-    const result = await tryCompleteMission(walletAddress, "activity_buy_all_lotteries");
-    if (result) completed.push(result);
   }
 
   if (weeklyTickets >= 5) {

@@ -141,7 +141,7 @@ export function Affiliates() {
 
   const handleDashboardClick = () => {
     if (canAccessDashboard) {
-      navigate('/affiliate-dashboard-level3');
+      navigate('/affiliates');
     }
   };
 

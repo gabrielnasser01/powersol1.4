@@ -982,7 +982,7 @@ export function Profile() {
                   <motion.button
                     onClick={() => {
                       if (affiliateAppStatus.hasApplied && affiliateAppStatus.status === 'approved') {
-                        navigate('/affiliate-dashboard-level3');
+                        navigate('/affiliates');
                       } else {
                         navigate('/affiliates');
                       }

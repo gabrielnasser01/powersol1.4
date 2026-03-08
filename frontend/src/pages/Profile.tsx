@@ -1539,6 +1539,10 @@ export function Profile() {
                         ? getTimeRemaining(prize.expires_at)
                         : null;
 
+                      const solscanTxUrl = prize.claimed && prize.claim_signature
+                        ? `https://solscan.io/tx/${prize.claim_signature}?cluster=devnet`
+                        : null;
+
                       return (
                         <motion.div
                           key={prize.id}
@@ -1638,6 +1642,23 @@ export function Profile() {
                             >
                               {claimingPrize === prize.id ? 'CLAIMING...' : 'CLAIM REWARD'}
                             </motion.button>
+                          )}
+
+                          {solscanTxUrl && (
+                            <a
+                              href={solscanTxUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full py-2.5 rounded-lg font-mono text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                              style={{
+                                background: 'rgba(34, 197, 94, 0.15)',
+                                border: '1px solid rgba(34, 197, 94, 0.4)',
+                                color: '#22c55e',
+                              }}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              VIEW TRANSACTION ON SOLSCAN
+                            </a>
                           )}
                         </motion.div>
                       );

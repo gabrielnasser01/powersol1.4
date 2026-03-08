@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { userStorage, userStatsStorage } from '../store/persist';
 import { ticketStorage, MockTicket } from '../store/ticketStorage';
 import { prizeService, Prize } from '../services/prizeService';
-import { affiliateDashboardService, DashboardStats } from '../services/affiliateDashboardService';
+import { affiliateDashboardService, DashboardStats, ApplicationStatus } from '../services/affiliateDashboardService';
 import { claimService } from '../services/claimService';
 import { supabase } from '../lib/supabase';
 import { useWallet } from '../contexts/WalletContext';
@@ -30,6 +30,7 @@ export function Profile() {
   const [claimingPrize, setClaimingPrize] = useState<string | null>(null);
   const [affiliateStats, setAffiliateStats] = useState<DashboardStats | null>(null);
   const [loadingAffiliate, setLoadingAffiliate] = useState(false);
+  const [affiliateAppStatus, setAffiliateAppStatus] = useState<ApplicationStatus>({ hasApplied: false, status: null, appliedAt: null });
   const [scanlinePosition, setScanlinePosition] = useState(0);
   const [glitchActive, setGlitchActive] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -129,8 +130,12 @@ export function Profile() {
 
     setLoadingAffiliate(true);
     try {
-      const stats = await affiliateDashboardService.getDashboardStats(walletPublicKey);
+      const [stats, appStatus] = await Promise.all([
+        affiliateDashboardService.getDashboardStats(walletPublicKey),
+        affiliateDashboardService.checkApplicationStatus(walletPublicKey),
+      ]);
       setAffiliateStats(stats);
+      setAffiliateAppStatus(appStatus);
     } catch (error) {
       console.error('Failed to load affiliate data:', error);
     } finally {
@@ -203,6 +208,7 @@ export function Profile() {
       setUserPrizes([]);
       setTotalPrizeAmount(0);
       setAffiliateStats(null);
+      setAffiliateAppStatus({ hasApplied: false, status: null, appliedAt: null });
       setUserTickets([]);
       setTotalTickets(0);
       setPersonalInfo({
@@ -975,7 +981,7 @@ export function Profile() {
 
                   <motion.button
                     onClick={() => {
-                      if (affiliateStats && affiliateStats.totalReferrals >= 0) {
+                      if (affiliateAppStatus.hasApplied && affiliateAppStatus.status === 'approved') {
                         navigate('/affiliate-dashboard');
                       } else {
                         navigate('/affiliates');
@@ -995,7 +1001,7 @@ export function Profile() {
                     whileTap={{ scale: 0.98 }}
                     transition={transition30fps}
                   >
-                    {affiliateStats ? '[+] GO TO DASHBOARD' : '[+] EXECUTE PREMIUM ACCESS'}
+                    {affiliateAppStatus.hasApplied && affiliateAppStatus.status === 'approved' ? '[+] GO TO DASHBOARD' : '[+] EXECUTE PREMIUM ACCESS'}
                   </motion.button>
                 </div>
               </motion.div>

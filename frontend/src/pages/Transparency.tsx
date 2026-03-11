@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Shield, Eye, CheckCircle, Database, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Shield, Eye, CheckCircle, Database, ExternalLink, Loader2, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { LOTTERY_WALLETS } from '../services/walletBalanceService';
 import { supabase } from '../lib/supabase';
 
@@ -25,33 +25,34 @@ function lamportsToSol(lamports: number): string {
   return `${sol.toLocaleString(undefined, { maximumFractionDigits: 4 })} SOL`;
 }
 
-async function fetchLatestDrawVRF(): Promise<DrawVRFData | null> {
-  const { data, error } = await supabase
-    .from('solana_draws')
-    .select('round, lottery_type, draw_timestamp, commit_hash, seed_hash, participants_count, prize_lamports, winners_json')
-    .not('commit_hash', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !data) return null;
-
-  const winners = (data.winners_json || []).map((w: any) => ({
+function mapRowToDrawVRF(row: any): DrawVRFData {
+  const winners = (row.winners_json || []).map((w: any) => ({
     position: w.position,
     wallet: truncateWallet(w.wallet),
     prize: lamportsToSol(w.prize_lamports),
   }));
 
   return {
-    drawId: `${data.lottery_type || 'tri-daily'}-${data.round}`,
-    lotteryType: data.lottery_type || 'tri-daily',
-    timestamp: data.draw_timestamp,
-    commitHash: data.commit_hash,
-    seedHash: data.seed_hash,
-    participants: data.participants_count || 0,
-    prizePool: lamportsToSol(data.prize_lamports),
+    drawId: `${row.lottery_type || 'tri-daily'}-${row.round}`,
+    lotteryType: row.lottery_type || 'tri-daily',
+    timestamp: row.draw_timestamp,
+    commitHash: row.commit_hash,
+    seedHash: row.seed_hash,
+    participants: row.participants_count || 0,
+    prizePool: lamportsToSol(row.prize_lamports),
     winners,
   };
+}
+
+async function fetchAllDraws(): Promise<DrawVRFData[]> {
+  const { data, error } = await supabase
+    .from('solana_draws')
+    .select('round, lottery_type, draw_timestamp, commit_hash, seed_hash, participants_count, prize_lamports, winners_json')
+    .not('commit_hash', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+  return data.map(mapRowToDrawVRF);
 }
 
 const fairnessFeatures = [
@@ -88,7 +89,60 @@ const terminalCardStyle = {
   fontFamily: 'monospace',
 };
 
-function DrawDataSection({ drawData, loading, error }: { drawData: DrawVRFData | null; loading: boolean; error: string | null }) {
+const navButtonStyle = {
+  background: 'rgba(0, 0, 0, 0.7)',
+  border: '1px solid rgba(0, 255, 136, 0.4)',
+  color: '#00ff88',
+};
+
+const navButtonDisabledStyle = {
+  background: 'rgba(0, 0, 0, 0.4)',
+  border: '1px solid rgba(0, 255, 136, 0.15)',
+  color: 'rgba(0, 255, 136, 0.25)',
+};
+
+function NavButton({ onClick, disabled, children, label }: {
+  onClick: () => void;
+  disabled: boolean;
+  children: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <motion.button
+      onClick={onClick}
+      disabled={disabled}
+      className="p-2 sm:px-3 sm:py-2 rounded-lg font-mono text-xs flex items-center gap-1 transition-all duration-200"
+      style={disabled ? navButtonDisabledStyle : navButtonStyle}
+      whileHover={disabled ? {} : {
+        boxShadow: '0 0 15px rgba(0, 255, 136, 0.4)',
+        borderColor: '#00ff88',
+      }}
+      whileTap={disabled ? {} : { scale: 0.95 }}
+      title={label}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
+function DrawDataSection({
+  draws,
+  currentIndex,
+  setCurrentIndex,
+  loading,
+  error,
+}: {
+  draws: DrawVRFData[];
+  currentIndex: number;
+  setCurrentIndex: (i: number) => void;
+  loading: boolean;
+  error: string | null;
+}) {
+  const drawData = draws[currentIndex] || null;
+  const totalDraws = draws.length;
+  const isNewest = currentIndex === 0;
+  const isOldest = currentIndex >= totalDraws - 1;
+
   const displayData = drawData
     ? {
         drawId: drawData.drawId,
@@ -127,14 +181,69 @@ function DrawDataSection({ drawData, loading, error }: { drawData: DrawVRFData |
               textShadow: '0 0 10px rgba(0, 255, 136, 0.5)',
             }}
           >
-            <span className="hidden sm:inline">LATEST_DRAW_VRF.JSON</span>
+            <span className="hidden sm:inline">DRAW_VRF_LOG.JSON</span>
             <span className="sm:hidden text-lg">DRAW_VRF.JSON</span>
           </h2>
           <p className="text-green-300/70 font-mono text-sm">
-            {drawData ? `Last draw: ${drawData.lotteryType}` : 'Real-time draw verification data'}
+            {drawData
+              ? `${drawData.lotteryType} | Draw ${currentIndex + 1} of ${totalDraws}`
+              : 'Real-time draw verification data'}
           </p>
         </div>
       </div>
+
+      {!loading && !error && totalDraws > 1 && (
+        <div className="flex items-center justify-center gap-2 sm:gap-3 mb-4">
+          <NavButton
+            onClick={() => setCurrentIndex(totalDraws - 1)}
+            disabled={isOldest}
+            label="Oldest draw"
+          >
+            <ChevronsLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">OLDEST</span>
+          </NavButton>
+
+          <NavButton
+            onClick={() => setCurrentIndex(currentIndex + 1)}
+            disabled={isOldest}
+            label="Previous draw"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">PREV</span>
+          </NavButton>
+
+          <div
+            className="px-3 py-2 rounded-lg font-mono text-xs"
+            style={{
+              background: 'rgba(0, 255, 136, 0.1)',
+              border: '1px solid rgba(0, 255, 136, 0.3)',
+              color: '#00ff88',
+              minWidth: '80px',
+              textAlign: 'center',
+            }}
+          >
+            {currentIndex + 1} / {totalDraws}
+          </div>
+
+          <NavButton
+            onClick={() => setCurrentIndex(currentIndex - 1)}
+            disabled={isNewest}
+            label="Next draw"
+          >
+            <span className="hidden sm:inline">NEXT</span>
+            <ChevronRight className="w-4 h-4" />
+          </NavButton>
+
+          <NavButton
+            onClick={() => setCurrentIndex(0)}
+            disabled={isNewest}
+            label="Latest draw"
+          >
+            <span className="hidden sm:inline">LATEST</span>
+            <ChevronsRight className="w-4 h-4" />
+          </NavButton>
+        </div>
+      )}
 
       <div
         className="p-8 rounded-2xl border relative overflow-hidden"
@@ -154,7 +263,7 @@ function DrawDataSection({ drawData, loading, error }: { drawData: DrawVRFData |
           <div className="flex items-center justify-center py-12 gap-3">
             <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#00ff88' }} />
             <span className="font-mono text-sm" style={{ color: '#00ff88' }}>
-              Fetching latest draw data...
+              Fetching draw data...
             </span>
           </div>
         )}
@@ -167,24 +276,32 @@ function DrawDataSection({ drawData, loading, error }: { drawData: DrawVRFData |
         )}
 
         {!loading && !error && displayData && (
-          <>
-            <pre
-              className="text-sm font-mono overflow-x-auto whitespace-pre-wrap"
-              style={{
-                color: '#00ff88',
-                textShadow: '0 0 8px rgba(0, 255, 136, 0.6)',
-              }}
-            >
-              {JSON.stringify(displayData, null, 2)}
-            </pre>
-
+          <AnimatePresence mode="wait">
             <motion.div
-              className="inline-block w-2 h-4 ml-1"
-              style={{ background: '#00ff88' }}
-              animate={{ opacity: [1, 0, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            />
-          </>
+              key={drawData?.drawId}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+            >
+              <pre
+                className="text-sm font-mono overflow-x-auto whitespace-pre-wrap"
+                style={{
+                  color: '#00ff88',
+                  textShadow: '0 0 8px rgba(0, 255, 136, 0.6)',
+                }}
+              >
+                {JSON.stringify(displayData, null, 2)}
+              </pre>
+
+              <motion.div
+                className="inline-block w-2 h-4 ml-1"
+                style={{ background: '#00ff88' }}
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+            </motion.div>
+          </AnimatePresence>
         )}
 
         {!loading && !error && !displayData && (
@@ -200,14 +317,15 @@ function DrawDataSection({ drawData, loading, error }: { drawData: DrawVRFData |
 }
 
 export function Transparency() {
-  const [drawData, setDrawData] = useState<DrawVRFData | null>(null);
+  const [draws, setDraws] = useState<DrawVRFData[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchLatestDrawVRF()
+    fetchAllDraws()
       .then((data) => {
-        setDrawData(data);
+        setDraws(data);
         setLoading(false);
       })
       .catch(() => {
@@ -215,6 +333,10 @@ export function Transparency() {
         setLoading(false);
       });
   }, []);
+
+  const handleSetIndex = useCallback((i: number) => {
+    setCurrentIndex(Math.max(0, Math.min(i, draws.length - 1)));
+  }, [draws.length]);
 
   return (
     <div className="min-h-screen pt-20 pb-20 relative overflow-hidden">
@@ -398,7 +520,13 @@ export function Transparency() {
           })}
         </div>
 
-        <DrawDataSection drawData={drawData} loading={loading} error={error} />
+        <DrawDataSection
+          draws={draws}
+          currentIndex={currentIndex}
+          setCurrentIndex={handleSetIndex}
+          loading={loading}
+          error={error}
+        />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -162,6 +162,24 @@ class WinnersService {
     }
   }
 
+  async getAvailableRounds(lotteryType: string): Promise<number[]> {
+    try {
+      const { data, error } = await supabase
+        .from('prizes')
+        .select('round')
+        .eq('lottery_type', lotteryType)
+        .order('round', { ascending: false });
+
+      if (error || !data) return [];
+
+      const unique = [...new Set(data.map((r) => Number(r.round)))];
+      return unique;
+    } catch (error) {
+      console.error('Error in getAvailableRounds:', error);
+      return [];
+    }
+  }
+
   async getTotalPrizesDistributed(lotteryType?: string): Promise<number> {
     try {
       let query = supabase

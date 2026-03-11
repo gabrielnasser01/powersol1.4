@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { winnersService, Winner } from '../services/winnersService';
 import { theme } from '../theme';
 import { solToUsd } from '../chain/adapter';
@@ -18,48 +18,87 @@ export function WinnersDisplay({
 }: WinnersDisplayProps) {
   const [winners, setWinners] = useState<Winner[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rounds, setRounds] = useState<number[]>([]);
+  const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
+
+  const loadRounds = useCallback(async () => {
+    const available = await winnersService.getAvailableRounds(lotteryType);
+    setRounds(available);
+    setCurrentRoundIndex(0);
+  }, [lotteryType]);
+
+  const loadWinnersForRound = useCallback(async (round: number) => {
+    setLoading(true);
+    try {
+      const data = await winnersService.getWinnersByRound(lotteryType, round);
+      let filteredWinners = data;
+
+      switch (lotteryType) {
+        case 'jackpot':
+          filteredWinners = data.slice(0, 100);
+          break;
+        case 'grand-prize':
+          filteredWinners = data.slice(0, 3);
+          break;
+        default:
+          filteredWinners = data;
+          break;
+      }
+      setWinners(filteredWinners);
+    } catch (error) {
+      console.error('Error loading winners:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [lotteryType]);
 
   useEffect(() => {
-    let cancelled = false;
+    loadRounds();
+  }, [loadRounds]);
 
-    const loadWinners = async () => {
-      if (!cancelled) setLoading(true);
-      try {
-        const data = await winnersService.getLatestRoundWinners(lotteryType);
-        if (cancelled) return;
+  useEffect(() => {
+    if (rounds.length > 0) {
+      loadWinnersForRound(rounds[currentRoundIndex]);
+    } else {
+      setWinners([]);
+      setLoading(false);
+    }
+  }, [rounds, currentRoundIndex, loadWinnersForRound]);
 
-        let filteredWinners = data;
+  useEffect(() => {
+    if (rounds.length === 0) return;
+    const interval = setInterval(() => {
+      loadWinnersForRound(rounds[currentRoundIndex]);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [rounds, currentRoundIndex, loadWinnersForRound]);
 
-        switch (lotteryType) {
-          case 'jackpot':
-            filteredWinners = data.slice(0, 100);
-            break;
-          case 'grand-prize':
-            filteredWinners = data.slice(0, 3);
-            break;
-          case 'tri-daily':
-          case 'special-event':
-          default:
-            filteredWinners = data;
-            break;
-        }
+  const goToPreviousRound = () => {
+    if (currentRoundIndex < rounds.length - 1) {
+      setCurrentRoundIndex(prev => prev + 1);
+    }
+  };
 
-        setWinners(filteredWinners);
-      } catch (error) {
-        console.error('Error loading winners:', error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
+  const goToNextRound = () => {
+    if (currentRoundIndex > 0) {
+      setCurrentRoundIndex(prev => prev - 1);
+    }
+  };
 
-    loadWinners();
-    const interval = setInterval(loadWinners, 30000);
+  const isLatestRound = currentRoundIndex === 0;
+  const isOldestRound = currentRoundIndex >= rounds.length - 1;
+  const currentRound = rounds[currentRoundIndex];
 
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [lotteryType]);
+  const formatRoundLabel = (round: number): string => {
+    const str = String(round);
+    if (str.length === 8) {
+      const year = str.slice(0, 4);
+      const month = str.slice(4, 6);
+      const day = str.slice(6, 8);
+      return `${day}/${month}/${year}`;
+    }
+    return `#${round}`;
+  };
 
   const sortedWinners = [...winners].sort((a, b) => b.prizeSol - a.prizeSol);
 
@@ -102,6 +141,51 @@ export function WinnersDisplay({
           backdropFilter: 'blur(20px)',
         }}
       >
+        {rounds.length > 1 && (
+          <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: `1px solid ${accentColor}20` }}>
+            <motion.button
+              onClick={goToPreviousRound}
+              disabled={isOldestRound}
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-lg font-mono text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                background: isOldestRound ? 'rgba(255,255,255,0.02)' : `${accentColor}15`,
+                border: `1px solid ${isOldestRound ? 'rgba(255,255,255,0.05)' : `${accentColor}40`}`,
+                color: accentColor,
+              }}
+              whileHover={isOldestRound ? {} : { scale: 1.05, background: `${accentColor}25` }}
+              whileTap={isOldestRound ? {} : { scale: 0.95 }}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">OLDER</span>
+            </motion.button>
+
+            <div className="flex flex-col items-center">
+              <span className="font-mono text-xs text-zinc-400 uppercase tracking-wider">
+                {isLatestRound ? 'Latest Draw' : 'Past Draw'}
+              </span>
+              <span className="font-mono text-sm font-bold" style={{ color: accentColor }}>
+                {currentRound !== undefined ? formatRoundLabel(currentRound) : '—'}
+              </span>
+            </div>
+
+            <motion.button
+              onClick={goToNextRound}
+              disabled={isLatestRound}
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-lg font-mono text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                background: isLatestRound ? 'rgba(255,255,255,0.02)' : `${accentColor}15`,
+                border: `1px solid ${isLatestRound ? 'rgba(255,255,255,0.05)' : `${accentColor}40`}`,
+                color: accentColor,
+              }}
+              whileHover={isLatestRound ? {} : { scale: 1.05, background: `${accentColor}25` }}
+              whileTap={isLatestRound ? {} : { scale: 0.95 }}
+            >
+              <span className="hidden sm:inline">NEWER</span>
+              <ChevronRight className="w-4 h-4" />
+            </motion.button>
+          </div>
+        )}
+
         <div className="space-y-4">
           {loading ? (
             <div className="text-center py-8 text-zinc-400">
@@ -109,84 +193,93 @@ export function WinnersDisplay({
               <p>Loading winners...</p>
             </div>
           ) : winners.length > 0 ? (
-            <>
-              {sortedWinners.map((winner, index) => (
-                <motion.div
-                  key={`${winner.id}-${index}`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="flex items-center justify-between p-4 rounded-lg"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                  }}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 flex items-center justify-center">
-                      <img
-                        src={index === 0 ? "https://i.imgur.com/jF1YzEF.png" : index === 1 ? "https://i.imgur.com/8WfHMkU.png" : index === 2 ? "https://i.imgur.com/r6hiZta.png" : "https://i.imgur.com/oNzelCb.png"}
-                        alt={`${index + 1}º lugar`}
-                        className="w-8 h-8 object-contain"
-                        style={{
-                          filter: `brightness(1.2) contrast(1.1) drop-shadow(0 0 8px ${accentColor}60)`,
-                        }}
-                      />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentRound}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-4"
+              >
+                {sortedWinners.map((winner, index) => (
+                  <motion.div
+                    key={`${winner.id}-${index}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="flex items-center justify-between p-4 rounded-lg"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                    }}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 flex items-center justify-center">
+                        <img
+                          src={index === 0 ? "https://i.imgur.com/jF1YzEF.png" : index === 1 ? "https://i.imgur.com/8WfHMkU.png" : index === 2 ? "https://i.imgur.com/r6hiZta.png" : "https://i.imgur.com/oNzelCb.png"}
+                          alt={`${index + 1}º lugar`}
+                          className="w-8 h-8 object-contain"
+                          style={{
+                            filter: `brightness(1.2) contrast(1.1) drop-shadow(0 0 8px ${accentColor}60)`,
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <div className="font-mono text-sm" style={{ color: theme.colors.text }}>
+                          {winner.maskedWallet}
+                        </div>
+                        <div className="text-xs text-zinc-400">
+                          Ticket #{winner.ticket_number} • {new Date(winner.timestamp).toLocaleString()}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-mono text-sm" style={{ color: theme.colors.text }}>
-                        {winner.maskedWallet}
+
+                    <div className="text-right">
+                      <div className="flex flex-col items-end space-y-1">
+                        <motion.img
+                          src="https://i.imgur.com/eE1m8fp.png"
+                          alt="Solana Coin"
+                          className="w-8 h-8 rounded-full object-cover"
+                          animate={{
+                            rotate: [0, 360],
+                          }}
+                          transition={{
+                            duration: 8,
+                            repeat: Infinity,
+                            ease: 'linear',
+                          }}
+                        />
+                        <div className="font-bold" style={{ color: theme.colors.neonCyan }}>
+                          {winner.prizeSol.toFixed(2)} SOL
+                        </div>
                       </div>
                       <div className="text-xs text-zinc-400">
-                        Ticket #{winner.ticket_number} • {new Date(winner.timestamp).toLocaleString()}
+                        ≈ ${solToUsd(winner.prizeSol).toFixed(2)}
                       </div>
+                      {winner.claimed && (
+                        winner.claim_signature ? (
+                          <a
+                            href={`https://solscan.io/tx/${winner.claim_signature}?cluster=devnet`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-green-400 mt-1 hover:text-green-300 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span>Claimed</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <div className="text-xs text-green-400 mt-1">
+                            Claimed
+                          </div>
+                        )
+                      )}
                     </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="flex flex-col items-end space-y-1">
-                      <motion.img
-                        src="https://i.imgur.com/eE1m8fp.png"
-                        alt="Solana Coin"
-                        className="w-8 h-8 rounded-full object-cover"
-                        animate={{
-                          rotate: [0, 360],
-                        }}
-                        transition={{
-                          duration: 8,
-                          repeat: Infinity,
-                          ease: 'linear',
-                        }}
-                      />
-                      <div className="font-bold" style={{ color: theme.colors.neonCyan }}>
-                        {winner.prizeSol.toFixed(2)} SOL
-                      </div>
-                    </div>
-                    <div className="text-xs text-zinc-400">
-                      ≈ ${solToUsd(winner.prizeSol).toFixed(2)}
-                    </div>
-                    {winner.claimed && (
-                      winner.claim_signature ? (
-                        <a
-                          href={`https://solscan.io/tx/${winner.claim_signature}?cluster=devnet`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-green-400 mt-1 hover:text-green-300 transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span>Claimed</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      ) : (
-                        <div className="text-xs text-green-400 mt-1">
-                          Claimed
-                        </div>
-                      )
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
           ) : (
             <div className="text-center py-8 text-zinc-400">
               <img

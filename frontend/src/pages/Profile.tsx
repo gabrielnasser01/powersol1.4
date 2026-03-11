@@ -993,7 +993,24 @@ export function Profile() {
                     </div>
                   )}
 
-                  {/* Rewards Amount */}
+                  {/* Total Earned */}
+                  <div
+                    className="p-2 sm:p-3 rounded-lg mb-2 flex items-center justify-between"
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.6)',
+                      border: affiliateLevel === 1 ? '1px solid rgba(59, 130, 246, 0.3)' : affiliateLevel === 2 ? '1px solid rgba(255, 20, 147, 0.3)' : affiliateLevel === 3 ? '1px solid rgba(47, 255, 234, 0.3)' : '1px solid rgba(168, 85, 247, 0.3)',
+                    }}
+                  >
+                    <div className="flex items-center space-x-1.5 sm:space-x-2">
+                      <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7' }} />
+                      <span className="font-mono text-[10px] sm:text-xs" style={{ color: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7' }}>TOTAL EARNED</span>
+                    </div>
+                    <span className="font-mono font-bold text-base sm:text-lg" style={{ color: affiliateLevel === 1 ? '#3b82f6' : affiliateLevel === 2 ? '#ff1493' : affiliateLevel === 3 ? '#2fffea' : '#a855f7' }}>
+                      {((affiliateStats?.totalEarnedLamports || 0) / 1_000_000_000).toFixed(4)} SOL
+                    </span>
+                  </div>
+
+                  {/* Claimable */}
                   <div
                     className="p-2 sm:p-3 rounded-lg mb-3 sm:mb-4 flex items-center justify-between"
                     style={{

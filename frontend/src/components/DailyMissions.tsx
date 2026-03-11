@@ -4,6 +4,7 @@ import { Target, Trophy, Gift, CheckCircle, Clock, Zap, Users, Shield, Activity,
 import { theme } from '../theme';
 import { missionsStorage, userStatsStorage, Mission, userStorage } from '../store/persist';
 import { useWallet } from '../contexts/WalletContext';
+import { useToast } from '../contexts/ToastContext';
 import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
 import { powerPointsService } from '../services/powerPointsService';
@@ -44,6 +45,7 @@ export function DailyMissions() {
   const [donationAmount, setDonationAmount] = useState('0.05');
   const [showDonationModal, setShowDonationModal] = useState(false);
   const { publicKey: walletPubKey, connected: walletConnected, getWalletAdapter, refreshBalance } = useWallet();
+  const toast = useToast();
 
   const isConnected = !!user.publicKey;
 
@@ -226,9 +228,9 @@ export function DailyMissions() {
       if (error) {
         console.error('Daily login error:', error);
         if (error.message.includes('already claimed')) {
-          alert('You already claimed your daily login points today!');
+          toast.info('You already claimed your daily login points today!');
         } else {
-          alert('Failed to claim daily login points. Please try again.');
+          toast.error('Failed to claim daily login points. Please try again.');
         }
         return;
       }
@@ -236,7 +238,7 @@ export function DailyMissions() {
       const result = Array.isArray(data) ? data[0] : data;
 
       if (result?.already_claimed) {
-        alert('You already claimed your daily login points today!');
+        toast.info('You already claimed your daily login points today!');
         return;
       }
 
@@ -279,7 +281,7 @@ export function DailyMissions() {
       await loadMissions();
     } catch (error) {
       console.error('Failed to claim daily login:', error);
-      alert('Failed to claim daily login points. Please try again.');
+      toast.error('Failed to claim daily login points. Please try again.');
     }
   };
 
@@ -289,7 +291,7 @@ export function DailyMissions() {
     try {
       const success = await completeMissionAPI('daily_visit');
       if (!success) {
-        alert('Daily visit already recorded today!');
+        toast.info('Daily visit already recorded today!');
         return;
       }
       await loadMissions();
@@ -310,19 +312,19 @@ export function DailyMissions() {
 
   const handleDonation = async () => {
     if (!walletConnected || !walletPubKey) {
-      alert('Please connect your wallet!');
+      toast.warning('Please connect your wallet!');
       return;
     }
 
     const amount = parseFloat(donationAmount);
     if (amount < 0.05) {
-      alert('Minimum donation is 0.05 SOL');
+      toast.warning('Minimum donation is 0.05 SOL');
       return;
     }
 
     const adapter = getWalletAdapter();
     if (!adapter) {
-      alert('Wallet adapter not available. Please reconnect your wallet.');
+      toast.error('Wallet adapter not available. Please reconnect your wallet.');
       return;
     }
 
@@ -387,7 +389,7 @@ export function DailyMissions() {
     } catch (error) {
       console.error('Donation failed:', error);
       const message = error instanceof Error ? error.message : 'Donation failed';
-      alert(message);
+      toast.error(message);
     } finally {
       setIsDonating(false);
     }
@@ -750,7 +752,7 @@ export function DailyMissions() {
                   }}
                   onClick={() => {
                     if (!isConnected) {
-                      alert('Please connect your wallet first to complete missions!');
+                      toast.warning('Please connect your wallet first to complete missions!');
                       return;
                     }
 

@@ -4,6 +4,7 @@ import { initializeStorage } from './store/persist';
 import { useSpotifyOptimizations } from './hooks/useSpotifyOptimizations';
 import { preloadCriticalResources } from './utils/performance';
 import { WalletProvider } from './contexts/WalletContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { initAffiliateTracking } from './utils/affiliateTracking';
 import { solPriceService } from './services/solPriceService';
 import { notificationService } from './services/notificationService';
@@ -26,7 +27,9 @@ function App() {
 
   return (
     <WalletProvider>
-      <AppRouter />
+      <ToastProvider>
+        <AppRouter />
+      </ToastProvider>
     </WalletProvider>
   );
 }

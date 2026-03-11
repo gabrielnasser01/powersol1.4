@@ -6,6 +6,7 @@ import { DashboardLayout } from '../../components/DashboardLayout';
 import { affiliateDashboardService, DashboardStats, TopAffiliate } from '../../services/affiliateDashboardService';
 import { claimService } from '../../services/claimService';
 import { useWallet } from '../../contexts/WalletContext';
+import { useToast } from '../../contexts/ToastContext';
 import { Trophy } from 'lucide-react';
 
 function TerminalCard({
@@ -184,12 +185,14 @@ export function DashboardHome() {
     loadStats();
   }, [loadStats]);
 
+  const toast = useToast();
+
   const handleClaimRewards = useCallback(async () => {
     if (!walletAddress || claiming) return;
 
     const pendingLamports = stats?.pendingClaimableLamports || 0;
     if (pendingLamports <= 0) {
-      alert('No rewards available to claim');
+      toast.warning('No rewards available to claim');
       return;
     }
 
@@ -199,19 +202,19 @@ export function DashboardHome() {
 
       if (result.success && result.claimed > 0) {
         const solAmount = claimService.lamportsToSol(result.totalAmount);
-        alert(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)!`);
+        toast.success(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)!`);
         await loadStats();
       } else if (result.errors.length > 0) {
-        alert(`Failed to claim some rewards:\n${result.errors.join('\n')}`);
+        toast.error(`Failed to claim some rewards: ${result.errors.join(', ')}`);
       } else {
-        alert('No rewards available to claim right now.');
+        toast.info('No rewards available to claim right now.');
       }
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to claim rewards. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to claim rewards. Please try again.');
     } finally {
       setClaiming(false);
     }
-  }, [walletAddress, claiming, stats, loadStats]);
+  }, [walletAddress, claiming, stats, loadStats, toast]);
 
   if (!connected) {
     return null;

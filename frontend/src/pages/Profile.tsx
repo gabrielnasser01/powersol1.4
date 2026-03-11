@@ -9,11 +9,13 @@ import { affiliateDashboardService, DashboardStats } from '../services/affiliate
 import { claimService } from '../services/claimService';
 import { supabase } from '../lib/supabase';
 import { useWallet } from '../contexts/WalletContext';
+import { useToast } from '../contexts/ToastContext';
 import { useNotifications } from '../hooks/useNotifications';
 
 export function Profile() {
   const navigate = useNavigate();
   const { publicKey: walletPublicKey, connected, disconnect } = useWallet();
+  const toast = useToast();
   const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
   const [userStats, setUserStats] = useState(userStatsStorage.get());
@@ -180,10 +182,10 @@ export function Profile() {
 
       if (error) throw error;
 
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       console.error('Failed to save user profile:', error);
-      alert('Failed to save settings. Please try again.');
+      toast.error('Failed to save settings. Please try again.');
     } finally {
       setSavingConfig(false);
     }
@@ -385,7 +387,7 @@ export function Profile() {
 
   const handleClaimPrize = async (prizeId: string) => {
     if (!walletPublicKey) {
-      alert('Please connect your wallet first');
+      toast.warning('Please connect your wallet first');
       return;
     }
 
@@ -398,14 +400,14 @@ export function Profile() {
       );
 
       if (result.success) {
-        alert('Prize claimed successfully! SOL has been sent to your wallet.');
+        toast.success('Prize claimed successfully! SOL has been sent to your wallet.');
         await loadPrizes();
       } else {
-        alert(result.error || 'Failed to claim prize. Please try again.');
+        toast.error(result.error || 'Failed to claim prize. Please try again.');
       }
     } catch (error) {
       console.error('Failed to claim prize:', error);
-      alert(error instanceof Error ? error.message : 'Failed to claim prize. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to claim prize. Please try again.');
     } finally {
       setClaimingPrize(null);
     }
@@ -413,13 +415,13 @@ export function Profile() {
 
   const handleClaimAffiliate = async () => {
     if (!walletPublicKey || !affiliateStats) {
-      alert('Please connect your wallet first');
+      toast.warning('Please connect your wallet first');
       return;
     }
 
     const pendingLamports = affiliateStats.pendingClaimableLamports;
     if (pendingLamports <= 0) {
-      alert('No rewards available to claim');
+      toast.warning('No rewards available to claim');
       return;
     }
 
@@ -432,14 +434,14 @@ export function Profile() {
 
       if (result.success) {
         const solAmount = claimService.lamportsToSol(result.totalAmount);
-        alert(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)! SOL has been sent to your wallet.`);
+        toast.success(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)!`);
         await loadAffiliateData();
       } else {
-        alert(`Failed to claim some rewards:\n${result.errors.join('\n')}`);
+        toast.error(`Failed to claim some rewards: ${result.errors.join(', ')}`);
       }
     } catch (error) {
       console.error('Failed to claim affiliate rewards:', error);
-      alert(error instanceof Error ? error.message : 'Failed to claim rewards. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to claim rewards. Please try again.');
     } finally {
       setClaimingAffiliate(false);
     }

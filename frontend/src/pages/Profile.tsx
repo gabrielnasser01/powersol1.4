@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useWallet } from '../contexts/WalletContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNotifications } from '../hooks/useNotifications';
+import { solPriceService } from '../services/solPriceService';
 
 export function Profile() {
   const navigate = useNavigate();
@@ -46,6 +47,12 @@ export function Profile() {
   const [loadingPrizes, setLoadingPrizes] = useState(false);
   const [totalPrizeAmount, setTotalPrizeAmount] = useState(0);
   const [showDeleteExpiredConfirm, setShowDeleteExpiredConfirm] = useState(false);
+  const [, setSolPrice] = useState(solPriceService.getPrice());
+
+  useEffect(() => {
+    solPriceService.fetchPrice();
+    return solPriceService.subscribe((price) => setSolPrice(price));
+  }, []);
 
   const isConnected = connected && !!walletPublicKey;
 
@@ -774,7 +781,7 @@ export function Profile() {
                   <TrendingUp className="w-5 h-5 sm:w-8 sm:h-8" style={{ color: '#b347ff' }} />
                 </div>
                 <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#b347ff' }}>
-                  {isConnected ? prizeService.formatPrizeAmountUSD(totalPrizeAmount, 100) : '$0.00'}
+                  {isConnected ? prizeService.formatPrizeAmountUSD(totalPrizeAmount) : '$0.00'}
                 </div>
                 <p className="text-xs text-zinc-400 font-mono uppercase">
                   PRIZE REWARDS {isConnected && userPrizes.length > 0 && `(${userPrizes.filter(p => !p.claimed).length} UNCLAIMED)`}
@@ -1520,7 +1527,7 @@ export function Profile() {
                       MY REWARDS
                     </h2>
                     <p className="text-xs font-mono text-zinc-400">
-                      Total won: {prizeService.formatPrizeAmountUSD(totalPrizeAmount, 100)}
+                      Total won: {prizeService.formatPrizeAmountUSD(totalPrizeAmount)}
                     </p>
                   </div>
                 </div>
@@ -1635,7 +1642,7 @@ export function Profile() {
                               {prizeService.formatPrizeAmount(prize.prize_amount_lamports)}
                             </div>
                             <div className="text-sm font-mono text-zinc-400">
-                              ≈ {prizeService.formatPrizeAmountUSD(prize.prize_amount_lamports, 100)}
+                              ≈ {prizeService.formatPrizeAmountUSD(prize.prize_amount_lamports)}
                             </div>
                           </div>
 

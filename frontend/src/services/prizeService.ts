@@ -1,5 +1,6 @@
 import { Transaction } from '@solana/web3.js';
 import { supabase } from '../lib/supabase';
+import { solPriceService } from './solPriceService';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -154,9 +155,9 @@ class PrizeService {
     return `${sol.toFixed(2)} SOL`;
   }
 
-  formatPrizeAmountUSD(lamports: number, solPrice: number = 100): string {
+  formatPrizeAmountUSD(lamports: number): string {
     const sol = lamports / 1000000000;
-    const usd = sol * solPrice;
+    const usd = sol * solPriceService.getPrice();
     return `$${usd.toFixed(2)}`;
   }
 }

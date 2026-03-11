@@ -4,6 +4,7 @@ import { ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { winnersService, Winner } from '../services/winnersService';
 import { theme } from '../theme';
 import { solToUsd } from '../chain/adapter';
+import { solPriceService } from '../services/solPriceService';
 
 interface WinnersDisplayProps {
   title?: string;
@@ -20,6 +21,11 @@ export function WinnersDisplay({
   const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState<number[]>([]);
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
+  const [, setSolPrice] = useState(solPriceService.getPrice());
+
+  useEffect(() => {
+    return solPriceService.subscribe((price) => setSolPrice(price));
+  }, []);
 
   const loadRounds = useCallback(async () => {
     const available = await winnersService.getAvailableRounds(lotteryType);

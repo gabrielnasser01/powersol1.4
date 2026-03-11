@@ -89,15 +89,11 @@ export function WinnersDisplay({
   const isOldestRound = currentRoundIndex >= rounds.length - 1;
   const currentRound = rounds[currentRoundIndex];
 
-  const formatRoundLabel = (round: number): string => {
-    const str = String(round);
-    if (str.length === 8) {
-      const year = str.slice(0, 4);
-      const month = str.slice(4, 6);
-      const day = str.slice(6, 8);
-      return `${day}/${month}/${year}`;
+  const getRoundDateLabel = (): string => {
+    if (winners.length > 0 && winners[0].draw_date) {
+      return new Date(winners[0].draw_date).toLocaleDateString();
     }
-    return `#${round}`;
+    return `Round #${currentRound}`;
   };
 
   const sortedWinners = [...winners].sort((a, b) => b.prizeSol - a.prizeSol);
@@ -164,7 +160,7 @@ export function WinnersDisplay({
                 {isLatestRound ? 'Latest Draw' : 'Past Draw'}
               </span>
               <span className="font-mono text-sm font-bold" style={{ color: accentColor }}>
-                {currentRound !== undefined ? formatRoundLabel(currentRound) : '—'}
+                {currentRound !== undefined ? getRoundDateLabel() : '—'}
               </span>
             </div>
 

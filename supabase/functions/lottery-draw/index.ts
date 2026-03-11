@@ -131,6 +131,14 @@ function getSupabaseClient() {
   );
 }
 
+async function generateHash(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return "0x" + hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -359,18 +367,38 @@ async function executeDraw(supabase: any, lottery: any) {
 
   const drawTimestamp = new Date().toISOString();
   const round = lottery.lottery_id;
+  const drawNonce = Date.now();
+
+  const commitHash = await generateHash(
+    `${lottery.lottery_id}:${lottery.lottery_type}:${drawNonce}:${totalTickets}:${prizePool.toString()}`
+  );
+  const seedHash = await generateHash(
+    `${commitHash}:${drawTimestamp}:${winners.map((w) => w.ticket_number).join(",")}`
+  );
+
+  const winnersJson = winners.map((w, idx) => ({
+    position: idx + 1,
+    wallet: w.wallet_address,
+    prize_lamports: Number(w.prize_lamports),
+    tier: `Tier ${w.tier}`,
+  }));
 
   const { data: drawRecord, error: drawError } = await supabase
     .from("solana_draws")
     .insert({
       round,
-      draw_account: `draw_${lottery.lottery_id}_${Date.now()}`,
+      draw_account: `draw_${lottery.lottery_id}_${drawNonce}`,
       winning_number: winners.length > 0 ? winners[0].ticket_number : 0,
       winner_wallet: winners.length > 0 ? winners[0].wallet_address : null,
       prize_lamports: Number(prizePool),
-      transaction_signature: `auto_draw_${Date.now()}`,
+      transaction_signature: `auto_draw_${drawNonce}`,
       draw_timestamp: drawTimestamp,
       is_claimed: false,
+      commit_hash: commitHash,
+      seed_hash: seedHash,
+      participants_count: totalTickets,
+      lottery_type: lottery.lottery_type,
+      winners_json: winnersJson,
     })
     .select()
     .single();

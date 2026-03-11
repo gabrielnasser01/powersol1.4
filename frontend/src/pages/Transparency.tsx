@@ -1,50 +1,225 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Eye, CheckCircle, Terminal, Lock, Database, ExternalLink } from 'lucide-react';
-import { theme } from '../theme';
+import { Shield, Eye, CheckCircle, Database, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
 import { LOTTERY_WALLETS } from '../services/walletBalanceService';
+import { supabase } from '../lib/supabase';
+
+interface DrawVRFData {
+  drawId: string;
+  lotteryType: string;
+  timestamp: string;
+  commitHash: string;
+  seedHash: string;
+  participants: number;
+  prizePool: string;
+  winners: { position: number; wallet: string; prize: string }[];
+}
+
+function truncateWallet(wallet: string): string {
+  if (wallet.length <= 10) return wallet;
+  return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`;
+}
+
+function lamportsToSol(lamports: number): string {
+  const sol = lamports / 1_000_000_000;
+  return `${sol.toLocaleString(undefined, { maximumFractionDigits: 4 })} SOL`;
+}
+
+async function fetchLatestDrawVRF(): Promise<DrawVRFData | null> {
+  const { data, error } = await supabase
+    .from('solana_draws')
+    .select('round, lottery_type, draw_timestamp, commit_hash, seed_hash, participants_count, prize_lamports, winners_json')
+    .not('commit_hash', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const winners = (data.winners_json || []).map((w: any) => ({
+    position: w.position,
+    wallet: truncateWallet(w.wallet),
+    prize: lamportsToSol(w.prize_lamports),
+  }));
+
+  return {
+    drawId: `${data.lottery_type || 'tri-daily'}-${data.round}`,
+    lotteryType: data.lottery_type || 'tri-daily',
+    timestamp: data.draw_timestamp,
+    commitHash: data.commit_hash,
+    seedHash: data.seed_hash,
+    participants: data.participants_count || 0,
+    prizePool: lamportsToSol(data.prize_lamports),
+    winners,
+  };
+}
+
+const fairnessFeatures = [
+  {
+    icon: Shield,
+    title: 'VRF_RANDOMNESS.EXE',
+    description: 'VRF (Verifiable Random Function) ensures truly random and tamper-proof draw results. Military-grade entropy generation.',
+    terminalCode: '> chainlink_vrf.verify(seed_hash)',
+  },
+  {
+    icon: Eye,
+    title: 'AUDIT_PROTOCOL.SYS',
+    description: 'Every draw can be independently verified using our verification protocols. Complete audit trail available.',
+    terminalCode: '> verify_draw.exe --hash=0xa1b2c3',
+  },
+  {
+    icon: CheckCircle,
+    title: 'BLOCKCHAIN_LEDGER.DB',
+    description: 'All draws are recorded on the Solana blockchain, making them permanent and unchangeable. Distributed ledger security.',
+    terminalCode: '> solana_scan.check_transaction()',
+  },
+];
+
+const terminalCardStyle = {
+  background: `
+    linear-gradient(0deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(0, 20, 10, 0.95) 100%)
+  `,
+  backgroundSize: '20px 20px, 20px 20px, 100% 100%',
+  borderColor: 'rgba(0, 255, 136, 0.5)',
+  boxShadow: '0 0 25px rgba(0, 255, 136, 0.4), inset 0 0 40px rgba(0, 0, 0, 0.9)',
+  backdropFilter: 'blur(20px)',
+  fontFamily: 'monospace',
+};
+
+function DrawDataSection({ drawData, loading, error }: { drawData: DrawVRFData | null; loading: boolean; error: string | null }) {
+  const displayData = drawData
+    ? {
+        drawId: drawData.drawId,
+        timestamp: drawData.timestamp,
+        commitHash: drawData.commitHash,
+        seedHash: drawData.seedHash,
+        participants: drawData.participants,
+        prizePool: drawData.prizePool,
+        winners: drawData.winners,
+      }
+    : null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay: 0.4 }}
+      className="max-w-4xl mx-auto"
+    >
+      <div className="flex items-center justify-center space-x-3 mb-8">
+        <div
+          className="p-3 rounded-xl"
+          style={{
+            background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 204, 255, 0.2))',
+            border: '1px solid rgba(0, 255, 136, 0.5)',
+            boxShadow: '0 0 15px rgba(0, 255, 136, 0.4)',
+          }}
+        >
+          <Database className="w-6 h-6" style={{ color: '#00ff88' }} />
+        </div>
+        <div>
+          <h2
+            className="text-2xl font-bold font-mono"
+            style={{
+              color: '#ffffff',
+              textShadow: '0 0 10px rgba(0, 255, 136, 0.5)',
+            }}
+          >
+            <span className="hidden sm:inline">LATEST_DRAW_VRF.JSON</span>
+            <span className="sm:hidden text-lg">DRAW_VRF.JSON</span>
+          </h2>
+          <p className="text-green-300/70 font-mono text-sm">
+            {drawData ? `Last draw: ${drawData.lotteryType}` : 'Real-time draw verification data'}
+          </p>
+        </div>
+      </div>
+
+      <div
+        className="p-8 rounded-2xl border relative overflow-hidden"
+        style={{
+          ...terminalCardStyle,
+          boxShadow: '0 0 30px rgba(0, 255, 136, 0.3), inset 0 0 50px rgba(0, 0, 0, 0.9)',
+        }}
+      >
+        <div className="absolute top-2 left-2 text-xs font-mono text-green-400/60">
+          [DATA_STREAM]
+        </div>
+        <div className="absolute top-2 right-2 text-xs font-mono text-green-400/60">
+          {loading ? '[LOADING...]' : error ? '[ERROR]' : '[VERIFIED]'}
+        </div>
+
+        {loading && (
+          <div className="flex items-center justify-center py-12 gap-3">
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#00ff88' }} />
+            <span className="font-mono text-sm" style={{ color: '#00ff88' }}>
+              Fetching latest draw data...
+            </span>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center justify-center py-12 gap-3">
+            <AlertCircle className="w-5 h-5" style={{ color: '#ff4444' }} />
+            <span className="font-mono text-sm text-red-400">{error}</span>
+          </div>
+        )}
+
+        {!loading && !error && displayData && (
+          <>
+            <pre
+              className="text-sm font-mono overflow-x-auto whitespace-pre-wrap"
+              style={{
+                color: '#00ff88',
+                textShadow: '0 0 8px rgba(0, 255, 136, 0.6)',
+              }}
+            >
+              {JSON.stringify(displayData, null, 2)}
+            </pre>
+
+            <motion.div
+              className="inline-block w-2 h-4 ml-1"
+              style={{ background: '#00ff88' }}
+              animate={{ opacity: [1, 0, 1] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            />
+          </>
+        )}
+
+        {!loading && !error && !displayData && (
+          <div className="flex items-center justify-center py-12">
+            <span className="font-mono text-sm text-zinc-500">
+              No draws recorded yet. Data will appear after the first draw.
+            </span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 export function Transparency() {
-  const fairnessFeatures = [
-    {
-      icon: Shield,
-      title: 'VRF_RANDOMNESS.EXE',
-      description: 'VRF (Verifiable Random Function) ensures truly random and tamper-proof draw results. Military-grade entropy generation.',
-      terminalCode: '> chainlink_vrf.verify(seed_hash)',
-    },
-    {
-      icon: Eye,
-      title: 'AUDIT_PROTOCOL.SYS',
-      description: 'Every draw can be independently verified using our verification protocols. Complete audit trail available.',
-      terminalCode: '> verify_draw.exe --hash=0xa1b2c3',
-    },
-    {
-      icon: CheckCircle,
-      title: 'BLOCKCHAIN_LEDGER.DB',
-      description: 'All draws are recorded on the Solana blockchain, making them permanent and unchangeable. Distributed ledger security.',
-      terminalCode: '> solana_scan.check_transaction()',
-    },
-  ];
+  const [drawData, setDrawData] = useState<DrawVRFData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const sampleDraw = {
-    drawId: 'tri-daily-001',
-    timestamp: '2024-01-15T18:00:00Z',
-    commitHash: '0xa1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
-    seedHash: '0x987654321098765432109876543210987654321098765432109876543210',
-    participants: 1247,
-    prizePool: '1,250 SOL',
-    winners: [
-      { position: 1, wallet: '7xK...9mP', prize: '625 SOL' },
-      { position: 2, wallet: 'Bv2...4nQ', prize: '312.5 SOL' },
-      { position: 3, wallet: '3hM...7wR', prize: '156.25 SOL' },
-    ],
-  };
+  useEffect(() => {
+    fetchLatestDrawVRF()
+      .then((data) => {
+        setDrawData(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to fetch draw data');
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <div className="min-h-screen pt-20 pb-20 relative overflow-hidden">
-      {/* Terminal Matrix Background */}
       <div className="absolute inset-0">
-        <div 
+        <div
           className="absolute inset-0"
           style={{
             background: `
@@ -55,9 +230,8 @@ export function Transparency() {
             backgroundSize: '20px 20px, 20px 20px, 100% 100%',
           }}
         />
-        
-        {/* Terminal scanner effect */}
-        <div 
+
+        <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background: `
@@ -72,8 +246,8 @@ export function Transparency() {
             animation: 'terminalScan 4s linear infinite',
           }}
         />
-        
-        <style jsx>{`
+
+        <style>{`
           @keyframes terminalScan {
             0% { transform: translateY(-100%); }
             100% { transform: translateY(100%); }
@@ -82,31 +256,29 @@ export function Transparency() {
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
-        {/* Terminal corner decorations - Desktop */}
         <div className="absolute top-24 left-6 text-xs font-mono text-green-500/40 hidden sm:block">
           [SYSTEM_ACTIVE]
         </div>
         <div className="absolute top-24 right-6 text-xs font-mono text-green-500/40 hidden sm:block">
           [TRANSPARENCY_MODULE]
         </div>
-        
-        {/* Mobile terminal indicators */}
+
         <div className="block sm:hidden text-center pt-4 pb-2">
           <div className="flex justify-center space-x-4 text-xs font-mono text-green-500/80">
             <span>[SYSTEM_ACTIVE]</span>
             <span>[TRANSPARENCY_MODULE]</span>
           </div>
         </div>
-        
+
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="text-center mb-16"
         >
-          <h1 
+          <h1
             className="text-2xl md:text-6xl font-bold mb-6 font-mono"
-            style={{ 
+            style={{
               background: 'linear-gradient(135deg, #00ff88 0%, #00ccff 50%, #00ff88 100%)',
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
@@ -121,7 +293,6 @@ export function Transparency() {
           </p>
         </motion.div>
 
-        {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {fairnessFeatures.map((feature, index) => {
             const Icon = feature.icon;
@@ -132,50 +303,40 @@ export function Transparency() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 className="p-6 rounded-2xl border relative overflow-hidden"
-                style={{
-                  background: `
-                    linear-gradient(0deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
-                    linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(0, 20, 10, 0.95) 100%)
-                  `,
-                  backgroundSize: '20px 20px, 20px 20px, 100% 100%',
-                  borderColor: 'rgba(0, 255, 136, 0.5)',
-                  boxShadow: '0 0 25px rgba(0, 255, 136, 0.4), inset 0 0 40px rgba(0, 0, 0, 0.9)',
-                  backdropFilter: 'blur(20px)',
-                  fontFamily: 'monospace',
-                }}
+                style={terminalCardStyle}
               >
-                {/* Terminal indicators */}
                 <div className="absolute top-2 left-2 text-xs font-mono text-green-400/60">
                   [{index.toString().padStart(2, '0')}]
                 </div>
                 <div className="absolute top-2 right-2 text-xs font-mono text-green-400/60">
                   [ACTIVE]
                 </div>
-                
-                <div 
+
+                <div
                   className="w-16 h-16 rounded-xl mb-6 flex items-center justify-center"
                   style={{
-                    background: `linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 204, 255, 0.2))`,
-                    border: `1px solid rgba(0, 255, 136, 0.5)`,
+                    background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 204, 255, 0.2))',
+                    border: '1px solid rgba(0, 255, 136, 0.5)',
                     boxShadow: '0 0 15px rgba(0, 255, 136, 0.4)',
                   }}
                 >
                   <Icon className="w-8 h-8" style={{ color: '#00ff88' }} />
                 </div>
-                
-                <h3 className="text-xl font-bold mb-3 font-mono" style={{ 
-                  color: '#00ff88',
-                  textShadow: '0 0 10px rgba(0, 255, 136, 0.6)',
-                }}>
+
+                <h3
+                  className="text-xl font-bold mb-3 font-mono"
+                  style={{
+                    color: '#00ff88',
+                    textShadow: '0 0 10px rgba(0, 255, 136, 0.6)',
+                  }}
+                >
                   {feature.title}
                 </h3>
-                
+
                 <p className="text-zinc-300 leading-relaxed mb-4 font-mono text-sm">
                   {feature.description}
                 </p>
-                
-                {/* Terminal command - Clickable for Solscan */}
+
                 {index === 2 ? (
                   <div className="space-y-2">
                     <div
@@ -189,7 +350,6 @@ export function Transparency() {
                       {feature.terminalCode}
                     </div>
 
-                    {/* Lottery Links Grid */}
                     <div className="grid grid-cols-2 gap-2 mt-3">
                       {[
                         { label: 'Tri-Daily', wallet: LOTTERY_WALLETS['tri-daily'] },
@@ -238,82 +398,8 @@ export function Transparency() {
           })}
         </div>
 
-        {/* Sample Draw Data */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="max-w-4xl mx-auto"
-        >
-          <div className="flex items-center justify-center space-x-3 mb-8">
-            <div 
-              className="p-3 rounded-xl"
-              style={{
-                background: `linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 204, 255, 0.2))`,
-                border: `1px solid rgba(0, 255, 136, 0.5)`,
-                boxShadow: '0 0 15px rgba(0, 255, 136, 0.4)',
-              }}
-            >
-              <Database className="w-6 h-6" style={{ color: '#00ff88' }} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold font-mono" style={{ 
-                color: '#ffffff',
-                textShadow: '0 0 10px rgba(0, 255, 136, 0.5)',
-              }}>
-                <span className="hidden sm:inline">SAMPLE_DRAW_DATA.JSON</span>
-                <span className="sm:hidden text-lg">DRAW_DATA.JSON</span>
-              </h2>
-              <p className="text-green-300/70 font-mono text-sm">
-                Real draw verification data
-              </p>
-            </div>
-          </div>
-          
-          <div 
-            className="p-8 rounded-2xl border relative overflow-hidden"
-            style={{
-              background: `
-                linear-gradient(0deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
-                linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(0, 20, 10, 0.95) 100%)
-              `,
-              backgroundSize: '20px 20px, 20px 20px, 100% 100%',
-              borderColor: 'rgba(0, 255, 136, 0.5)',
-              boxShadow: '0 0 30px rgba(0, 255, 136, 0.3), inset 0 0 50px rgba(0, 0, 0, 0.9)',
-              backdropFilter: 'blur(20px)',
-              fontFamily: 'monospace',
-            }}
-          >
-            {/* Terminal indicators */}
-            <div className="absolute top-2 left-2 text-xs font-mono text-green-400/60">
-              [DATA_STREAM]
-            </div>
-            <div className="absolute top-2 right-2 text-xs font-mono text-green-400/60">
-              [VERIFIED]
-            </div>
-            
-            <pre 
-              className="text-sm font-mono overflow-x-auto whitespace-pre-wrap"
-              style={{ 
-                color: '#00ff88',
-                textShadow: '0 0 8px rgba(0, 255, 136, 0.6)',
-              }}
-            >
-{JSON.stringify(sampleDraw, null, 2)}
-            </pre>
-            
-            {/* Terminal cursor */}
-            <motion.div
-              className="inline-block w-2 h-4 ml-1"
-              style={{ background: '#00ff88' }}
-              animate={{ opacity: [1, 0, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            />
-          </div>
-        </motion.div>
+        <DrawDataSection drawData={drawData} loading={loading} error={error} />
 
-        {/* Terminal Status Bar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -326,7 +412,7 @@ export function Transparency() {
         >
           <div className="flex items-center justify-center space-x-4 font-mono text-sm">
             <div className="flex items-center space-x-2">
-              <div 
+              <div
                 className="w-2 h-2 rounded-full animate-pulse"
                 style={{ background: '#00ff88' }}
               />

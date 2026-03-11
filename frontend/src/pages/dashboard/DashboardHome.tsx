@@ -690,7 +690,7 @@ export function DashboardHome() {
 
                     {entry.txSignature && (
                       <a
-                        href={`https://solscan.io/tx/${entry.txSignature}`}
+                        href={`https://solscan.io/tx/${entry.txSignature}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-shrink-0 p-2 rounded-lg transition-all hover:scale-110"

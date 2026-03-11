@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users, Ticket, Coins, Clock, TrendingUp, Star, Crown, Sparkles } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { affiliateDashboardService, DashboardStats, TopAffiliate } from '../../services/affiliateDashboardService';
+import { claimService } from '../../services/claimService';
 import { useWallet } from '../../contexts/WalletContext';
 import { Trophy } from 'lucide-react';
 
@@ -159,6 +160,7 @@ export function DashboardHome() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     if (!connected) {
@@ -181,6 +183,35 @@ export function DashboardHome() {
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  const handleClaimRewards = useCallback(async () => {
+    if (!walletAddress || claiming) return;
+
+    const pendingLamports = stats?.pendingClaimableLamports || 0;
+    if (pendingLamports <= 0) {
+      alert('No rewards available to claim');
+      return;
+    }
+
+    setClaiming(true);
+    try {
+      const result = await claimService.claimAllAvailableAffiliateRewards(walletAddress);
+
+      if (result.success && result.claimed > 0) {
+        const solAmount = claimService.lamportsToSol(result.totalAmount);
+        alert(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)!`);
+        await loadStats();
+      } else if (result.errors.length > 0) {
+        alert(`Failed to claim some rewards:\n${result.errors.join('\n')}`);
+      } else {
+        alert('No rewards available to claim right now.');
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to claim rewards. Please try again.');
+    } finally {
+      setClaiming(false);
+    }
+  }, [walletAddress, claiming, stats, loadStats]);
 
   if (!connected) {
     return null;
@@ -349,15 +380,17 @@ export function DashboardHome() {
 
               {(stats?.pendingClaimableLamports || 0) > 0 && (
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-3 rounded-lg font-mono font-bold text-black"
+                  whileHover={{ scale: claiming ? 1 : 1.02 }}
+                  whileTap={{ scale: claiming ? 1 : 0.98 }}
+                  onClick={handleClaimRewards}
+                  disabled={claiming}
+                  className="w-full py-3 rounded-lg font-mono font-bold text-black disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{
                     background: 'linear-gradient(135deg, #3ecbff, #2fffe2)',
                     boxShadow: '0 0 20px rgba(62, 203, 255, 0.4)',
                   }}
                 >
-                  CLAIM_REWARDS()
+                  {claiming ? 'PROCESSING...' : 'CLAIM_REWARDS()'}
                 </motion.button>
               )}
             </div>

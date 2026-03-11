@@ -47,6 +47,16 @@ export interface WeeklyHistory {
   isClaimable: boolean;
 }
 
+export interface ClaimHistoryEntry {
+  weekNumber: number;
+  weekDate: string;
+  amountLamports: number;
+  tier: number;
+  status: 'claimed' | 'expired' | 'pending' | 'claimable';
+  txSignature: string | null;
+  actionAt: string | null;
+}
+
 export interface ApplicationStatus {
   hasApplied: boolean;
   status: 'pending' | 'approved' | 'rejected' | null;
@@ -177,6 +187,31 @@ class AffiliateDashboardService {
       }));
     } catch (error) {
       console.error('Error fetching weekly history:', error);
+      return [];
+    }
+  }
+
+  async getClaimHistory(walletAddress: string, limit: number = 20): Promise<ClaimHistoryEntry[]> {
+    try {
+      const { data, error } = await supabase.rpc('get_affiliate_claim_history', {
+        p_wallet: walletAddress,
+        p_limit: limit,
+      });
+
+      if (error) throw error;
+      if (!data) return [];
+
+      return data.map((row: Record<string, unknown>) => ({
+        weekNumber: Number(row.week_number),
+        weekDate: String(row.week_date),
+        amountLamports: Number(row.amount_lamports),
+        tier: Number(row.tier),
+        status: String(row.status) as ClaimHistoryEntry['status'],
+        txSignature: row.tx_signature ? String(row.tx_signature) : null,
+        actionAt: row.action_at ? String(row.action_at) : null,
+      }));
+    } catch (error) {
+      console.error('Error fetching claim history:', error);
       return [];
     }
   }

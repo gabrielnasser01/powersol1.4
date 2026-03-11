@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Users, Ticket, Coins, Clock, TrendingUp, Star, Crown, Sparkles } from 'lucide-react';
+import { Users, Ticket, Coins, Clock, TrendingUp, Star, Crown, Sparkles, ExternalLink, CheckCircle, XCircle, Timer, CircleDot } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { affiliateDashboardService, DashboardStats, TopAffiliate } from '../../services/affiliateDashboardService';
+import { affiliateDashboardService, DashboardStats, TopAffiliate, ClaimHistoryEntry } from '../../services/affiliateDashboardService';
 import { claimService } from '../../services/claimService';
 import { useWallet } from '../../contexts/WalletContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -160,6 +160,7 @@ export function DashboardHome() {
   const { publicKey: walletAddress, connected } = useWallet();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
+  const [claimHistory, setClaimHistory] = useState<ClaimHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
 
@@ -172,12 +173,14 @@ export function DashboardHome() {
   const loadStats = useCallback(async () => {
     if (!walletAddress) return;
     setLoading(true);
-    const [data, affiliates] = await Promise.all([
+    const [data, affiliates, history] = await Promise.all([
       affiliateDashboardService.getDashboardStats(walletAddress),
       affiliateDashboardService.getTopAffiliates(10),
+      affiliateDashboardService.getClaimHistory(walletAddress),
     ]);
     setStats(data);
     setTopAffiliates(affiliates);
+    setClaimHistory(history);
     setLoading(false);
   }, [walletAddress]);
 
@@ -564,6 +567,145 @@ export function DashboardHome() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+        </TerminalCard>
+      </div>
+
+      <div className="mt-6">
+        <TerminalCard title="claim_history" color="#3ecbff" delay={0.8}>
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 py-3 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-zinc-800" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-zinc-800 rounded w-3/4" />
+                    <div className="h-3 bg-zinc-800 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : claimHistory.length === 0 ? (
+            <div className="text-center py-8">
+              <Clock className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
+              <p className="text-zinc-500 font-mono">no_claim_history_yet</p>
+              <p className="text-zinc-600 text-sm font-mono mt-1">earnings_will_appear_here</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {claimHistory.map((entry, index) => {
+                const statusConfig = {
+                  claimed: {
+                    icon: CheckCircle,
+                    color: '#00ff88',
+                    bg: 'rgba(0, 255, 136, 0.08)',
+                    border: 'rgba(0, 255, 136, 0.25)',
+                    label: 'CLAIMED',
+                  },
+                  expired: {
+                    icon: XCircle,
+                    color: '#ff4e4e',
+                    bg: 'rgba(255, 78, 78, 0.08)',
+                    border: 'rgba(255, 78, 78, 0.25)',
+                    label: 'EXPIRED',
+                  },
+                  claimable: {
+                    icon: CircleDot,
+                    color: '#fbbf24',
+                    bg: 'rgba(251, 191, 36, 0.08)',
+                    border: 'rgba(251, 191, 36, 0.25)',
+                    label: 'CLAIMABLE',
+                  },
+                  pending: {
+                    icon: Timer,
+                    color: '#64748b',
+                    bg: 'rgba(100, 116, 139, 0.08)',
+                    border: 'rgba(100, 116, 139, 0.25)',
+                    label: 'PENDING',
+                  },
+                }[entry.status];
+
+                const StatusIcon = statusConfig.icon;
+                const solAmount = affiliateDashboardService.formatLamportsToSOL(entry.amountLamports);
+                const weekDate = new Date(entry.weekDate);
+                const actionDate = entry.actionAt ? new Date(entry.actionAt) : null;
+
+                return (
+                  <motion.div
+                    key={entry.weekNumber}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    className="flex items-center gap-3 p-3 rounded-xl border transition-all hover:brightness-110"
+                    style={{
+                      background: statusConfig.bg,
+                      borderColor: statusConfig.border,
+                    }}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: `${statusConfig.color}15`,
+                        border: `1px solid ${statusConfig.color}30`,
+                      }}
+                    >
+                      <StatusIcon className="w-4.5 h-4.5" style={{ color: statusConfig.color }} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-sm text-white font-bold">
+                          {solAmount} SOL
+                        </span>
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                          style={{
+                            background: `${statusConfig.color}20`,
+                            color: statusConfig.color,
+                          }}
+                        >
+                          {statusConfig.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-mono text-zinc-500">
+                          Week {entry.weekNumber}
+                        </span>
+                        <span className="text-zinc-700">|</span>
+                        <span className="text-xs font-mono text-zinc-500">
+                          {weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        {actionDate && (
+                          <>
+                            <span className="text-zinc-700">|</span>
+                            <span className="text-xs font-mono text-zinc-500">
+                              {entry.status === 'claimed' ? 'Claimed' : 'Expired'}{' '}
+                              {actionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {entry.txSignature && (
+                      <a
+                        href={`https://solscan.io/tx/${entry.txSignature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 p-2 rounded-lg transition-all hover:scale-110"
+                        style={{
+                          background: 'rgba(62, 203, 255, 0.1)',
+                          border: '1px solid rgba(62, 203, 255, 0.2)',
+                        }}
+                        title="View on Solscan"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" style={{ color: '#3ecbff' }} />
+                      </a>
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
         </TerminalCard>

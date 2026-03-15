@@ -65,6 +65,7 @@ export interface PerTicketCommission {
   ticketPriceLamports: number;
   commissionLamports: number;
   commissionRate: number;
+  originalTier: number | null;
   transactionSignature: string;
   earnedAt: string;
 }
@@ -247,6 +248,7 @@ class AffiliateDashboardService {
         ticketPriceLamports: Number(row.ticket_price_lamports),
         commissionLamports: Number(row.commission_lamports),
         commissionRate: Number(row.commission_rate),
+        originalTier: row.original_tier != null ? Number(row.original_tier) : null,
         transactionSignature: String(row.transaction_signature || ''),
         earnedAt: String(row.earned_at),
       }));

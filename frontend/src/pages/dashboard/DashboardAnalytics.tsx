@@ -231,6 +231,13 @@ const LOTTERY_TYPE_COLORS: Record<string, string> = {
   'special_event': '#2fffe2',
 };
 
+const TIER_COLORS: Record<number, string> = {
+  1: '#71717a',
+  2: '#3ecbff',
+  3: '#a0a0a0',
+  4: '#fbbf24',
+};
+
 const PAGE_SIZE = 10;
 
 function PerTicketCommissionTable({
@@ -332,6 +339,11 @@ function PerTicketCommissionTable({
                     <span className="font-mono text-xs text-zinc-400">
                       {(c.commissionRate * 100).toFixed(0)}%
                     </span>
+                    {c.originalTier != null && (
+                      <p className="text-[9px] font-mono" style={{ color: TIER_COLORS[c.originalTier] || '#71717a' }}>
+                        T{c.originalTier}
+                      </p>
+                    )}
                   </td>
                   <td className="py-2.5 px-2 text-center">
                     {c.transactionSignature ? (

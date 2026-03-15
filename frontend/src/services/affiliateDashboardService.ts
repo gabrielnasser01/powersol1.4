@@ -57,6 +57,18 @@ export interface ClaimHistoryEntry {
   actionAt: string | null;
 }
 
+export interface PerTicketCommission {
+  earningId: number;
+  ticketId: number;
+  buyerWallet: string;
+  lotteryType: string;
+  ticketPriceLamports: number;
+  commissionLamports: number;
+  commissionRate: number;
+  transactionSignature: string;
+  earnedAt: string;
+}
+
 export interface ApplicationStatus {
   hasApplied: boolean;
   status: 'pending' | 'approved' | 'rejected' | null;
@@ -212,6 +224,34 @@ class AffiliateDashboardService {
       }));
     } catch (error) {
       console.error('Error fetching claim history:', error);
+      return [];
+    }
+  }
+
+  async getPerTicketCommissions(walletAddress: string, limit: number = 20, offset: number = 0): Promise<PerTicketCommission[]> {
+    try {
+      const { data, error } = await supabase.rpc('get_affiliate_per_ticket_commissions', {
+        p_wallet: walletAddress,
+        p_limit: limit,
+        p_offset: offset,
+      });
+
+      if (error) throw error;
+      if (!data) return [];
+
+      return data.map((row: Record<string, unknown>) => ({
+        earningId: Number(row.earning_id),
+        ticketId: Number(row.ticket_id),
+        buyerWallet: String(row.buyer_wallet || ''),
+        lotteryType: String(row.lottery_type || 'tri-daily'),
+        ticketPriceLamports: Number(row.ticket_price_lamports),
+        commissionLamports: Number(row.commission_lamports),
+        commissionRate: Number(row.commission_rate),
+        transactionSignature: String(row.transaction_signature || ''),
+        earnedAt: String(row.earned_at),
+      }));
+    } catch (error) {
+      console.error('Error fetching per-ticket commissions:', error);
       return [];
     }
   }

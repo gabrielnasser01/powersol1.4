@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Star, TrendingUp, Users, Coins, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Trophy, Star, TrendingUp, Users, Coins, ArrowUpRight, ArrowDownRight, Ticket, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { affiliateDashboardService, TopReferral, WeeklyHistory } from '../../services/affiliateDashboardService';
+import { affiliateDashboardService, TopReferral, WeeklyHistory, PerTicketCommission } from '../../services/affiliateDashboardService';
 import { useWallet } from '../../contexts/WalletContext';
 
 function TerminalCard({
@@ -211,11 +211,185 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
+const LOTTERY_TYPE_LABELS: Record<string, string> = {
+  'tri-daily': 'TRI-DAILY',
+  'tri_daily': 'TRI-DAILY',
+  'jackpot': 'JACKPOT',
+  'grand-prize': 'GRAND PRIZE',
+  'grand_prize': 'GRAND PRIZE',
+  'special-event': 'SPECIAL',
+  'special_event': 'SPECIAL',
+};
+
+const LOTTERY_TYPE_COLORS: Record<string, string> = {
+  'tri-daily': '#3ecbff',
+  'tri_daily': '#3ecbff',
+  'jackpot': '#fbbf24',
+  'grand-prize': '#ff4ecd',
+  'grand_prize': '#ff4ecd',
+  'special-event': '#2fffe2',
+  'special_event': '#2fffe2',
+};
+
+const PAGE_SIZE = 10;
+
+function PerTicketCommissionTable({
+  commissions,
+  loading,
+  page,
+  onPageChange,
+  hasMore,
+}: {
+  commissions: PerTicketCommission[];
+  loading: boolean;
+  page: number;
+  onPageChange: (p: number) => void;
+  hasMore: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[...Array(5)].map((_, i) => (
+          <SkeletonRow key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (commissions.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <Ticket className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
+        <p className="text-zinc-500 font-mono">no_commissions_yet</p>
+        <p className="text-zinc-600 text-sm font-mono mt-1">commissions_per_ticket_will_appear_here</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="text-xs text-zinc-500 font-mono border-b border-zinc-800">
+              <th className="text-left py-2 px-2">DATE</th>
+              <th className="text-left py-2 px-2">BUYER</th>
+              <th className="text-center py-2 px-2">TYPE</th>
+              <th className="text-right py-2 px-2">TICKET</th>
+              <th className="text-right py-2 px-2">COMMISSION</th>
+              <th className="text-center py-2 px-2">RATE</th>
+              <th className="text-center py-2 px-2">TX</th>
+            </tr>
+          </thead>
+          <tbody>
+            {commissions.map((c, index) => {
+              const typeLabel = LOTTERY_TYPE_LABELS[c.lotteryType] || c.lotteryType.toUpperCase();
+              const typeColor = LOTTERY_TYPE_COLORS[c.lotteryType] || '#3ecbff';
+              const date = new Date(c.earnedAt);
+              const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+              const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+              return (
+                <motion.tr
+                  key={c.earningId}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="border-b border-zinc-800/50 hover:bg-zinc-800/30"
+                >
+                  <td className="py-2.5 px-2">
+                    <span className="font-mono text-xs text-zinc-300">{dateStr}</span>
+                    <p className="text-[10px] text-zinc-600 font-mono">{timeStr}</p>
+                  </td>
+                  <td className="py-2.5 px-2">
+                    <span className="font-mono text-xs text-zinc-300">
+                      {affiliateDashboardService.shortenWallet(c.buyerWallet)}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-center">
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold"
+                      style={{
+                        background: `${typeColor}15`,
+                        color: typeColor,
+                        border: `1px solid ${typeColor}30`,
+                      }}
+                    >
+                      {typeLabel}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-right">
+                    <span className="font-mono text-xs text-zinc-300">
+                      {affiliateDashboardService.formatLamportsToSOL(c.ticketPriceLamports)} SOL
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-right">
+                    <span className="font-mono text-xs font-semibold" style={{ color: '#2fffe2' }}>
+                      +{affiliateDashboardService.formatLamportsToSOL(c.commissionLamports)} SOL
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-center">
+                    <span className="font-mono text-xs text-zinc-400">
+                      {(c.commissionRate * 100).toFixed(0)}%
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-center">
+                    {c.transactionSignature ? (
+                      <a
+                        href={`https://solscan.io/tx/${c.transactionSignature}?cluster=devnet`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-zinc-500 hover:text-cyan-400 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <span className="text-zinc-700">-</span>
+                    )}
+                  </td>
+                </motion.tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-zinc-800/50">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 0}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-mono text-xs transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-800/50"
+          style={{ color: '#3ecbff' }}
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          PREV
+        </button>
+        <span className="font-mono text-xs text-zinc-500">
+          page {page + 1}
+        </span>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={!hasMore}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-mono text-xs transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-800/50"
+          style={{ color: '#3ecbff' }}
+        >
+          NEXT
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardAnalytics() {
   const navigate = useNavigate();
   const { publicKey: walletAddress, connected } = useWallet();
   const [topReferrals, setTopReferrals] = useState<TopReferral[]>([]);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyHistory[]>([]);
+  const [perTicket, setPerTicket] = useState<PerTicketCommission[]>([]);
+  const [perTicketPage, setPerTicketPage] = useState(0);
+  const [perTicketHasMore, setPerTicketHasMore] = useState(false);
+  const [perTicketLoading, setPerTicketLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState<number>(1);
   const [tierChecked, setTierChecked] = useState(false);
@@ -240,6 +414,20 @@ export function DashboardAnalytics() {
     checkTier();
   }, [walletAddress, navigate]);
 
+  const loadPerTicketPage = useCallback(async (page: number) => {
+    if (!walletAddress) return;
+    setPerTicketLoading(true);
+    const results = await affiliateDashboardService.getPerTicketCommissions(
+      walletAddress,
+      PAGE_SIZE + 1,
+      page * PAGE_SIZE,
+    );
+    setPerTicketHasMore(results.length > PAGE_SIZE);
+    setPerTicket(results.slice(0, PAGE_SIZE));
+    setPerTicketPage(page);
+    setPerTicketLoading(false);
+  }, [walletAddress]);
+
   const loadData = useCallback(async () => {
     if (!walletAddress || tier < 3) return;
     setLoading(true);
@@ -250,7 +438,8 @@ export function DashboardAnalytics() {
     setTopReferrals(referrals);
     setWeeklyHistory(history);
     setLoading(false);
-  }, [walletAddress, tier]);
+    loadPerTicketPage(0);
+  }, [walletAddress, tier, loadPerTicketPage]);
 
   useEffect(() => {
     if (tierChecked && tier >= 3) {
@@ -436,6 +625,18 @@ export function DashboardAnalytics() {
               valueFormatter={(v) => `${v} refs`}
             />
           )}
+        </TerminalCard>
+      </div>
+
+      <div className="mt-6">
+        <TerminalCard title="commission_per_ticket" color="#fbbf24" delay={0.22}>
+          <PerTicketCommissionTable
+            commissions={perTicket}
+            loading={perTicketLoading}
+            page={perTicketPage}
+            onPageChange={loadPerTicketPage}
+            hasMore={perTicketHasMore}
+          />
         </TerminalCard>
       </div>
 

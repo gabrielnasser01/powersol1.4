@@ -106,9 +106,8 @@ async function getUserProgress(walletAddress: string) {
   }));
 }
 
-async function completeMission(walletAddress: string, missionKey: string, additionalData?: Record<string, unknown>) {
+async function markMissionEligible(walletAddress: string, missionKey: string, additionalData?: Record<string, unknown>) {
   const supabase = getServiceClient();
-
   const safeMissionKey = sanitize(missionKey, 100);
 
   const { data: mission } = await supabase
@@ -130,7 +129,7 @@ async function completeMission(walletAddress: string, missionKey: string, additi
 
   if (existing?.completed) {
     if (mission.mission_type === "social" || mission.mission_type === "activity") {
-      throw new Error("Mission already completed");
+      return { alreadyCompleted: true, missionKey: safeMissionKey };
     }
 
     const now = new Date();
@@ -138,28 +137,100 @@ async function completeMission(walletAddress: string, missionKey: string, additi
     const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
 
     if (mission.mission_type === "daily" && hoursSinceReset < 24) {
-      throw new Error("Daily mission already completed today");
+      return { alreadyCompleted: true, missionKey: safeMissionKey };
     }
 
     if (mission.mission_type === "weekly" && hoursSinceReset < 168) {
-      throw new Error("Weekly mission already completed this week");
+      return { alreadyCompleted: true, missionKey: safeMissionKey };
     }
   }
+
+  const progressData = { ...(additionalData || {}), eligible: true, eligible_at: new Date().toISOString() };
 
   const { error: upsertError } = await supabase
     .from("user_mission_progress")
     .upsert({
       wallet_address: walletAddress,
       mission_id: mission.id,
-      completed: true,
-      completed_at: new Date().toISOString(),
-      progress: additionalData || {},
-      last_reset: new Date().toISOString(),
+      completed: false,
+      progress: progressData,
+      last_reset: existing?.last_reset || new Date().toISOString(),
     }, {
       onConflict: "wallet_address,mission_id",
     });
 
   if (upsertError) throw upsertError;
+
+  return {
+    eligible: true,
+    mission: mission.name,
+    missionKey: safeMissionKey,
+    powerPoints: mission.power_points,
+  };
+}
+
+async function tryMarkEligible(walletAddress: string, missionKey: string, additionalData?: Record<string, unknown>) {
+  try {
+    return await markMissionEligible(walletAddress, missionKey, additionalData);
+  } catch {
+    return null;
+  }
+}
+
+async function claimMission(walletAddress: string, missionKey: string) {
+  const supabase = getServiceClient();
+  const safeMissionKey = sanitize(missionKey, 100);
+
+  const { data: mission } = await supabase
+    .from("missions")
+    .select("*")
+    .eq("mission_key", safeMissionKey)
+    .maybeSingle();
+
+  if (!mission) {
+    throw new Error("Mission not found");
+  }
+
+  const { data: existing } = await supabase
+    .from("user_mission_progress")
+    .select("*")
+    .eq("wallet_address", walletAddress)
+    .eq("mission_id", mission.id)
+    .maybeSingle();
+
+  if (existing?.completed) {
+    if (mission.mission_type === "social" || mission.mission_type === "activity") {
+      throw new Error("Mission already claimed");
+    }
+
+    const now = new Date();
+    const lastReset = new Date(existing.last_reset);
+    const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+
+    if (mission.mission_type === "daily" && hoursSinceReset < 24) {
+      throw new Error("Mission already claimed today");
+    }
+    if (mission.mission_type === "weekly" && hoursSinceReset < 168) {
+      throw new Error("Mission already claimed this week");
+    }
+  }
+
+  if (!existing?.progress?.eligible) {
+    throw new Error("Mission not yet eligible");
+  }
+
+  const now = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("user_mission_progress")
+    .update({
+      completed: true,
+      completed_at: now,
+      last_reset: now,
+      progress: { ...existing.progress, eligible: false, claimed_at: now },
+    })
+    .eq("id", existing.id);
+
+  if (updateError) throw updateError;
 
   await supabase.rpc("increment_power_points_by_wallet", {
     wallet_param: walletAddress,
@@ -171,14 +242,6 @@ async function completeMission(walletAddress: string, missionKey: string, additi
     mission: mission.name,
     missionKey: safeMissionKey,
   };
-}
-
-async function tryCompleteMission(walletAddress: string, missionKey: string, additionalData?: Record<string, unknown>) {
-  try {
-    return await completeMission(walletAddress, missionKey, additionalData);
-  } catch {
-    return null;
-  }
 }
 
 async function checkAndCompleteTicketMilestones(walletAddress: string) {
@@ -209,18 +272,18 @@ async function checkAndCompleteTicketMilestones(walletAddress: string) {
 
   for (const [threshold, key] of milestones) {
     if (totalTickets >= threshold) {
-      const result = await tryCompleteMission(walletAddress, key);
+      const result = await tryMarkEligible(walletAddress, key);
       if (result) completed.push(result);
     }
   }
 
   if (weeklyTickets >= 5) {
-    const result = await tryCompleteMission(walletAddress, "weekly_5_tickets");
+    const result = await tryMarkEligible(walletAddress, "weekly_5_tickets");
     if (result) completed.push(result);
   }
 
   if (weeklyUniqueLotteries >= 2) {
-    const result = await tryCompleteMission(walletAddress, "weekly_buy_2_different");
+    const result = await tryMarkEligible(walletAddress, "weekly_buy_2_different");
     if (result) completed.push(result);
   }
 
@@ -249,7 +312,7 @@ async function recordTicketPurchase(walletAddress: string, body: Record<string, 
     points_param: powerPointsEarned,
   });
 
-  const dailyResult = await tryCompleteMission(walletAddress, "daily_buy_ticket");
+  const dailyResult = await tryMarkEligible(walletAddress, "daily_buy_ticket");
   const milestoneResults = await checkAndCompleteTicketMilestones(walletAddress);
   const completedMissions = [dailyResult, ...milestoneResults].filter(Boolean);
 
@@ -282,7 +345,7 @@ async function recordDonation(walletAddress: string, body: Record<string, unknow
   if (donationError) throw donationError;
 
   const result = donationResult?.[0] || { points_earned: 50, new_balance: 0, tier_matched: 0.05 };
-  const missionResult = await tryCompleteMission(walletAddress, "daily_donation", { amount_sol });
+  const missionResult = await tryMarkEligible(walletAddress, "daily_donation", { amount_sol });
 
   return {
     powerPoints: result.points_earned,
@@ -293,35 +356,11 @@ async function recordDonation(walletAddress: string, body: Record<string, unknow
 }
 
 async function completeLogin(walletAddress: string) {
-  const supabase = getServiceClient();
-
-  const { data: existing } = await supabase
-    .from("user_mission_progress")
-    .select("*, missions!inner(mission_key)")
-    .eq("wallet_address", walletAddress)
-    .eq("missions.mission_key", "daily_login")
-    .maybeSingle();
-
-  if (existing?.completed) {
-    const now = new Date();
-    const lastReset = new Date(existing.last_reset);
-    const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
-
-    if (hoursSinceReset < 24) {
-      return {
-        powerPoints: 0,
-        mission: "Daily Login",
-        alreadyCompleted: true,
-        nextAvailable: new Date(lastReset.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-      };
-    }
-  }
-
-  return await completeMission(walletAddress, "daily_login");
+  return await markMissionEligible(walletAddress, "daily_login");
 }
 
 async function recordVisit(walletAddress: string) {
-  return await tryCompleteMission(walletAddress, "daily_visit");
+  return await tryMarkEligible(walletAddress, "daily_visit");
 }
 
 async function completeSocialMission(walletAddress: string, platform: string) {
@@ -338,7 +377,7 @@ async function completeSocialMission(walletAddress: string, platform: string) {
     twitter_comment: "weekly_twitter_comment",
   };
 
-  return await completeMission(walletAddress, missionKeyMap[platform]);
+  return await markMissionEligible(walletAddress, missionKeyMap[platform]);
 }
 
 async function recordReferral(walletAddress: string, referredUserId: string) {
@@ -355,10 +394,10 @@ async function recordReferral(walletAddress: string, referredUserId: string) {
     .eq("is_valid", true);
 
   const count = (referralCount?.length || 0) + 1;
-  const completed: Record<string, unknown>[] = [];
+  const eligible: Record<string, unknown>[] = [];
 
-  const weeklyResult = await tryCompleteMission(walletAddress, "weekly_refer");
-  if (weeklyResult) completed.push(weeklyResult);
+  const weeklyResult = await tryMarkEligible(walletAddress, "weekly_refer");
+  if (weeklyResult) eligible.push(weeklyResult);
 
   const thresholds: [number, string][] = [
     [3, "social_invite_3"],
@@ -371,24 +410,24 @@ async function recordReferral(walletAddress: string, referredUserId: string) {
 
   for (const [threshold, key] of thresholds) {
     if (count >= threshold) {
-      const result = await tryCompleteMission(walletAddress, key);
-      if (result) completed.push(result);
+      const result = await tryMarkEligible(walletAddress, key);
+      if (result) eligible.push(result);
     }
   }
 
-  return { completedMissions: completed, totalReferrals: count };
+  return { eligibleMissions: eligible, totalReferrals: count };
 }
 
 async function recordFirstWin(walletAddress: string) {
-  return await completeMission(walletAddress, "activity_first_win");
+  return await markMissionEligible(walletAddress, "activity_first_win");
 }
 
 async function recordBecameAffiliate(walletAddress: string) {
-  return await completeMission(walletAddress, "activity_become_affiliate");
+  return await markMissionEligible(walletAddress, "activity_become_affiliate");
 }
 
 async function recordExploreTransparency(walletAddress: string) {
-  return await tryCompleteMission(walletAddress, "activity_explore_transparency");
+  return await tryMarkEligible(walletAddress, "activity_explore_transparency");
 }
 
 Deno.serve(async (req: Request) => {
@@ -439,6 +478,12 @@ Deno.serve(async (req: Request) => {
     } else if (req.method === "GET" && path === "/my-progress") {
       if (!walletAddress) return errorResponse("Wallet address required", 401);
       result = await getUserProgress(walletAddress);
+    } else if (req.method === "POST" && path === "/claim") {
+      if (!walletAddress) return errorResponse("Wallet address required", 401);
+      const body = await req.json().catch(() => ({}));
+      const missionKey = sanitize(body.mission_key, 100);
+      if (!missionKey) return errorResponse("Invalid mission key", 400);
+      result = await claimMission(walletAddress, missionKey);
     } else if (req.method === "POST" && path.includes("/complete")) {
       if (!walletAddress) return errorResponse("Wallet address required", 401);
       const pathParts = path.split("/");
@@ -447,7 +492,7 @@ Deno.serve(async (req: Request) => {
       const body = req.headers.get("content-type")?.includes("application/json")
         ? await req.json().catch(() => ({}))
         : {};
-      result = await completeMission(walletAddress, missionKey, body);
+      result = await markMissionEligible(walletAddress, missionKey, body);
     } else if (req.method === "POST" && path === "/ticket-purchase") {
       if (!walletAddress) return errorResponse("Wallet address required", 401);
       const body = await req.json();

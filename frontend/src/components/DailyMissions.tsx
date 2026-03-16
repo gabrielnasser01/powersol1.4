@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Trophy, Gift, CheckCircle, Clock, Zap, Users, Shield, Activity, Terminal, Heart, Share2, TrendingUp, Calendar, Star, Coins, Lock, LogIn, Ticket, MessageCircle, Repeat, ShoppingCart, Twitter, Music, MessageSquare, Eye, ShoppingBag } from 'lucide-react';
-import { theme } from '../theme';
-import { missionsStorage, userStatsStorage, Mission, userStorage } from '../store/persist';
+import { userStatsStorage, userStorage } from '../store/persist';
 import { useWallet } from '../contexts/WalletContext';
 import { useToast } from '../contexts/ToastContext';
 import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
-import { powerPointsService } from '../services/powerPointsService';
 
 const missionCategories = [
   { id: 'daily', label: 'Daily', icon: Calendar, color: '#00ff88' },
@@ -123,180 +121,80 @@ export function DailyMissions() {
     }
   };
 
-  const completeMissionAPI = async (missionKey: string): Promise<boolean> => {
+  const missionsApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/missions`;
+  const apiHeaders = {
+    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json',
+  };
+
+  const markEligibleAPI = async (missionKey: string): Promise<boolean> => {
+    if (!isConnected || !user.publicKey) return false;
+    try {
+      const res = await fetch(`${missionsApiUrl}/${missionKey}/complete?wallet_address=${user.publicKey}`, {
+        method: 'POST',
+        headers: apiHeaders,
+        body: JSON.stringify({}),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const claimMissionAPI = async (missionKey: string): Promise<boolean> => {
     if (!isConnected || !user.publicKey) return false;
 
     try {
       const mission = missions.find(m => m.mission_key === missionKey);
       if (!mission) return false;
 
-      const { data: existingProgress } = await supabase
-        .from('user_mission_progress')
-        .select('*')
-        .eq('wallet_address', user.publicKey)
-        .eq('mission_id', mission.id)
-        .maybeSingle();
+      const res = await fetch(`${missionsApiUrl}/claim?wallet_address=${user.publicKey}`, {
+        method: 'POST',
+        headers: apiHeaders,
+        body: JSON.stringify({ mission_key: missionKey }),
+      });
 
-      if (existingProgress?.completed) {
-        if (mission.mission_type === 'social' || mission.mission_type === 'activity') {
-          return false;
-        }
-
-        const lastReset = new Date(existingProgress.last_reset || existingProgress.completed_at);
-        const hoursSinceReset = (Date.now() - lastReset.getTime()) / (1000 * 60 * 60);
-
-        if (mission.mission_type === 'daily' && hoursSinceReset < 24) {
-          return false;
-        }
-        if (mission.mission_type === 'weekly' && hoursSinceReset < 168) {
-          return false;
-        }
-      }
-
-      const now = new Date().toISOString();
-      if (existingProgress) {
-        const { error: updateError } = await supabase
-          .from('user_mission_progress')
-          .update({
-            completed: true,
-            completed_at: now,
-            last_reset: now,
-          })
-          .eq('id', existingProgress.id);
-        if (updateError) {
-          console.error('Failed to update mission progress:', updateError);
-          return false;
-        }
-      } else {
-        const { error: insertError } = await supabase
-          .from('user_mission_progress')
-          .insert({
-            wallet_address: user.publicKey,
-            mission_id: mission.id,
-            completed: true,
-            completed_at: now,
-            last_reset: now,
-            progress: {},
-          });
-        if (insertError) {
-          console.error('Failed to insert mission progress:', insertError);
-          return false;
-        }
-      }
-
-      const result = await powerPointsService.addPoints(
-        user.publicKey,
-        mission.power_points,
-        'mission_complete',
-        `Completed mission: ${mission.name}`,
-        mission.id,
-        'mission'
-      );
-
-      if (!result.success) {
-        console.error('Failed to add power points:', result.error);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('Claim failed:', err);
         return false;
       }
 
+      const data = await res.json();
+
       setMissions(prev => prev.map(m =>
         m.id === mission.id
-          ? { ...m, user_progress: { completed: true, completed_at: now, progress: {} } }
-          : m
-      ));
-
-      userStatsStorage.addMissionPoints(mission.power_points);
-      window.dispatchEvent(new CustomEvent('missionPointsChange'));
-
-      setShowReward({ amount: mission.power_points });
-      setTimeout(() => setShowReward(null), 3000);
-
-      return true;
-    } catch (error) {
-      console.error('Failed to complete mission:', error);
-      return false;
-    }
-  };
-
-  const handleDailyLogin = async () => {
-    if (!isConnected || !user.publicKey) return;
-
-    try {
-      const { data, error } = await supabase.rpc('claim_daily_login_points', {
-        p_wallet_address: user.publicKey
-      });
-
-      if (error) {
-        console.error('Daily login error:', error);
-        if (error.message.includes('already claimed')) {
-          toast.info('You already claimed your daily login points today!');
-        } else {
-          toast.error('Failed to claim daily login points. Please try again.');
-        }
-        return;
-      }
-
-      const result = Array.isArray(data) ? data[0] : data;
-
-      if (result?.already_claimed) {
-        toast.info('You already claimed your daily login points today!');
-        return;
-      }
-
-      const pointsEarned = result?.points_earned || 10;
-
-      setMissions(prev => prev.map(m =>
-        m.mission_key === 'daily_login'
           ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: {} } }
           : m
       ));
 
-      const now = new Date().toISOString();
-      const mission = missions.find(m => m.mission_key === 'daily_login');
-      if (mission) {
-        const { data: existingProgress } = await supabase
-          .from('user_mission_progress')
-          .select('id')
-          .eq('wallet_address', user.publicKey)
-          .eq('mission_id', mission.id)
-          .maybeSingle();
-
-        if (existingProgress) {
-          await supabase
-            .from('user_mission_progress')
-            .update({ completed: true, completed_at: now, last_reset: now })
-            .eq('id', existingProgress.id);
-        } else {
-          await supabase
-            .from('user_mission_progress')
-            .insert({ wallet_address: user.publicKey, mission_id: mission.id, completed: true, completed_at: now, last_reset: now, progress: {} });
-        }
-      }
-
-      userStatsStorage.addMissionPoints(pointsEarned);
+      const points = data.powerPoints || mission.power_points;
+      userStatsStorage.addMissionPoints(points);
       window.dispatchEvent(new CustomEvent('missionPointsChange'));
 
-      setShowReward({ amount: pointsEarned });
+      setShowReward({ amount: points });
       setTimeout(() => setShowReward(null), 3000);
 
-      await loadMissions();
+      return true;
     } catch (error) {
-      console.error('Failed to claim daily login:', error);
-      toast.error('Failed to claim daily login points. Please try again.');
+      console.error('Failed to claim mission:', error);
+      return false;
     }
   };
 
-  const handleDailyVisit = async () => {
+  const handleClaimMission = async (missionKey: string) => {
     if (!isConnected || !user.publicKey) return;
 
     try {
-      const success = await completeMissionAPI('daily_visit');
+      const success = await claimMissionAPI(missionKey);
       if (!success) {
-        toast.info('Daily visit already recorded today!');
+        toast.info('Mission not yet eligible or already claimed!');
         return;
       }
       await loadMissions();
     } catch (error) {
-      console.error('Failed to record daily visit:', error);
+      console.error('Failed to claim mission:', error);
+      toast.error('Failed to claim mission. Please try again.');
     }
   };
 
@@ -335,46 +233,16 @@ export function DailyMissions() {
 
       setDonationTxId(signature);
 
-      const { data: donationResult, error: donationError } = await supabase.rpc('record_donation_with_tiers', {
-        p_wallet_address: walletPubKey,
-        p_amount_sol: amount,
-        p_transaction_signature: signature,
+      const res = await fetch(`${missionsApiUrl}/donation?wallet_address=${walletPubKey}`, {
+        method: 'POST',
+        headers: apiHeaders,
+        body: JSON.stringify({ amount_sol: amount, transaction_signature: signature }),
       });
 
-      if (donationError) {
-        console.error('Donation record error:', donationError);
-      }
+      const donationData = await res.json().catch(() => ({}));
+      const donationPoints = donationData?.powerPoints || getDonationTierPoints(amount).points;
 
-      const donationResultRow = Array.isArray(donationResult) ? donationResult[0] : donationResult;
-      const donationPoints = donationResultRow?.points_earned || getDonationTierPoints(amount).points;
-
-      const now = new Date().toISOString();
-      const mission = missions.find(m => m.mission_key === 'daily_donation');
-      if (mission) {
-        const { data: existingProgress } = await supabase
-          .from('user_mission_progress')
-          .select('id')
-          .eq('wallet_address', walletPubKey)
-          .eq('mission_id', mission.id)
-          .maybeSingle();
-
-        if (existingProgress) {
-          await supabase
-            .from('user_mission_progress')
-            .update({ completed: true, completed_at: now, last_reset: now })
-            .eq('id', existingProgress.id);
-        } else {
-          await supabase
-            .from('user_mission_progress')
-            .insert({ wallet_address: walletPubKey, mission_id: mission.id, completed: true, completed_at: now, last_reset: now, progress: {} });
-        }
-
-        setMissions(prev => prev.map(m =>
-          m.id === mission.id
-            ? { ...m, user_progress: { completed: true, completed_at: now, progress: {} } }
-            : m
-        ));
-      }
+      await claimMissionAPI('daily_donation');
 
       userStatsStorage.addMissionPoints(donationPoints);
       window.dispatchEvent(new CustomEvent('missionPointsChange'));
@@ -718,16 +586,11 @@ export function DailyMissions() {
               const categoryColor = getCategoryColor(mission.mission_type);
               const isCompleted = mission.user_progress?.completed || false;
               const isDonationMission = mission.mission_key === 'daily_donation';
-              const clickableSocialKeys = new Set([
-                'social_discord_join', 'social_join_discord', 'social_twitter_follow',
-                'social_tiktok_follow', 'social_share',
-              ]);
-              const isAutoMission = (mission.mission_key.startsWith('social_invite_') ||
-                (mission.mission_key.startsWith('social_') && !clickableSocialKeys.has(mission.mission_key)) ||
-                mission.mission_key.startsWith('weekly_') ||
-                (mission.mission_key.startsWith('activity_') && mission.mission_key !== 'activity_explore_transparency') ||
-                mission.mission_key === 'daily_buy_ticket');
-              const isClickable = !isCompleted && !isAutoMission;
+              const isEligible = !isCompleted && mission.user_progress?.progress?.eligible === true;
+              const isClickable = !isCompleted && (isEligible || isDonationMission ||
+                ['daily_login', 'daily_visit', 'social_discord_join', 'social_join_discord',
+                 'social_twitter_follow', 'social_tiktok_follow', 'social_share',
+                 'activity_explore_transparency'].includes(mission.mission_key));
 
               return (
                 <motion.div
@@ -750,13 +613,18 @@ export function DailyMissions() {
                       : `0 0 20px ${categoryColor}30`,
                     backdropFilter: 'blur(20px)',
                   }}
-                  onClick={() => {
+                  onClick={async () => {
                     if (!isConnected) {
                       toast.warning('Please connect your wallet first to complete missions!');
                       return;
                     }
 
                     if (isCompleted) return;
+
+                    if (isEligible) {
+                      handleClaimMission(mission.mission_key);
+                      return;
+                    }
 
                     if (isDonationMission) {
                       setDonationTxId('');
@@ -765,52 +633,51 @@ export function DailyMissions() {
                     }
 
                     if (mission.mission_key === 'daily_login') {
-                      handleDailyLogin();
+                      await markEligibleAPI('daily_login');
+                      handleClaimMission('daily_login');
                       return;
                     }
 
                     if (mission.mission_key === 'daily_visit') {
-                      handleDailyVisit();
+                      await markEligibleAPI('daily_visit');
+                      handleClaimMission('daily_visit');
                       return;
                     }
 
                     if (mission.mission_key === 'social_join_discord' || mission.mission_key === 'social_discord_join') {
-                      completeMissionAPI(mission.mission_key).catch(() => {});
                       window.open('https://discord.gg/powersol', '_blank');
+                      await markEligibleAPI(mission.mission_key);
+                      handleClaimMission(mission.mission_key);
                       return;
                     }
 
                     if (mission.mission_key === 'social_twitter_follow') {
-                      completeMissionAPI('social_twitter_follow').catch(() => {});
                       window.open('https://twitter.com/powersol_io', '_blank');
+                      await markEligibleAPI('social_twitter_follow');
+                      handleClaimMission('social_twitter_follow');
                       return;
                     }
 
                     if (mission.mission_key === 'social_tiktok_follow') {
-                      completeMissionAPI('social_tiktok_follow').catch(() => {});
                       window.open('https://tiktok.com/@powersol', '_blank');
+                      await markEligibleAPI('social_tiktok_follow');
+                      handleClaimMission('social_tiktok_follow');
                       return;
                     }
 
                     if (mission.mission_key === 'social_share') {
                       const shareUrl = 'https://powersol.io';
                       const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
-                      completeMissionAPI('social_share').catch(() => {});
                       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+                      await markEligibleAPI('social_share');
+                      handleClaimMission('social_share');
                       return;
                     }
 
                     if (mission.mission_key === 'activity_explore_transparency') {
-                      completeMissionAPI('activity_explore_transparency').then(() => {
-                        window.location.href = '/transparency';
-                      });
-                      return;
-                    }
-
-                    if (mission.mission_key.startsWith('social_invite_') ||
-                        mission.mission_key.startsWith('weekly_') ||
-                        mission.mission_key.startsWith('activity_') ||
-                        mission.mission_key === 'daily_buy_ticket') {
+                      await markEligibleAPI('activity_explore_transparency');
+                      await claimMissionAPI('activity_explore_transparency');
+                      window.location.href = '/transparency';
                       return;
                     }
                   }}
@@ -903,15 +770,25 @@ export function DailyMissions() {
                         <CheckCircle className="w-4 h-4" />
                         <span>COMPLETE</span>
                       </div>
-                    ) : isAutoMission ? (
-                      <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: '#888888' }}>
-                        <Activity className="w-4 h-4" />
-                        <span>AUTO</span>
-                      </div>
-                    ) : (
+                    ) : isEligible ? (
+                      <motion.div
+                        className="flex items-center space-x-1 text-sm font-mono"
+                        style={{ color: categoryColor }}
+                        animate={{ scale: [1, 1.05, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        <Gift className="w-4 h-4" />
+                        <span>CLAIM</span>
+                      </motion.div>
+                    ) : isClickable ? (
                       <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: categoryColor }}>
                         <Clock className="w-4 h-4" />
                         <span>CLAIM</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: '#555555' }}>
+                        <Clock className="w-4 h-4" />
+                        <span>PENDING</span>
                       </div>
                     )}
                   </div>

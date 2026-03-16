@@ -356,7 +356,21 @@ async function recordDonation(walletAddress: string, body: Record<string, unknow
 }
 
 async function completeLogin(walletAddress: string) {
-  return await markMissionEligible(walletAddress, "daily_login");
+  const supabase = getServiceClient();
+  const loginResult = await markMissionEligible(walletAddress, "daily_login");
+
+  const { data: userData } = await supabase
+    .from("users")
+    .select("login_streak")
+    .eq("wallet_address", walletAddress)
+    .maybeSingle();
+
+  const streak = userData?.login_streak || 0;
+  if (streak >= 7) {
+    await tryMarkEligible(walletAddress, "weekly_streak");
+  }
+
+  return { ...loginResult, loginStreak: streak };
 }
 
 async function recordVisit(walletAddress: string) {

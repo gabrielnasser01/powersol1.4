@@ -42,6 +42,7 @@ export function DailyMissions() {
   const [loading, setLoading] = useState(true);
   const [donationAmount, setDonationAmount] = useState('0.05');
   const [showDonationModal, setShowDonationModal] = useState(false);
+  const [loginStreak, setLoginStreak] = useState(0);
   const { publicKey: walletPubKey, connected: walletConnected, getWalletAdapter, refreshBalance } = useWallet();
   const toast = useToast();
 
@@ -98,10 +99,19 @@ export function DailyMissions() {
       }
 
       if (user.publicKey && isConnected) {
-        const { data: allProgress } = await supabase
-          .from('user_mission_progress')
-          .select('*')
-          .eq('wallet_address', user.publicKey);
+        const [{ data: allProgress }, { data: userData }] = await Promise.all([
+          supabase
+            .from('user_mission_progress')
+            .select('*')
+            .eq('wallet_address', user.publicKey),
+          supabase
+            .from('users')
+            .select('login_streak')
+            .eq('wallet_address', user.publicKey)
+            .maybeSingle(),
+        ]);
+
+        setLoginStreak(userData?.login_streak || 0);
 
         const progressMap = new Map(
           (allProgress || []).map(p => [p.mission_id, p])
@@ -756,6 +766,48 @@ export function DailyMissions() {
                   <p className="text-sm text-zinc-400 mb-4 font-mono">
                     {mission.description}
                   </p>
+
+                  {mission.mission_key === 'weekly_streak' && isConnected && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-mono" style={{ color: categoryColor }}>
+                          STREAK
+                        </span>
+                        <span className="text-xs font-mono font-bold" style={{ color: '#ffffff' }}>
+                          {Math.min(loginStreak, 7)}/7 DAYS
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{
+                            background: `linear-gradient(90deg, ${categoryColor}, ${categoryColor}cc)`,
+                            boxShadow: `0 0 8px ${categoryColor}60`,
+                          }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(Math.min(loginStreak, 7) / 7) * 100}%` }}
+                          transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-1.5">
+                        {Array.from({ length: 7 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-mono font-bold"
+                            style={{
+                              background: i < loginStreak
+                                ? `${categoryColor}30`
+                                : 'rgba(255,255,255,0.05)',
+                              border: `1px solid ${i < loginStreak ? categoryColor : 'rgba(255,255,255,0.1)'}`,
+                              color: i < loginStreak ? categoryColor : '#555',
+                            }}
+                          >
+                            {i + 1}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">

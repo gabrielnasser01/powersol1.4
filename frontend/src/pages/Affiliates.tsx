@@ -182,7 +182,7 @@ export function Affiliates() {
         full_name: formData.name,
         email: formData.email,
         country: formData.country,
-        social_media: formData.social || undefined,
+        social_media: formData.social,
         marketing_experience: formData.experience || undefined,
         marketing_strategy: formData.message,
       });
@@ -768,13 +768,14 @@ export function Affiliates() {
                   
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
-                      Social Media / Website
+                      Social Media / Website *
                     </label>
                     <input
                       type="url"
                       name="social"
                       value={formData.social}
                       onChange={handleInputChange}
+                      required
                       className="w-full p-2.5 rounded-lg border bg-transparent text-white placeholder-zinc-500 focus:outline-none focus:ring-2 text-sm"
                       style={{
                         borderColor: theme.colors.border,

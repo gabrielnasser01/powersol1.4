@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Users, TrendingUp, DollarSign, Crown, Star, Copy, Check, ExternalLink, ArrowRight, Sparkles, Loader, LayoutDashboard, Lock } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, Crown, Star, Copy, Check, ExternalLink, ArrowRight, Sparkles, Loader, LayoutDashboard, Lock, AlertTriangle } from 'lucide-react';
 import { theme } from '../theme';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { apiClient } from '../services/api';
@@ -72,6 +72,7 @@ export function Affiliates() {
   const [copied, setCopied] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus>({
@@ -841,6 +842,36 @@ export function Affiliates() {
                   </div>
                 )}
 
+                <div
+                  className="p-4 rounded-lg flex items-start gap-3"
+                  style={{
+                    background: 'rgba(251, 191, 36, 0.08)',
+                    border: '1px solid rgba(251, 191, 36, 0.3)',
+                  }}
+                >
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: '#fbbf24' }}>
+                      Important Warning
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: 'rgba(251, 191, 36, 0.8)' }}>
+                      Providing incorrect or false information may result in disqualification from affiliate rewards and airdrop eligibility. Please ensure all data is accurate before submitting.
+                    </p>
+                    <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={acceptedTerms}
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        className="w-4 h-4 rounded border-2 accent-amber-400 cursor-pointer"
+                        style={{ accentColor: '#fbbf24' }}
+                      />
+                      <span className="text-xs font-medium" style={{ color: '#fbbf24' }}>
+                        I confirm that all information provided is accurate and truthful.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-4">
                   <motion.button
                     type="button"
@@ -861,7 +892,7 @@ export function Affiliates() {
                   <motion.button
                     ref={applyButtonRef}
                     type="submit"
-                    disabled={isSubmitting || submitStatus === 'success'}
+                    disabled={isSubmitting || submitStatus === 'success' || !acceptedTerms}
                     className="flex-1 py-2.5 rounded-lg font-semibold transition-all duration-300 text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{
                       background: theme.gradients.button,

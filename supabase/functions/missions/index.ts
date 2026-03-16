@@ -153,19 +153,21 @@ async function markMissionEligible(walletAddress: string, missionKey: string, ad
     .maybeSingle();
 
   if (existing?.completed) {
-    if (mission.mission_type === "social" || mission.mission_type === "activity") {
+    if (safeMissionKey === "weekly_streak") {
+      // no time gate - streak resets to 0 on claim, so reaching 7 again is the only guard
+    } else if (mission.mission_type === "social" || mission.mission_type === "activity") {
       return { alreadyCompleted: true, missionKey: safeMissionKey };
-    }
+    } else {
+      const now = new Date();
+      const claimedAt = new Date(existing.completed_at || existing.last_reset);
 
-    const now = new Date();
-    const claimedAt = new Date(existing.completed_at || existing.last_reset);
+      if (mission.mission_type === "daily" && isWithinCurrentDay(claimedAt, now)) {
+        return { alreadyCompleted: true, missionKey: safeMissionKey };
+      }
 
-    if (mission.mission_type === "daily" && isWithinCurrentDay(claimedAt, now)) {
-      return { alreadyCompleted: true, missionKey: safeMissionKey };
-    }
-
-    if (mission.mission_type === "weekly" && isWithinCurrentWeek(claimedAt, now)) {
-      return { alreadyCompleted: true, missionKey: safeMissionKey };
+      if (mission.mission_type === "weekly" && isWithinCurrentWeek(claimedAt, now)) {
+        return { alreadyCompleted: true, missionKey: safeMissionKey };
+      }
     }
   }
 
@@ -223,18 +225,20 @@ async function claimMission(walletAddress: string, missionKey: string) {
     .maybeSingle();
 
   if (existing?.completed) {
-    if (mission.mission_type === "social" || mission.mission_type === "activity") {
+    if (safeMissionKey === "weekly_streak") {
+      // no time gate - eligible flag is the only guard
+    } else if (mission.mission_type === "social" || mission.mission_type === "activity") {
       throw new Error("Mission already claimed");
-    }
+    } else {
+      const now = new Date();
+      const claimedAt = new Date(existing.completed_at || existing.last_reset);
 
-    const now = new Date();
-    const claimedAt = new Date(existing.completed_at || existing.last_reset);
-
-    if (mission.mission_type === "daily" && isWithinCurrentDay(claimedAt, now)) {
-      throw new Error("Mission already claimed today");
-    }
-    if (mission.mission_type === "weekly" && isWithinCurrentWeek(claimedAt, now)) {
-      throw new Error("Mission already claimed this week");
+      if (mission.mission_type === "daily" && isWithinCurrentDay(claimedAt, now)) {
+        throw new Error("Mission already claimed today");
+      }
+      if (mission.mission_type === "weekly" && isWithinCurrentWeek(claimedAt, now)) {
+        throw new Error("Mission already claimed this week");
+      }
     }
   }
 

@@ -11,6 +11,31 @@ const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const VALID_PLATFORMS = new Set(["discord", "twitter_follow", "tiktok_follow", "twitter_like", "twitter_repost", "twitter_comment"]);
 const VALID_MISSION_TYPES = new Set(["daily", "weekly", "social", "activity", "special"]);
 
+function getStartOfDayGMT(date: Date): Date {
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 1, 0);
+  return d;
+}
+
+function getStartOfWeekGMT(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  d.setUTCHours(0, 0, 1, 0);
+  return d;
+}
+
+function isWithinCurrentDay(claimedAt: Date, now: Date): boolean {
+  const todayStart = getStartOfDayGMT(now);
+  return claimedAt >= todayStart;
+}
+
+function isWithinCurrentWeek(claimedAt: Date, now: Date): boolean {
+  const weekStart = getStartOfWeekGMT(now);
+  return claimedAt >= weekStart;
+}
+
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 function checkRateLimit(key: string, maxRequests = 30, windowMs = 60000): boolean {
@@ -133,14 +158,13 @@ async function markMissionEligible(walletAddress: string, missionKey: string, ad
     }
 
     const now = new Date();
-    const lastReset = new Date(existing.last_reset);
-    const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+    const claimedAt = new Date(existing.completed_at || existing.last_reset);
 
-    if (mission.mission_type === "daily" && hoursSinceReset < 24) {
+    if (mission.mission_type === "daily" && isWithinCurrentDay(claimedAt, now)) {
       return { alreadyCompleted: true, missionKey: safeMissionKey };
     }
 
-    if (mission.mission_type === "weekly" && hoursSinceReset < 168) {
+    if (mission.mission_type === "weekly" && isWithinCurrentWeek(claimedAt, now)) {
       return { alreadyCompleted: true, missionKey: safeMissionKey };
     }
   }
@@ -204,13 +228,12 @@ async function claimMission(walletAddress: string, missionKey: string) {
     }
 
     const now = new Date();
-    const lastReset = new Date(existing.last_reset);
-    const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+    const claimedAt = new Date(existing.completed_at || existing.last_reset);
 
-    if (mission.mission_type === "daily" && hoursSinceReset < 24) {
+    if (mission.mission_type === "daily" && isWithinCurrentDay(claimedAt, now)) {
       throw new Error("Mission already claimed today");
     }
-    if (mission.mission_type === "weekly" && hoursSinceReset < 168) {
+    if (mission.mission_type === "weekly" && isWithinCurrentWeek(claimedAt, now)) {
       throw new Error("Mission already claimed this week");
     }
   }

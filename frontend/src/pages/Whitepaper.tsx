@@ -170,7 +170,7 @@ const sections: Section[] = [
     badgeColor: theme.colors.success,
     content: 'Affiliates receive weekly rewards based on the number of validated referrals. The program offers up to 30% of total revenues across 4 tiers.',
     details: [
-      'Payouts every Wednesday at 23:59:59 GMT',
+      'Payouts every Wednesday at 00:00:01 GMT',
     ],
     table: {
       headers: ['Tier', 'Referral Requirement', 'Revenue Share (%)'],

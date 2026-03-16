@@ -194,6 +194,22 @@ async function updateApplicationStatus(applicationId: string, body: Record<strin
               manual_tier: 1,
             });
         }
+
+        try {
+          const baseUrl = Deno.env.get("SUPABASE_URL");
+          await fetch(
+            `${baseUrl}/functions/v1/missions/became-affiliate?wallet_address=${encodeURIComponent(app.wallet_address)}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+            }
+          );
+        } catch (err) {
+          console.error("Failed to trigger affiliate mission:", err);
+        }
       }
     }
   }

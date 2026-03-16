@@ -464,6 +464,24 @@ async function executeDraw(supabase: any, lottery: any) {
     }
   }
 
+  if (winners.length > 0) {
+    const uniqueWinnerWallets = [...new Set(winners.map((w) => w.wallet_address))];
+    const baseUrl = Deno.env.get("SUPABASE_URL");
+    for (const wallet of uniqueWinnerWallets) {
+      try {
+        await fetch(`${baseUrl}/functions/v1/missions/first-win?wallet_address=${encodeURIComponent(wallet)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+        });
+      } catch (err) {
+        console.error(`Failed to trigger first-win mission for ${wallet}:`, err);
+      }
+    }
+  }
+
   return {
     lottery_id: lottery.lottery_id,
     lottery_type: lottery.lottery_type,

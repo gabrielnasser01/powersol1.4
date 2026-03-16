@@ -420,14 +420,11 @@ export function Transparency() {
           {fairnessFeatures.map((feature, index) => {
             const Icon = feature.icon;
             const latestDraw = draws[0] || null;
-            const solscanHash = index === 0
+            const vrfHash = index === 0
               ? latestDraw?.seedHash
               : index === 1
                 ? latestDraw?.commitHash
                 : null;
-            const solscanUrl = solscanHash
-              ? `https://solscan.io/tx/${solscanHash}?cluster=devnet`
-              : null;
 
             return (
               <motion.div
@@ -514,12 +511,10 @@ export function Transparency() {
                       ))}
                     </div>
                   </div>
-                ) : solscanUrl ? (
-                  <motion.a
-                    href={solscanUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-3 rounded-lg font-mono text-xs cursor-pointer group"
+                ) : vrfHash ? (
+                  <motion.button
+                    onClick={() => document.getElementById('draw-vrf-log')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="block w-full text-left p-3 rounded-lg font-mono text-xs cursor-pointer group"
                     style={{
                       background: 'rgba(0, 0, 0, 0.7)',
                       border: '1px solid rgba(0, 255, 136, 0.3)',
@@ -541,10 +536,10 @@ export function Transparency() {
                       />
                     </div>
                     <div className="mt-2 flex items-center gap-1.5 text-green-300/70 group-hover:text-green-300 transition-colors">
-                      <span className="truncate max-w-[180px]">{solscanHash}</span>
-                      <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate max-w-[200px]">{vrfHash}</span>
+                      <ChevronRight className="w-3 h-3 flex-shrink-0" />
                     </div>
-                  </motion.a>
+                  </motion.button>
                 ) : (
                   <div
                     className="p-3 rounded-lg font-mono text-xs"

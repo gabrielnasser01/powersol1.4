@@ -174,7 +174,7 @@ export function DashboardSupport() {
               </div>
               <div className="flex-1">
                 <p className="font-mono text-sm text-white">Email Support</p>
-                <p className="text-xs text-zinc-500 font-mono">affiliates@powersol.io</p>
+                <p className="text-xs text-zinc-500 font-mono">support@powersol.app</p>
               </div>
               <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-cyan-400 transition-colors" />
             </a>

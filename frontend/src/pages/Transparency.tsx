@@ -61,24 +61,18 @@ const fairnessFeatures = [
     title: 'VRF_RANDOMNESS.EXE',
     description: 'VRF (Verifiable Random Function) ensures truly random and tamper-proof draw results. Military-grade entropy generation.',
     terminalCode: '> vrf.verify(seed_hash)',
-    link: '#draw-vrf-log',
-    linkLabel: 'View VRF Logs',
   },
   {
     icon: Eye,
     title: 'AUDIT_PROTOCOL.SYS',
     description: 'Every draw can be independently verified using our verification protocols. Complete audit trail available.',
     terminalCode: '> verify_draw.exe --hash=0xa1b2c3',
-    link: '#draw-vrf-log',
-    linkLabel: 'Verify Draws',
   },
   {
     icon: CheckCircle,
     title: 'PRIZEPOOL_LEDGER.DB',
     description: 'All draws are recorded on the Solana blockchain, making them permanent and unchangeable. Distributed ledger security.',
     terminalCode: '> solana_scan.check_transaction()',
-    link: null,
-    linkLabel: null,
   },
 ];
 
@@ -425,6 +419,16 @@ export function Transparency() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {fairnessFeatures.map((feature, index) => {
             const Icon = feature.icon;
+            const latestDraw = draws[0] || null;
+            const solscanHash = index === 0
+              ? latestDraw?.seedHash
+              : index === 1
+                ? latestDraw?.commitHash
+                : null;
+            const solscanUrl = solscanHash
+              ? `https://solscan.io/tx/${solscanHash}?cluster=devnet`
+              : null;
+
             return (
               <motion.div
                 key={index}
@@ -510,13 +514,11 @@ export function Transparency() {
                       ))}
                     </div>
                   </div>
-                ) : (
+                ) : solscanUrl ? (
                   <motion.a
-                    href={feature.link!}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById('draw-vrf-log')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
+                    href={solscanUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="block p-3 rounded-lg font-mono text-xs cursor-pointer group"
                     style={{
                       background: 'rgba(0, 0, 0, 0.7)',
@@ -538,13 +540,33 @@ export function Transparency() {
                         transition={{ duration: 0.8, repeat: Infinity }}
                       />
                     </div>
-                    <div
-                      className="mt-2 flex items-center gap-1.5 text-green-300/70 group-hover:text-green-300 transition-colors"
-                    >
-                      <span>{feature.linkLabel}</span>
-                      <ChevronRight className="w-3 h-3" />
+                    <div className="mt-2 flex items-center gap-1.5 text-green-300/70 group-hover:text-green-300 transition-colors">
+                      <span className="truncate max-w-[180px]">{solscanHash}</span>
+                      <ExternalLink className="w-3 h-3 flex-shrink-0" />
                     </div>
                   </motion.a>
+                ) : (
+                  <div
+                    className="p-3 rounded-lg font-mono text-xs"
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.7)',
+                      border: '1px solid rgba(0, 255, 136, 0.15)',
+                      color: 'rgba(0, 255, 136, 0.4)',
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{feature.terminalCode}</span>
+                      <motion.span
+                        className="inline-block w-2 h-4"
+                        style={{ background: 'rgba(0, 255, 136, 0.4)' }}
+                        animate={{ opacity: [1, 0, 1] }}
+                        transition={{ duration: 0.8, repeat: Infinity }}
+                      />
+                    </div>
+                    <div className="mt-2 text-green-300/40 text-xs">
+                      Awaiting first draw...
+                    </div>
+                  </div>
                 )}
               </motion.div>
             );

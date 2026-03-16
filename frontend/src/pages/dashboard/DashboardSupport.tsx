@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Send, Mail, FileText, ExternalLink, HelpCircle, BookOpen, Shield } from 'lucide-react';
+import { MessageCircle, Mail, FileText, ExternalLink, HelpCircle, BookOpen, Shield } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { useWallet } from '../../contexts/WalletContext';
 import { affiliateDashboardService } from '../../services/affiliateDashboardService';
@@ -150,15 +150,6 @@ export function DashboardSupport() {
           href="https://discord.gg/powersol"
           color="#5865F2"
           delay={0}
-        />
-
-        <SupportButton
-          icon={Send}
-          label="Telegram Channel"
-          description="Follow our Telegram for instant updates, tips, and direct affiliate support."
-          href="https://t.me/powersol"
-          color="#0088cc"
-          delay={0.1}
         />
       </div>
 

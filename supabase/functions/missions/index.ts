@@ -260,6 +260,13 @@ async function claimMission(walletAddress: string, missionKey: string) {
     points_param: mission.power_points,
   });
 
+  if (safeMissionKey === "weekly_streak") {
+    await supabase
+      .from("users")
+      .update({ login_streak: 0 })
+      .eq("wallet_address", walletAddress);
+  }
+
   return {
     powerPoints: mission.power_points,
     mission: mission.name,
@@ -381,6 +388,8 @@ async function recordDonation(walletAddress: string, body: Record<string, unknow
 async function completeLogin(walletAddress: string) {
   const supabase = getServiceClient();
   const loginResult = await markMissionEligible(walletAddress, "daily_login");
+
+  await supabase.rpc("claim_daily_login_points", { p_wallet_address: walletAddress });
 
   const { data: userData } = await supabase
     .from("users")

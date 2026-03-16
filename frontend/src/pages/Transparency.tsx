@@ -60,7 +60,7 @@ const fairnessFeatures = [
     icon: Shield,
     title: 'VRF_RANDOMNESS.EXE',
     description: 'VRF (Verifiable Random Function) ensures truly random and tamper-proof draw results. Military-grade entropy generation.',
-    terminalCode: '> chainlink_vrf.verify(seed_hash)',
+    terminalCode: '> vrf.verify(seed_hash)',
   },
   {
     icon: Eye,
@@ -70,7 +70,7 @@ const fairnessFeatures = [
   },
   {
     icon: CheckCircle,
-    title: 'BLOCKCHAIN_LEDGER.DB',
+    title: 'PRIZEPOOL_LEDGER.DB',
     description: 'All draws are recorded on the Solana blockchain, making them permanent and unchangeable. Distributed ledger security.',
     terminalCode: '> solana_scan.check_transaction()',
   },

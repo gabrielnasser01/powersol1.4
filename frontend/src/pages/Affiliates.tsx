@@ -9,6 +9,7 @@ import { affiliateDashboardService, ApplicationStatus } from '../services/affili
 import { useWallet } from '../contexts/WalletContext';
 import { supabase } from '../lib/supabase';
 import { solPriceService } from '../services/solPriceService';
+import { countries } from '../utils/countries';
 
 const affiliateTiers = [
   { 
@@ -180,10 +181,10 @@ export function Affiliates() {
         wallet_address: walletToUse,
         full_name: formData.name,
         email: formData.email,
-        country: formData.country || undefined,
+        country: formData.country,
         social_media: formData.social || undefined,
         marketing_experience: formData.experience || undefined,
-        marketing_strategy: formData.message || undefined,
+        marketing_strategy: formData.message,
       });
 
       setSubmitStatus('success');
@@ -745,12 +746,13 @@ export function Affiliates() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
-                      Country
+                      Country *
                     </label>
                     <select
                       name="country"
                       value={formData.country}
                       onChange={handleInputChange}
+                      required
                       className="w-full p-2.5 rounded-lg border bg-transparent text-white focus:outline-none focus:ring-2 text-sm"
                       style={{
                         borderColor: theme.colors.border,
@@ -758,15 +760,9 @@ export function Affiliates() {
                       }}
                     >
                       <option value="" className="bg-gray-800">Select Country</option>
-                      <option value="US" className="bg-gray-800">United States</option>
-                      <option value="BR" className="bg-gray-800">Brazil</option>
-                      <option value="UK" className="bg-gray-800">United Kingdom</option>
-                      <option value="CA" className="bg-gray-800">Canada</option>
-                      <option value="AU" className="bg-gray-800">Australia</option>
-                      <option value="DE" className="bg-gray-800">Germany</option>
-                      <option value="FR" className="bg-gray-800">France</option>
-                      <option value="JP" className="bg-gray-800">Japan</option>
-                      <option value="other" className="bg-gray-800">Other</option>
+                      {countries.map((c) => (
+                        <option key={c.code} value={c.code} className="bg-gray-800">{c.name}</option>
+                      ))}
                     </select>
                   </div>
                   
@@ -813,12 +809,13 @@ export function Affiliates() {
 
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
-                    Tell us about your marketing strategy
+                    Tell us about your marketing strategy *
                   </label>
                   <textarea
                     name="message"
                     value={formData.message}
                     onChange={handleInputChange}
+                    required
                     rows={3}
                     className="w-full p-2.5 rounded-lg border bg-transparent text-white placeholder-zinc-500 focus:outline-none focus:ring-2 resize-none text-sm"
                     style={{

@@ -12,6 +12,7 @@ import { useWallet } from '../contexts/WalletContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { solPriceService } from '../services/solPriceService';
+import { countries } from '../utils/countries';
 
 export function Profile() {
   const navigate = useNavigate();
@@ -1151,18 +1152,22 @@ export function Profile() {
                       LOCATION:
                     </label>
                     <div className="relative">
-                      <Globe className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: '#b347ff' }} />
-                      <input
-                        type="text"
+                      <Globe className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 pointer-events-none z-10" style={{ color: '#b347ff' }} />
+                      <select
                         value={personalInfo.location}
                         onChange={(e) => setPersonalInfo({ ...personalInfo, location: e.target.value })}
-                        className="w-full p-2 sm:p-3 pl-9 sm:pl-10 rounded-lg font-mono text-xs sm:text-sm"
+                        className="w-full p-2 sm:p-3 pl-9 sm:pl-10 rounded-lg font-mono text-xs sm:text-sm appearance-none"
                         style={{
                           background: 'rgba(0, 0, 0, 0.6)',
                           border: '1px solid rgba(179, 71, 255, 0.3)',
                           color: '#ff1493',
                         }}
-                      />
+                      >
+                        <option value="" style={{ background: '#1a1a2e' }}>Select Country</option>
+                        {countries.map((c) => (
+                          <option key={c.code} value={c.code} style={{ background: '#1a1a2e' }}>{c.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 

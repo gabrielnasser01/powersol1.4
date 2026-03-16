@@ -166,7 +166,7 @@ export function DashboardSupport() {
         <TerminalCard title="quick_support" color="#3ecbff" delay={0.2}>
           <div className="space-y-4">
             <a
-              href="mailto:affiliates@powersol.io"
+              href="mailto:support@powersol.app"
               className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors group"
             >
               <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">

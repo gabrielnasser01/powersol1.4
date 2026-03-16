@@ -104,7 +104,7 @@ const faqItems = [
   },
   {
     question: 'When can I claim my earnings?',
-    answer: 'Earnings are released every Wednesday at 23:59:59 GMT. After release, you can claim your accumulated rewards.',
+    answer: 'Earnings are released every Wednesday at 00:00:01 GMT. After release, you can claim your accumulated rewards.',
   },
   {
     question: 'How do I upgrade my tier?',

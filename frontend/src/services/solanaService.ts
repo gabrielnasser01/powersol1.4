@@ -51,23 +51,12 @@ class SolanaService {
 
   async getAffiliateTierForBuyer(buyerWallet: string): Promise<number> {
     try {
-      const { data: user } = await supabase
-        .from('users')
-        .select('id')
-        .eq('wallet_address', buyerWallet)
-        .maybeSingle();
+      const { data, error } = await supabase
+        .rpc('get_affiliate_tier_for_buyer', { buyer_wallet: buyerWallet });
 
-      if (!user) return 0;
+      if (error || data === null || data === undefined) return 0;
 
-      const { data: referral } = await supabase
-        .from('referrals')
-        .select('referrer_affiliate_id, affiliates!referrer_affiliate_id(manual_tier)')
-        .eq('referred_user_id', user.id)
-        .maybeSingle();
-
-      if (!referral || !(referral as any).affiliates) return 0;
-
-      return (referral as any).affiliates.manual_tier || 1;
+      return data as number;
     } catch {
       return 0;
     }

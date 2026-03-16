@@ -61,18 +61,24 @@ const fairnessFeatures = [
     title: 'VRF_RANDOMNESS.EXE',
     description: 'VRF (Verifiable Random Function) ensures truly random and tamper-proof draw results. Military-grade entropy generation.',
     terminalCode: '> vrf.verify(seed_hash)',
+    link: '#draw-vrf-log',
+    linkLabel: 'View VRF Logs',
   },
   {
     icon: Eye,
     title: 'AUDIT_PROTOCOL.SYS',
     description: 'Every draw can be independently verified using our verification protocols. Complete audit trail available.',
     terminalCode: '> verify_draw.exe --hash=0xa1b2c3',
+    link: '#draw-vrf-log',
+    linkLabel: 'Verify Draws',
   },
   {
     icon: CheckCircle,
     title: 'PRIZEPOOL_LEDGER.DB',
     description: 'All draws are recorded on the Solana blockchain, making them permanent and unchangeable. Distributed ledger security.',
     terminalCode: '> solana_scan.check_transaction()',
+    link: null,
+    linkLabel: null,
   },
 ];
 
@@ -157,10 +163,11 @@ function DrawDataSection({
 
   return (
     <motion.div
+      id="draw-vrf-log"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 0.4 }}
-      className="max-w-4xl mx-auto"
+      className="max-w-4xl mx-auto scroll-mt-24"
     >
       <div className="flex items-center justify-center space-x-3 mb-8">
         <div
@@ -504,16 +511,40 @@ export function Transparency() {
                     </div>
                   </div>
                 ) : (
-                  <div
-                    className="p-3 rounded-lg font-mono text-xs"
+                  <motion.a
+                    href={feature.link!}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('draw-vrf-log')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="block p-3 rounded-lg font-mono text-xs cursor-pointer group"
                     style={{
                       background: 'rgba(0, 0, 0, 0.7)',
                       border: '1px solid rgba(0, 255, 136, 0.3)',
                       color: '#00ff88',
                     }}
+                    whileHover={{
+                      borderColor: '#00ff88',
+                      boxShadow: '0 0 20px rgba(0, 255, 136, 0.5)',
+                    }}
+                    whileTap={{ scale: 0.97 }}
                   >
-                    {feature.terminalCode}
-                  </div>
+                    <div className="flex items-center justify-between">
+                      <span>{feature.terminalCode}</span>
+                      <motion.span
+                        className="inline-block w-2 h-4"
+                        style={{ background: '#00ff88' }}
+                        animate={{ opacity: [1, 0, 1] }}
+                        transition={{ duration: 0.8, repeat: Infinity }}
+                      />
+                    </div>
+                    <div
+                      className="mt-2 flex items-center gap-1.5 text-green-300/70 group-hover:text-green-300 transition-colors"
+                    >
+                      <span>{feature.linkLabel}</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </div>
+                  </motion.a>
                 )}
               </motion.div>
             );

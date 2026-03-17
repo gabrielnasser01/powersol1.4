@@ -68,30 +68,6 @@ export function Hero() {
           }}
         />
 
-        {/* Scanning Lines Effect */}
-        <motion.div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `
-              repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(62, 203, 255, 0.03) 2px,
-                rgba(62, 203, 255, 0.03) 4px
-              )
-            `,
-          }}
-          animate={{
-            y: ['-100%', '100%'],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: 'linear',
-          }}
-        />
-
         {/* Corner Accent Lights */}
         {[
           { position: 'top-0 left-0', color: theme.colors.neonBlue },

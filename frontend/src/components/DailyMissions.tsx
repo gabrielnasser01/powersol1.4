@@ -655,7 +655,7 @@ export function DailyMissions() {
                     }
 
                     if (mission.mission_key === 'social_join_discord' || mission.mission_key === 'social_discord_join') {
-                      window.open('https://discord.gg/powersol', '_blank');
+                      window.open('https://discord.gg/pbbTU7SWwq', '_blank');
                       await markEligibleAPI(mission.mission_key);
                       handleClaimMission(mission.mission_key);
                       return;

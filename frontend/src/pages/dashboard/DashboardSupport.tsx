@@ -147,7 +147,7 @@ export function DashboardSupport() {
           icon={MessageCircle}
           label="Discord Community"
           description="Join our Discord server for real-time support, announcements, and community discussions."
-          href="https://discord.gg/powersol"
+          href="https://discord.gg/pbbTU7SWwq"
           color="#5865F2"
           delay={0}
         />

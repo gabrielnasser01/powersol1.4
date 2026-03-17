@@ -490,8 +490,33 @@ async function recordReferral(walletAddress: string, referredUserId: string) {
   return { eligibleMissions: eligible, totalReferrals: count };
 }
 
+async function checkWinMilestones(walletAddress: string) {
+  const supabase = getServiceClient();
+  const completed: Record<string, unknown>[] = [];
+
+  const { data: totalWins } = await supabase.rpc("get_user_total_wins_by_wallet", {
+    wallet_param: walletAddress,
+  });
+
+  const milestones: [number, string][] = [
+    [1, "activity_first_win"],
+    [3, "activity_3_wins"],
+    [5, "activity_5_wins"],
+    [10, "activity_10_wins"],
+  ];
+
+  for (const [threshold, key] of milestones) {
+    if ((totalWins || 0) >= threshold) {
+      const result = await tryMarkEligible(walletAddress, key);
+      if (result) completed.push(result);
+    }
+  }
+
+  return { totalWins: totalWins || 0, eligibleMissions: completed };
+}
+
 async function recordFirstWin(walletAddress: string) {
-  return await markMissionEligible(walletAddress, "activity_first_win");
+  return await checkWinMilestones(walletAddress);
 }
 
 async function recordBecameAffiliate(walletAddress: string) {

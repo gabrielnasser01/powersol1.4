@@ -125,10 +125,32 @@ async function getUserProgress(walletAddress: string) {
     (progressData || []).map((p: Record<string, unknown>) => [p.mission_id, p])
   );
 
-  return missions.map((mission: Record<string, unknown>) => ({
-    ...mission,
-    user_progress: progressMap.get(mission.id as string) || null,
-  }));
+  const now = new Date();
+
+  return missions.map((mission: Record<string, unknown>) => {
+    const progress = progressMap.get(mission.id as string) as Record<string, unknown> | undefined;
+
+    if (progress && progress.completed === true) {
+      const missionType = mission.mission_type as string;
+      const claimedAt = new Date((progress.completed_at || progress.last_reset) as string);
+
+      if (missionType === "daily" && !isWithinCurrentDay(claimedAt, now)) {
+        return {
+          ...mission,
+          user_progress: { ...progress, completed: false, progress: { ...(progress.progress as Record<string, unknown> || {}), eligible: false } },
+        };
+      }
+
+      if (missionType === "weekly" && !isWithinCurrentWeek(claimedAt, now)) {
+        return {
+          ...mission,
+          user_progress: { ...progress, completed: false, progress: { ...(progress.progress as Record<string, unknown> || {}), eligible: false } },
+        };
+      }
+    }
+
+    return { ...mission, user_progress: progress || null };
+  });
 }
 
 async function markMissionEligible(walletAddress: string, missionKey: string, additionalData?: Record<string, unknown>) {

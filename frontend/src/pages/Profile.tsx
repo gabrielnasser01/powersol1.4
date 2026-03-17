@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check, Trash2, ExternalLink } from 'lucide-react';
+import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check, Trash2, ExternalLink, Link2 } from 'lucide-react';
+import { SocialAccountsCard } from '../components/SocialAccountsCard';
 import { useNavigate } from 'react-router-dom';
 import { userStorage, userStatsStorage } from '../store/persist';
 import { ticketStorage, MockTicket } from '../store/ticketStorage';
@@ -1255,6 +1256,15 @@ export function Profile() {
                   </motion.button>
                 </div>
               </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...transition30fps, delay: 0.7 }}
+                className="mt-4 sm:mt-6"
+              >
+                <SocialAccountsCard walletAddress={walletPublicKey} isConnected={isConnected} />
+              </motion.div>
             </motion.div>
           </div>
         </div>

@@ -12,6 +12,10 @@ function isMobileDevice(): boolean {
   );
 }
 
+function isAndroid(): boolean {
+  return /Android/i.test(navigator.userAgent);
+}
+
 function isInPhantomBrowser(): boolean {
   const w = window as any;
   return !!(w.phantom?.solana?.isPhantom);
@@ -33,12 +37,22 @@ function buildUrlWithRef(baseHref: string): string {
 
 function openPhantomBrowseDeepLink() {
   const targetUrl = encodeURIComponent(buildUrlWithRef(window.location.href));
-  window.location.href = `https://phantom.app/ul/browse/${targetUrl}`;
+  if (isAndroid()) {
+    const intentUrl = `intent://browse/${targetUrl}#Intent;scheme=phantom;package=app.phantom;end;`;
+    window.location.href = intentUrl;
+  } else {
+    window.location.href = `https://phantom.app/ul/browse/${targetUrl}`;
+  }
 }
 
 function openSolflareBrowseDeepLink() {
   const targetUrl = encodeURIComponent(buildUrlWithRef(window.location.href));
-  window.location.href = `https://solflare.com/ul/v1/browse/${targetUrl}`;
+  if (isAndroid()) {
+    const intentUrl = `intent://ul/v1/browse/${targetUrl}#Intent;scheme=https;package=com.solflare.mobile;S.browser_fallback_url=${encodeURIComponent('https://solflare.com/')};end;`;
+    window.location.href = intentUrl;
+  } else {
+    window.location.href = `https://solflare.com/ul/v1/browse/${targetUrl}`;
+  }
 }
 
 interface PhantomProvider {

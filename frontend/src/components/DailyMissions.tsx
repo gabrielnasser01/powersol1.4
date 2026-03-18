@@ -80,6 +80,12 @@ export function DailyMissions() {
     return () => window.removeEventListener('walletStorageChange', handleWalletChange);
   }, []);
 
+  const missionsApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/missions`;
+  const apiHeaders = {
+    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json',
+  };
+
   useEffect(() => {
     loadMissions();
   }, [isConnected]);
@@ -88,22 +94,11 @@ export function DailyMissions() {
     try {
       setLoading(true);
 
-      const { data: missionsData, error } = await supabase
-        .from('missions')
-        .select('*')
-        .eq('is_active', true)
-        .order('mission_type');
-
-      if (error) {
-        throw error;
-      }
-
       if (user.publicKey && isConnected) {
-        const [{ data: allProgress }, { data: userData }] = await Promise.all([
-          supabase
-            .from('user_mission_progress')
-            .select('*')
-            .eq('wallet_address', user.publicKey),
+        const [progressRes, { data: userData }] = await Promise.all([
+          fetch(`${missionsApiUrl}/my-progress?wallet_address=${user.publicKey}`, {
+            headers: apiHeaders,
+          }),
           supabase
             .from('users')
             .select('login_streak')
@@ -113,28 +108,23 @@ export function DailyMissions() {
 
         setLoginStreak(userData?.login_streak || 0);
 
-        const progressMap = new Map(
-          (allProgress || []).map(p => [p.mission_id, p])
-        );
-
-        const missionsWithProgress = (missionsData || []).map(mission => ({
-          ...mission,
-          user_progress: progressMap.get(mission.id) || { completed: false, completed_at: null, progress: {} },
-        }));
-        setMissions(missionsWithProgress);
+        if (progressRes.ok) {
+          const missionsWithProgress = await progressRes.json();
+          setMissions(missionsWithProgress);
+        }
       } else {
+        const { data: missionsData } = await supabase
+          .from('missions')
+          .select('*')
+          .eq('is_active', true)
+          .order('mission_type');
+
         setMissions(missionsData || []);
       }
     } catch {
     } finally {
       setLoading(false);
     }
-  };
-
-  const missionsApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/missions`;
-  const apiHeaders = {
-    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-    'Content-Type': 'application/json',
   };
 
   const markEligibleAPI = async (missionKey: string): Promise<boolean> => {

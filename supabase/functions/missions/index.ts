@@ -194,6 +194,7 @@ async function markMissionEligible(walletAddress: string, missionKey: string, ad
   }
 
   const progressData = { ...(additionalData || {}), eligible: true, eligible_at: new Date().toISOString() };
+  const nowISO = new Date().toISOString();
 
   const { error: upsertError } = await supabase
     .from("user_mission_progress")
@@ -202,7 +203,7 @@ async function markMissionEligible(walletAddress: string, missionKey: string, ad
       mission_id: mission.id,
       completed: false,
       progress: progressData,
-      last_reset: existing?.last_reset || new Date().toISOString(),
+      last_reset: nowISO,
     }, {
       onConflict: "wallet_address,mission_id",
     });

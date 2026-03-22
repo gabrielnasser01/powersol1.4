@@ -1,86 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Zap, Loader, ChevronDown } from 'lucide-react';
+import { Wallet, Zap, Loader } from 'lucide-react';
 import { theme } from '../theme';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { useWallet } from '../contexts/WalletContext';
-import type { WalletType } from '../contexts/WalletContext';
-
-interface WalletButtonProps {
-  wallet: {
-    name: string;
-    type: WalletType;
-    description: string;
-    color: string;
-    iconUrl?: string;
-    iconFallback?: string;
-  };
-  isConnecting: boolean;
-  onConnect: (type: WalletType) => void;
-  compact?: boolean;
-}
-
-function WalletButton({ wallet, isConnecting, onConnect, compact }: WalletButtonProps) {
-  return (
-    <motion.button
-      onClick={() => onConnect(wallet.type)}
-      disabled={isConnecting}
-      className={`w-full ${compact ? 'p-2.5' : 'p-3'} rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50`}
-      style={{
-        background: `
-          linear-gradient(0deg, ${wallet.color}08 1px, transparent 1px),
-          linear-gradient(90deg, ${wallet.color}08 1px, transparent 1px),
-          linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
-        `,
-        backgroundSize: '15px 15px, 15px 15px, 100% 100%',
-        borderColor: `${wallet.color}40`,
-        boxShadow: `0 0 15px ${wallet.color}20`,
-      }}
-      whileHover={{
-        borderColor: wallet.color,
-        boxShadow: `0 0 25px ${wallet.color}50`,
-        scale: 1.02,
-      }}
-      whileTap={{ scale: 0.98 }}
-    >
-      <motion.div
-        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
-        style={{
-          background: `linear-gradient(90deg, transparent, ${wallet.color}20, transparent)`,
-        }}
-        animate={{ x: [-100, 100] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-      />
-
-      <div className="flex items-center space-x-3">
-        <div
-          className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} rounded-md flex items-center justify-center relative flex-shrink-0`}
-        >
-          <img
-            src={wallet.iconUrl || wallet.iconFallback}
-            alt={wallet.name}
-            className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} object-contain`}
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h4 className={`font-bold ${compact ? 'text-xs' : 'text-sm'} font-mono text-white`}>
-            {wallet.name}
-          </h4>
-          <p className={`${compact ? 'text-[10px]' : 'text-xs'} text-zinc-400 font-mono`}>
-            {wallet.description}
-          </p>
-        </div>
-        <div
-          className="text-zinc-400 group-hover:text-white transition-colors font-mono flex-shrink-0"
-          style={{ color: wallet.color }}
-        >
-          {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '\u2192'}
-        </div>
-      </div>
-    </motion.button>
-  );
-}
 
 export function WalletConnection() {
   const { publicKey, connected, connecting, balance, connect, disconnect } = useWallet();
@@ -88,7 +12,6 @@ export function WalletConnection() {
   const [manualKey, setManualKey] = useState('');
   const [error, setError] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
-  const [showOtherWallets, setShowOtherWallets] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useMagnetic(buttonRef, { strength: 15 });
@@ -102,11 +25,19 @@ export function WalletConnection() {
     }
   };
 
-  const handleWalletConnect = async (walletType: WalletType) => {
+  const handleWalletConnect = async (walletName: string) => {
     setError('');
     setIsConnecting(true);
     try {
-      await connect(walletType);
+      if (walletName === 'Phantom') {
+        await connect('phantom');
+      } else if (walletName === 'Solflare') {
+        await connect('solflare');
+      } else if (walletName === 'Ledger') {
+        setError('Ledger requires Phantom or Solflare integration');
+        setIsConnecting(false);
+        return;
+      }
       setShowModal(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to connect';
@@ -136,74 +67,24 @@ export function WalletConnection() {
     }
   };
 
-  interface WalletOption {
-    name: string;
-    type: WalletType;
-    description: string;
-    color: string;
-    iconUrl?: string;
-    iconFallback?: string;
-  }
-
-  const primaryWallets: WalletOption[] = [
+  const walletOptions = [
     {
       name: 'Phantom',
-      type: 'phantom',
       description: 'Most popular Solana wallet',
-      color: '#ab9ff2',
-      iconUrl: 'https://i.imgur.com/g8nBa6n.png',
+      icon: '👻',
+      color: theme.colors.neonPurple,
     },
     {
       name: 'Solflare',
-      type: 'solflare',
       description: 'Web & Mobile compatible',
-      color: '#fc9c1c',
-      iconUrl: 'https://i.imgur.com/juhrcfm.png',
-    },
-    {
-      name: 'Backpack',
-      type: 'backpack',
-      description: 'xNFT & DeFi wallet',
-      color: '#e33e3f',
-      iconUrl: 'https://i.imgur.com/TsXPzxQ.png',
-    },
-  ];
-
-  const otherWallets: WalletOption[] = [
-    {
-      name: 'Coin98',
-      type: 'coin98',
-      description: 'Multi-chain wallet',
-      color: '#d9b432',
-      iconUrl: 'https://i.imgur.com/aNbRPtO.png',
-    },
-    {
-      name: 'Exodus',
-      type: 'exodus',
-      description: 'Desktop & Mobile wallet',
-      color: '#8b6cef',
-      iconUrl: 'https://i.imgur.com/3wYBjnv.png',
-    },
-    {
-      name: 'Trust Wallet',
-      type: 'trust',
-      description: 'Multi-chain mobile wallet',
-      color: '#3375bb',
-      iconUrl: 'https://i.imgur.com/hGqBPBP.png',
-    },
-    {
-      name: 'Brave Wallet',
-      type: 'brave',
-      description: 'Built into Brave browser',
-      color: '#fb542b',
-      iconUrl: 'https://i.imgur.com/urFbLMD.png',
+      icon: '🔥',
+      color: theme.colors.neonBlue,
     },
     {
       name: 'Ledger',
-      type: 'phantom',
-      description: 'Use via Phantom or Solflare',
+      description: 'Hardware wallet security',
+      icon: '🔐',
       color: theme.colors.neonCyan,
-      iconFallback: '/ledger-logo-short-white.svg',
     },
   ];
 
@@ -286,7 +167,7 @@ export function WalletConnection() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="max-w-md w-full p-6 rounded-2xl border relative overflow-hidden overflow-y-auto max-h-[90vh] mx-auto"
+              className="max-w-md w-full p-6 rounded-2xl border relative overflow-hidden mx-auto"
               style={{
                 background: `
                   linear-gradient(0deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px),
@@ -365,63 +246,97 @@ export function WalletConnection() {
                 </div>
               )}
 
-              <div className="space-y-2.5 mb-4">
-                {primaryWallets.map((wallet) => (
-                  <WalletButton
-                    key={wallet.type}
-                    wallet={wallet}
-                    isConnecting={isConnecting}
-                    onConnect={handleWalletConnect}
-                  />
-                ))}
-              </div>
-
-              <div className="mb-4">
-                <motion.button
-                  onClick={() => setShowOtherWallets(!showOtherWallets)}
-                  className="w-full py-2 px-3 rounded-lg border border-zinc-700/50 flex items-center justify-between font-mono text-xs transition-all duration-300"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    color: '#8a8a8a',
-                  }}
-                  whileHover={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    borderColor: 'rgba(0, 255, 136, 0.3)',
-                    color: '#bbbbbb',
-                  }}
-                >
-                  <span>+ OTHER_WALLETS ({otherWallets.length})</span>
-                  <motion.div
-                    animate={{ rotate: showOtherWallets ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
+              <div className="space-y-3 mb-6">
+                {walletOptions.map((wallet, index) => (
+                  <motion.button
+                    key={index}
+                    onClick={() => handleWalletConnect(wallet.name)}
+                    disabled={isConnecting}
+                    className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
+                    style={{
+                      background: `
+                        linear-gradient(0deg, ${wallet.color}08 1px, transparent 1px),
+                        linear-gradient(90deg, ${wallet.color}08 1px, transparent 1px),
+                        linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
+                      `,
+                      backgroundSize: '15px 15px, 15px 15px, 100% 100%',
+                      borderColor: `${wallet.color}40`,
+                      boxShadow: `0 0 15px ${wallet.color}20`,
+                    }}
+                    whileHover={{
+                      borderColor: wallet.color,
+                      boxShadow: `0 0 25px ${wallet.color}50`,
+                      scale: 1.02,
+                    }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </motion.div>
-                </motion.button>
-
-                <AnimatePresence>
-                  {showOtherWallets && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="space-y-2 pt-2.5">
-                        {otherWallets.map((wallet) => (
-                          <WalletButton
-                            key={wallet.name}
-                            wallet={wallet}
-                            isConnecting={isConnecting}
-                            onConnect={handleWalletConnect}
-                            compact
+                      className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
+                      style={{
+                        background: `linear-gradient(90deg, transparent, ${wallet.color}20, transparent)`,
+                      }}
+                      animate={{ x: [-100, 100] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                    />
+
+                    <div className="flex items-center space-x-4">
+                      <div
+                        className="w-8 h-8 rounded-md flex items-center justify-center text-sm relative"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          boxShadow: 'none',
+                        }}
+                      >
+                        {wallet.name === 'Phantom' ? (
+                          <img
+                            src="https://i.imgur.com/g8nBa6n.png"
+                            alt="Phantom Wallet"
+                            className="w-8 h-8 object-contain"
                           />
-                        ))}
+                        ) : wallet.name === 'Solflare' ? (
+                          <img
+                            src="https://i.imgur.com/juhrcfm.png"
+                            alt="Solflare Wallet"
+                            className="w-8 h-8 object-contain"
+                          />
+                        ) : wallet.name === 'Ledger' ? (
+                          <img
+                            src="/ledger-logo-short-white.svg"
+                            alt="Ledger Wallet"
+                            className="w-8 h-8 object-contain"
+                          />
+                        ) : (
+                          wallet.icon
+                        )}
+
+                        <motion.div
+                          className="absolute inset-0 rounded-lg"
+                          style={{
+                            background: 'transparent',
+                            opacity: 0,
+                          }}
+                          whileHover={{ opacity: 1 }}
+                          transition={{ duration: 0.3 }}
+                        />
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
+                          {wallet.name}
+                        </h4>
+                        <p className="text-xs text-zinc-400 font-mono">
+                          {wallet.description}
+                        </p>
+                      </div>
+                      <div
+                        className="text-zinc-400 group-hover:text-white transition-colors font-mono"
+                        style={{ color: wallet.color }}
+                      >
+                        {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '→'}
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
               </div>
 
               <div className="mb-6">

@@ -67,12 +67,14 @@ interface PhantomProvider {
   off(event: string, callback: () => void): void;
 }
 
+export type WalletType = 'phantom' | 'solflare' | 'backpack' | 'coin98' | 'exodus' | 'trust' | 'brave' | 'manual';
+
 interface WalletContextType {
   publicKey: string | null;
   connected: boolean;
   connecting: boolean;
   balance: number;
-  connect: (walletType?: 'phantom' | 'solflare' | 'manual', manualKey?: string) => Promise<void>;
+  connect: (walletType?: WalletType, manualKey?: string) => Promise<void>;
   disconnect: () => Promise<void>;
   signTransaction: (transaction: Transaction) => Promise<Transaction>;
   signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
@@ -116,6 +118,34 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return null;
   };
 
+  const getGenericProvider = (walletType: WalletType): PhantomProvider | null => {
+    if (typeof window === 'undefined') return null;
+    const w = window as any;
+
+    switch (walletType) {
+      case 'backpack':
+        return w.backpack?.solana ?? w.xnft?.solana ?? null;
+      case 'coin98':
+        return w.coin98?.sol ?? w.coin98?.solana ?? null;
+      case 'exodus':
+        return w.exodus?.solana ?? null;
+      case 'trust':
+        return w.trustwallet?.solana ?? w.solana ?? null;
+      case 'brave':
+        return w.braveSolana ?? (w.solana?.isBraveWallet ? w.solana : null);
+      default:
+        return null;
+    }
+  };
+
+  const walletInstallUrls: Record<string, string> = {
+    backpack: 'https://backpack.app/',
+    coin98: 'https://coin98.com/',
+    exodus: 'https://www.exodus.com/',
+    trust: 'https://trustwallet.com/',
+    brave: 'https://brave.com/wallet/',
+  };
+
   const refreshBalance = useCallback(async () => {
     if (publicKey) {
       try {
@@ -127,7 +157,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [publicKey]);
 
-  const connect = useCallback(async (walletType: 'phantom' | 'solflare' | 'manual' = 'phantom', manualKey?: string) => {
+  const connect = useCallback(async (walletType: WalletType = 'phantom', manualKey?: string) => {
     setConnecting(true);
 
     try {
@@ -171,6 +201,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           }
           window.open('https://solflare.com/', '_blank');
           throw new Error('Solflare wallet not installed. Please install it from solflare.com');
+        }
+      } else {
+        walletProvider = getGenericProvider(walletType);
+        if (!walletProvider) {
+          const url = walletInstallUrls[walletType];
+          if (url) {
+            window.open(url, '_blank');
+          }
+          throw new Error(`${walletType.charAt(0).toUpperCase() + walletType.slice(1)} wallet not detected. Please install it first.`);
         }
       }
 

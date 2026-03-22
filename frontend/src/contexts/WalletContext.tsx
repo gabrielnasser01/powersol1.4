@@ -179,7 +179,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       }
 
       const response = await walletProvider.connect();
-      const pubKey = response.publicKey.toBase58();
+      const pubKey = response?.publicKey?.toBase58()
+        ?? walletProvider.publicKey?.toBase58();
+
+      if (!pubKey) {
+        throw new Error('Wallet connected but no public key returned');
+      }
 
       setProvider(walletProvider);
       setPublicKey(pubKey);
@@ -288,7 +293,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (phantom) {
         try {
           const resp = await phantom.connect();
-          const pubKey = resp.publicKey.toBase58();
+          const pubKey = resp?.publicKey?.toBase58()
+            ?? phantom.publicKey?.toBase58();
+          if (!pubKey) throw new Error('No public key');
           setProvider(phantom);
           setPublicKey(pubKey);
           setConnected(true);
@@ -303,7 +310,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (solflare) {
         try {
           const resp = await solflare.connect();
-          const pubKey = resp.publicKey.toBase58();
+          const pubKey = resp?.publicKey?.toBase58()
+            ?? solflare.publicKey?.toBase58();
+          if (!pubKey) throw new Error('No public key');
           setProvider(solflare);
           setPublicKey(pubKey);
           setConnected(true);

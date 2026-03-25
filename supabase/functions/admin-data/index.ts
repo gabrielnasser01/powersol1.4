@@ -137,9 +137,15 @@ Deno.serve(async (req: Request) => {
           (prizeMap[p.user_wallet] || 0) + Number(p.prize_amount_lamports || 0);
       });
 
-      const { data: missionProgress } = await supabase
-        .from("user_mission_progress")
-        .select("wallet_address, completed");
+      const [{ data: missionProgress }, { data: ticketPP }] = await Promise.all([
+        supabase
+          .from("user_mission_progress")
+          .select("wallet_address, completed"),
+        supabase
+          .from("power_points_ledger")
+          .select("wallet_address, amount")
+          .eq("transaction_type", "donation"),
+      ]);
 
       const missionMap: Record<string, number> = {};
       (missionProgress || []).forEach((m: any) => {
@@ -147,6 +153,12 @@ Deno.serve(async (req: Request) => {
         if (m.completed) {
           missionMap[key] = (missionMap[key] || 0) + 1;
         }
+      });
+
+      const ticketPPMap: Record<string, number> = {};
+      (ticketPP || []).forEach((t: any) => {
+        const key = t.wallet_address || "";
+        ticketPPMap[key] = (ticketPPMap[key] || 0) + Number(t.amount || 0);
       });
 
       const result = (users || []).map((u: any) => ({
@@ -164,6 +176,7 @@ Deno.serve(async (req: Request) => {
         total_spent_sol: ticketMap[u.wallet_address]?.sol || 0,
         total_won_lamports: prizeMap[u.wallet_address] || 0,
         missions_completed: missionMap[u.wallet_address] || 0,
+        ticket_pp: ticketPPMap[u.wallet_address] || 0,
       }));
 
       return jsonResponse(result);

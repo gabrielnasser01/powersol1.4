@@ -60,6 +60,7 @@ export interface UserRanking {
   total_spent_sol: number;
   total_won_lamports: number;
   missions_completed: number;
+  ticket_pp: number;
 }
 
 export interface AffiliateRanking {

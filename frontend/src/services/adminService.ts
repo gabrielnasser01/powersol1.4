@@ -80,7 +80,7 @@ export interface AffiliateRanking {
 export interface RevenueData {
   date: string;
   ticket_revenue_lamports: number;
-  house_earnings_lamports: number;
+  dev_treasury_lamports: number;
   delta_lamports: number;
   ticket_count: number;
 }

@@ -56,7 +56,7 @@ function RevenueTable({ data, period }: { data: RevenueData[]; period: string })
             <th className="text-left py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Period</th>
             <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Tickets</th>
             <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Revenue (SOL)</th>
-            <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">House (SOL)</th>
+            <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Dev Treasury (SOL)</th>
             <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Delta (SOL)</th>
           </tr>
         </thead>
@@ -75,7 +75,7 @@ function RevenueTable({ data, period }: { data: RevenueData[]; period: string })
                 {(row.ticket_revenue_lamports / 1e9).toFixed(4)}
               </td>
               <td className="py-3 px-4 text-amber-400 font-mono text-sm text-right">
-                {(row.house_earnings_lamports / 1e9).toFixed(4)}
+                {(row.dev_treasury_lamports / 1e9).toFixed(4)}
               </td>
               <td className="py-3 px-4 text-cyan-400 font-mono text-sm text-right">
                 {(row.delta_lamports / 1e9).toFixed(4)}
@@ -101,7 +101,7 @@ function RevenueTable({ data, period }: { data: RevenueData[]; period: string })
                 {(recentData.reduce((s, r) => s + r.ticket_revenue_lamports, 0) / 1e9).toFixed(4)}
               </td>
               <td className="py-3 px-4 text-amber-400 font-mono text-sm text-right font-bold">
-                {(recentData.reduce((s, r) => s + r.house_earnings_lamports, 0) / 1e9).toFixed(4)}
+                {(recentData.reduce((s, r) => s + r.dev_treasury_lamports, 0) / 1e9).toFixed(4)}
               </td>
               <td className="py-3 px-4 text-cyan-400 font-mono text-sm text-right font-bold">
                 {(recentData.reduce((s, r) => s + r.delta_lamports, 0) / 1e9).toFixed(4)}
@@ -193,6 +193,12 @@ export function AdminOverview() {
                 value={stats?.totalAffiliates?.toLocaleString() || '0'}
                 icon={Users}
                 color="#ec4899"
+              />
+              <StatCard
+                label="Dev Treasury (SOL)"
+                value={((stats?.totalDevTreasuryLamports || 0) / 1e9).toFixed(4)}
+                icon={TrendingUp}
+                color="#f59e0b"
               />
               <StatCard
                 label="Delta Pool (SOL)"

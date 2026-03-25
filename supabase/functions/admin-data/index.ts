@@ -53,6 +53,7 @@ Deno.serve(async (req: Request) => {
         { data: prizeSum },
         { count: affiliateCount },
         { data: deltaSum },
+        { data: devTreasurySum },
       ] = await Promise.all([
         supabase.from("users").select("*", { count: "exact", head: true }),
         supabase
@@ -69,6 +70,7 @@ Deno.serve(async (req: Request) => {
           .from("affiliates")
           .select("*", { count: "exact", head: true }),
         supabase.from("delta_transfers").select("amount_lamports"),
+        supabase.from("dev_treasury_transfers").select("amount_lamports"),
       ]);
 
       const totalRevenueSol = (ticketSum || []).reduce(
@@ -89,6 +91,10 @@ Deno.serve(async (req: Request) => {
         (s: number, d: any) => s + Number(d.amount_lamports || 0),
         0
       );
+      const totalDevTreasuryLamports = (devTreasurySum || []).reduce(
+        (s: number, d: any) => s + Number(d.amount_lamports || 0),
+        0
+      );
 
       return jsonResponse({
         totalUsers: userCount || 0,
@@ -99,6 +105,7 @@ Deno.serve(async (req: Request) => {
         unclaimedPrizesLamports,
         totalAffiliates: affiliateCount || 0,
         totalDeltaLamports,
+        totalDevTreasuryLamports,
       });
     }
 
@@ -234,25 +241,29 @@ Deno.serve(async (req: Request) => {
     if (action === "revenue") {
       const period = url.searchParams.get("period") || "daily";
 
-      const { data: tickets } = await supabase
-        .from("ticket_purchases")
-        .select("created_at, quantity, total_sol")
-        .order("created_at", { ascending: true });
-
-      const { data: houseEarnings } = await supabase
-        .from("house_earnings")
-        .select("created_at, amount_lamports");
-
-      const { data: deltaTransfers } = await supabase
-        .from("delta_transfers")
-        .select("created_at, amount_lamports");
+      const [
+        { data: tickets },
+        { data: devTreasury },
+        { data: deltaTransfers },
+      ] = await Promise.all([
+        supabase
+          .from("ticket_purchases")
+          .select("created_at, quantity, total_sol")
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("dev_treasury_transfers")
+          .select("created_at, amount_lamports"),
+        supabase
+          .from("delta_transfers")
+          .select("created_at, amount_lamports"),
+      ]);
 
       const buckets: Record<
         string,
         {
           date: string;
           ticket_revenue_lamports: number;
-          house_earnings_lamports: number;
+          dev_treasury_lamports: number;
           delta_lamports: number;
           ticket_count: number;
         }
@@ -276,7 +287,7 @@ Deno.serve(async (req: Request) => {
           buckets[key] = {
             date: key,
             ticket_revenue_lamports: 0,
-            house_earnings_lamports: 0,
+            dev_treasury_lamports: 0,
             delta_lamports: 0,
             ticket_count: 0,
           };
@@ -292,10 +303,10 @@ Deno.serve(async (req: Request) => {
         buckets[key].ticket_count += t.quantity;
       });
 
-      (houseEarnings || []).forEach((h: any) => {
-        const key = getKey(h.created_at);
+      (devTreasury || []).forEach((d: any) => {
+        const key = getKey(d.created_at);
         ensureBucket(key);
-        buckets[key].house_earnings_lamports += Number(h.amount_lamports || 0);
+        buckets[key].dev_treasury_lamports += Number(d.amount_lamports || 0);
       });
 
       (deltaTransfers || []).forEach((d: any) => {
@@ -326,10 +337,12 @@ Deno.serve(async (req: Request) => {
         { data: tickets },
         { data: deltaTransfers },
         { data: affiliateEarnings },
+        { data: devTreasuryData },
       ] = await Promise.all([
         supabase.from("ticket_purchases").select("lottery_type, total_sol, created_at"),
         supabase.from("delta_transfers").select("amount_lamports, created_at"),
         supabase.from("solana_affiliate_earnings").select("commission_lamports, earned_at"),
+        supabase.from("dev_treasury_transfers").select("amount_lamports, created_at"),
       ]);
 
       const map: Record<string, number> = {};
@@ -343,7 +356,6 @@ Deno.serve(async (req: Request) => {
 
       const DEV_TREASURY = "55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1";
       const PRIZE_POOL_PCT = 0.40;
-      const TREASURY_PCT = 0.30;
 
       const lotteryWalletMap: Record<string, string> = {
         "tri-daily": "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx",
@@ -355,11 +367,13 @@ Deno.serve(async (req: Request) => {
       (tickets || []).forEach((t: any) => {
         const totalLamports = Math.round(parseFloat(t.total_sol || "0") * 1e9);
         const prizePoolLamports = Math.floor(totalLamports * PRIZE_POOL_PCT);
-        const treasuryLamports = Math.floor(totalLamports * TREASURY_PCT);
 
         const wallet = lotteryWalletMap[t.lottery_type];
         if (wallet) addLamports(wallet, t.created_at, prizePoolLamports);
-        addLamports(DEV_TREASURY, t.created_at, treasuryLamports);
+      });
+
+      (devTreasuryData || []).forEach((d: any) => {
+        addLamports(DEV_TREASURY, d.created_at, Number(d.amount_lamports));
       });
 
       (deltaTransfers || []).forEach((d: any) => {

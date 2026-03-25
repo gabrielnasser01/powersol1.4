@@ -87,6 +87,7 @@ export interface RevenueData {
 
 export interface WalletActivity {
   wallet_address: string;
+  label?: string;
   date: string;
   action_count: number;
 }

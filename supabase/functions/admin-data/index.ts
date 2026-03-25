@@ -312,34 +312,83 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "heatmap") {
-      const { data: tickets } = await supabase
-        .from("ticket_purchases")
-        .select("wallet_address, created_at");
+      const TREASURY_WALLETS: Record<string, string> = {
+        "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx": "Tri-Daily",
+        "AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk": "Special Event",
+        "nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C": "Grand Prize",
+        "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133": "Jackpot",
+        "2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU": "Delta",
+        "8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf": "Affiliates Pool",
+        "55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1": "Dev Treasury",
+      };
 
-      const { data: missionProgress } = await supabase
-        .from("user_mission_progress")
-        .select("wallet_address, completed_at")
-        .not("completed_at", "is", null);
+      const [
+        { data: tickets },
+        { data: deltaTransfers },
+        { data: affiliateEarnings },
+        { data: houseEarnings },
+        { data: prizeClaims },
+        { data: draws },
+      ] = await Promise.all([
+        supabase.from("ticket_purchases").select("lottery_type, total_sol, created_at"),
+        supabase.from("delta_transfers").select("amount_lamports, created_at"),
+        supabase.from("solana_affiliate_earnings").select("commission_lamports, earned_at"),
+        supabase.from("house_earnings").select("amount_lamports, created_at"),
+        supabase.from("onchain_prize_claims").select("lottery_type, amount_lamports, claimed_at"),
+        supabase.from("solana_draws").select("lottery_type, prize_lamports, draw_timestamp"),
+      ]);
 
       const map: Record<string, number> = {};
 
-      const addActivity = (wallet: string | null, dateStr: string | null) => {
-        if (!wallet || !dateStr) return;
+      const addActivity = (wallet: string, dateStr: string | null, count = 1) => {
+        if (!dateStr) return;
         const day = new Date(dateStr).toISOString().split("T")[0];
         const key = `${wallet}|${day}`;
-        map[key] = (map[key] || 0) + 1;
+        map[key] = (map[key] || 0) + count;
       };
 
-      (tickets || []).forEach((t: any) =>
-        addActivity(t.wallet_address, t.created_at)
-      );
-      (missionProgress || []).forEach((m: any) =>
-        addActivity(m.wallet_address, m.completed_at)
-      );
+      const lotteryWalletMap: Record<string, string> = {
+        "tri-daily": "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx",
+        "special-event": "AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk",
+        "grand-prize": "nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C",
+        "jackpot": "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
+      };
+
+      (tickets || []).forEach((t: any) => {
+        const wallet = lotteryWalletMap[t.lottery_type];
+        if (wallet) addActivity(wallet, t.created_at);
+      });
+
+      (deltaTransfers || []).forEach((d: any) => {
+        addActivity("2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU", d.created_at);
+      });
+
+      (affiliateEarnings || []).forEach((a: any) => {
+        addActivity("8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf", a.earned_at);
+      });
+
+      (houseEarnings || []).forEach((h: any) => {
+        addActivity("55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1", h.created_at);
+      });
+
+      (prizeClaims || []).forEach((p: any) => {
+        const wallet = lotteryWalletMap[p.lottery_type];
+        if (wallet) addActivity(wallet, p.claimed_at);
+      });
+
+      (draws || []).forEach((d: any) => {
+        const wallet = lotteryWalletMap[d.lottery_type];
+        if (wallet) addActivity(wallet, d.draw_timestamp);
+      });
 
       const result = Object.entries(map).map(([key, count]) => {
         const [wallet, date] = key.split("|");
-        return { wallet_address: wallet, date, action_count: count };
+        return {
+          wallet_address: wallet,
+          label: TREASURY_WALLETS[wallet] || wallet,
+          date,
+          action_count: count,
+        };
       });
 
       return jsonResponse(result);

@@ -113,15 +113,23 @@ function RevenueTable({ data, period }: { data: RevenueData[]; period: string })
   );
 }
 
+const TREASURY_WALLET_ORDER = [
+  { address: '4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx', label: 'Tri-Daily', color: '#3ecbff' },
+  { address: 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk', label: 'Special Event', color: '#f59e0b' },
+  { address: 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C', label: 'Grand Prize', color: '#ef4444' },
+  { address: 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133', label: 'Jackpot', color: '#a855f7' },
+  { address: '2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU', label: 'Delta', color: '#f97316' },
+  { address: '8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf', label: 'Affiliates Pool', color: '#ec4899' },
+  { address: '55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1', label: 'Dev Treasury', color: '#10b981' },
+];
+
 function HeatmapGrid({ data }: { data: WalletActivity[] }) {
-  const { wallets, dates, maxCount, grid } = useMemo(() => {
-    const walletSet = new Set<string>();
+  const { dates, maxCount, grid } = useMemo(() => {
     const dateSet = new Set<string>();
     const gridMap: Record<string, number> = {};
     let max = 0;
 
     data.forEach(d => {
-      walletSet.add(d.wallet_address);
       dateSet.add(d.date);
       const key = `${d.wallet_address}|${d.date}`;
       gridMap[key] = d.action_count;
@@ -129,9 +137,7 @@ function HeatmapGrid({ data }: { data: WalletActivity[] }) {
     });
 
     const sortedDates = [...dateSet].sort().slice(-14);
-    const sortedWallets = [...walletSet].slice(0, 20);
-
-    return { wallets: sortedWallets, dates: sortedDates, maxCount: max, grid: gridMap };
+    return { dates: sortedDates, maxCount: max, grid: gridMap };
   }, [data]);
 
   const getColor = (count: number) => {
@@ -143,43 +149,36 @@ function HeatmapGrid({ data }: { data: WalletActivity[] }) {
     return 'rgba(16, 185, 129, 0.9)';
   };
 
-  if (wallets.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12 text-zinc-600 font-mono text-sm">
-        No activity data yet
-      </div>
-    );
-  }
-
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[600px]">
-        <div className="flex gap-1 mb-2 ml-[120px]">
+        <div className="flex gap-1 mb-2 ml-[140px]">
           {dates.map(d => (
             <div key={d} className="w-8 text-center text-zinc-600 font-mono" style={{ fontSize: '9px' }}>
               {d.slice(5)}
             </div>
           ))}
         </div>
-        {wallets.map(wallet => (
-          <div key={wallet} className="flex items-center gap-1 mb-1">
-            <div className="w-[120px] text-zinc-500 font-mono text-xs truncate" title={wallet}>
-              {wallet.slice(0, 4)}...{wallet.slice(-4)}
+        {TREASURY_WALLET_ORDER.map(tw => (
+          <div key={tw.address} className="flex items-center gap-1 mb-1.5">
+            <div className="w-[140px] flex items-center gap-2 shrink-0" title={tw.address}>
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: tw.color }} />
+              <span className="text-zinc-400 font-mono text-xs truncate">{tw.label}</span>
             </div>
             {dates.map(date => {
-              const count = grid[`${wallet}|${date}`] || 0;
+              const count = grid[`${tw.address}|${date}`] || 0;
               return (
                 <div
                   key={date}
                   className="w-8 h-6 rounded-sm cursor-default transition-all hover:scale-110"
                   style={{ background: getColor(count) }}
-                  title={`${wallet.slice(0, 8)}... | ${date} | ${count} actions`}
+                  title={`${tw.label} | ${date} | ${count} actions`}
                 />
               );
             })}
           </div>
         ))}
-        <div className="flex items-center gap-2 mt-4 ml-[120px]">
+        <div className="flex items-center gap-2 mt-4 ml-[140px]">
           <span className="text-zinc-600 font-mono text-xs">Less</span>
           {[0, 0.25, 0.5, 0.75, 1].map((level, i) => (
             <div
@@ -321,7 +320,7 @@ export function AdminOverview() {
             >
               <div className="flex items-center gap-2 p-5 border-b border-zinc-800/50">
                 <Flame className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-white font-mono text-sm font-bold">Wallet Activity Heatmap</h3>
+                <h3 className="text-white font-mono text-sm font-bold">Treasury Wallets Heatmap</h3>
                 <span className="text-zinc-600 font-mono text-xs">(last 14 days)</span>
               </div>
               <div className="p-5">

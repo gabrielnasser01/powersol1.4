@@ -89,7 +89,7 @@ export interface WalletActivity {
   wallet_address: string;
   label?: string;
   date: string;
-  action_count: number;
+  lamports: number;
 }
 
 export interface MissionAlert {

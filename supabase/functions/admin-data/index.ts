@@ -312,7 +312,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "heatmap") {
-      const TREASURY_WALLETS: Record<string, string> = {
+      const TREASURY_LABELS: Record<string, string> = {
         "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx": "Tri-Daily",
         "AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk": "Special Event",
         "nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C": "Grand Prize",
@@ -327,24 +327,20 @@ Deno.serve(async (req: Request) => {
         { data: deltaTransfers },
         { data: affiliateEarnings },
         { data: houseEarnings },
-        { data: prizeClaims },
-        { data: draws },
       ] = await Promise.all([
         supabase.from("ticket_purchases").select("lottery_type, total_sol, created_at"),
         supabase.from("delta_transfers").select("amount_lamports, created_at"),
         supabase.from("solana_affiliate_earnings").select("commission_lamports, earned_at"),
         supabase.from("house_earnings").select("amount_lamports, created_at"),
-        supabase.from("onchain_prize_claims").select("lottery_type, amount_lamports, claimed_at"),
-        supabase.from("solana_draws").select("lottery_type, prize_lamports, draw_timestamp"),
       ]);
 
       const map: Record<string, number> = {};
 
-      const addActivity = (wallet: string, dateStr: string | null, count = 1) => {
-        if (!dateStr) return;
+      const addLamports = (wallet: string, dateStr: string | null, lamports: number) => {
+        if (!dateStr || !lamports) return;
         const day = new Date(dateStr).toISOString().split("T")[0];
         const key = `${wallet}|${day}`;
-        map[key] = (map[key] || 0) + count;
+        map[key] = (map[key] || 0) + lamports;
       };
 
       const lotteryWalletMap: Record<string, string> = {
@@ -356,38 +352,31 @@ Deno.serve(async (req: Request) => {
 
       (tickets || []).forEach((t: any) => {
         const wallet = lotteryWalletMap[t.lottery_type];
-        if (wallet) addActivity(wallet, t.created_at);
+        if (wallet) {
+          const lamports = Math.round(parseFloat(t.total_sol || "0") * 1e9);
+          addLamports(wallet, t.created_at, lamports);
+        }
       });
 
       (deltaTransfers || []).forEach((d: any) => {
-        addActivity("2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU", d.created_at);
+        addLamports("2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU", d.created_at, d.amount_lamports);
       });
 
       (affiliateEarnings || []).forEach((a: any) => {
-        addActivity("8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf", a.earned_at);
+        addLamports("8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf", a.earned_at, a.commission_lamports);
       });
 
       (houseEarnings || []).forEach((h: any) => {
-        addActivity("55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1", h.created_at);
+        addLamports("55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1", h.created_at, h.amount_lamports);
       });
 
-      (prizeClaims || []).forEach((p: any) => {
-        const wallet = lotteryWalletMap[p.lottery_type];
-        if (wallet) addActivity(wallet, p.claimed_at);
-      });
-
-      (draws || []).forEach((d: any) => {
-        const wallet = lotteryWalletMap[d.lottery_type];
-        if (wallet) addActivity(wallet, d.draw_timestamp);
-      });
-
-      const result = Object.entries(map).map(([key, count]) => {
+      const result = Object.entries(map).map(([key, lamports]) => {
         const [wallet, date] = key.split("|");
         return {
           wallet_address: wallet,
-          label: TREASURY_WALLETS[wallet] || wallet,
+          label: TREASURY_LABELS[wallet] || wallet,
           date,
-          action_count: count,
+          lamports,
         };
       });
 

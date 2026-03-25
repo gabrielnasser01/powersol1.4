@@ -7,6 +7,7 @@ import {
 import { adminService, RevenueData, WalletActivity } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
+import { TreasuryGrowthChart } from '../../components/TreasuryGrowthChart';
 
 function StatCard({ label, value, subValue, icon: Icon, color, trend }: {
   label: string;
@@ -109,87 +110,6 @@ function RevenueTable({ data, period }: { data: RevenueData[]; period: string })
           </tfoot>
         )}
       </table>
-    </div>
-  );
-}
-
-const TREASURY_WALLET_ORDER = [
-  { address: '4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx', label: 'Tri-Daily', color: '#3ecbff' },
-  { address: 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk', label: 'Special Event', color: '#f59e0b' },
-  { address: 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C', label: 'Grand Prize', color: '#ef4444' },
-  { address: 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133', label: 'Jackpot', color: '#a855f7' },
-  { address: '2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU', label: 'Delta', color: '#f97316' },
-  { address: '8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf', label: 'Affiliates Pool', color: '#ec4899' },
-  { address: '55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1', label: 'Dev Treasury', color: '#10b981' },
-];
-
-function HeatmapGrid({ data }: { data: WalletActivity[] }) {
-  const { dates, maxCount, grid } = useMemo(() => {
-    const dateSet = new Set<string>();
-    const gridMap: Record<string, number> = {};
-    let max = 0;
-
-    data.forEach(d => {
-      dateSet.add(d.date);
-      const key = `${d.wallet_address}|${d.date}`;
-      gridMap[key] = d.action_count;
-      if (d.action_count > max) max = d.action_count;
-    });
-
-    const sortedDates = [...dateSet].sort().slice(-14);
-    return { dates: sortedDates, maxCount: max, grid: gridMap };
-  }, [data]);
-
-  const getColor = (count: number) => {
-    if (count === 0) return 'rgba(39, 39, 42, 0.3)';
-    const intensity = Math.min(count / Math.max(maxCount, 1), 1);
-    if (intensity < 0.25) return 'rgba(16, 185, 129, 0.2)';
-    if (intensity < 0.5) return 'rgba(16, 185, 129, 0.4)';
-    if (intensity < 0.75) return 'rgba(16, 185, 129, 0.6)';
-    return 'rgba(16, 185, 129, 0.9)';
-  };
-
-  return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[600px]">
-        <div className="flex gap-1 mb-2 ml-[140px]">
-          {dates.map(d => (
-            <div key={d} className="w-8 text-center text-zinc-600 font-mono" style={{ fontSize: '9px' }}>
-              {d.slice(5)}
-            </div>
-          ))}
-        </div>
-        {TREASURY_WALLET_ORDER.map(tw => (
-          <div key={tw.address} className="flex items-center gap-1 mb-1.5">
-            <div className="w-[140px] flex items-center gap-2 shrink-0" title={tw.address}>
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: tw.color }} />
-              <span className="text-zinc-400 font-mono text-xs truncate">{tw.label}</span>
-            </div>
-            {dates.map(date => {
-              const count = grid[`${tw.address}|${date}`] || 0;
-              return (
-                <div
-                  key={date}
-                  className="w-8 h-6 rounded-sm cursor-default transition-all hover:scale-110"
-                  style={{ background: getColor(count) }}
-                  title={`${tw.label} | ${date} | ${count} actions`}
-                />
-              );
-            })}
-          </div>
-        ))}
-        <div className="flex items-center gap-2 mt-4 ml-[140px]">
-          <span className="text-zinc-600 font-mono text-xs">Less</span>
-          {[0, 0.25, 0.5, 0.75, 1].map((level, i) => (
-            <div
-              key={i}
-              className="w-4 h-4 rounded-sm"
-              style={{ background: getColor(level * (maxCount || 1)) }}
-            />
-          ))}
-          <span className="text-zinc-600 font-mono text-xs">More</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -314,19 +234,7 @@ export function AdminOverview() {
               <RevenueTable data={revenue} period={period} />
             </div>
 
-            <div
-              className="rounded-xl border border-zinc-800/80 overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, rgba(15,17,23,0.9) 0%, rgba(19,22,33,0.9) 100%)' }}
-            >
-              <div className="flex items-center gap-2 p-5 border-b border-zinc-800/50">
-                <Flame className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-white font-mono text-sm font-bold">Treasury Wallets Heatmap</h3>
-                <span className="text-zinc-600 font-mono text-xs">(last 14 days)</span>
-              </div>
-              <div className="p-5">
-                <HeatmapGrid data={heatmap} />
-              </div>
-            </div>
+            <TreasuryGrowthChart data={heatmap} />
           </div>
         )}
       </AdminLayout>

@@ -96,24 +96,6 @@ export function Profile() {
     group.tickets.some(t => t.status === 'expired')
   );
 
-  const winningRounds = new Set(
-    userPrizes.map(p => `${p.lottery_type}:${p.round}`)
-  );
-
-  const isWinningTicket = (ticket: MockTicket): boolean => {
-    if (ticket.status !== 'expired' || !ticket.lotteryRoundId) return false;
-    return winningRounds.has(`${ticket.lotteryType}:${ticket.lotteryRoundId}`);
-  };
-
-  const handleTicketWinnerClick = (ticket: MockTicket, e: React.MouseEvent) => {
-    if (isWinningTicket(ticket)) {
-      e.preventDefault();
-      e.stopPropagation();
-      setShowTicketsModal(false);
-      setTimeout(() => setShowRewardsModal(true), 200);
-    }
-  };
-
   const loadPrizes = async () => {
     if (!walletPublicKey) return;
 
@@ -1460,50 +1442,30 @@ export function Profile() {
                           const solscanUrl = ticket.transactionSignature
                             ? `https://solscan.io/tx/${ticket.transactionSignature}?cluster=devnet`
                             : null;
-                          const isWinner = isWinningTicket(ticket);
                           return (
                             <motion.a
                               key={ticket.id}
-                              href={isWinner ? undefined : (solscanUrl || undefined)}
-                              target={!isWinner && solscanUrl ? '_blank' : undefined}
-                              rel={!isWinner && solscanUrl ? 'noopener noreferrer' : undefined}
-                              onClick={(e) => handleTicketWinnerClick(ticket, e)}
+                              href={solscanUrl || undefined}
+                              target={solscanUrl ? '_blank' : undefined}
+                              rel={solscanUrl ? 'noopener noreferrer' : undefined}
                               whileHover={{ scale: 1.02 }}
-                              className={`p-3 sm:p-4 rounded-lg border block transition-colors cursor-pointer hover:border-opacity-80 ${isWinner ? 'relative overflow-hidden' : ''}`}
+                              className={`p-3 sm:p-4 rounded-lg border block transition-colors ${solscanUrl ? 'cursor-pointer hover:border-opacity-80' : 'cursor-default'}`}
                               style={{
-                                background: isWinner
-                                  ? 'rgba(0, 0, 0, 0.6)'
-                                  : 'rgba(0, 0, 0, 0.6)',
-                                borderColor: isWinner ? '#fbbf24' : `${lotteryGroup.color}4d`,
-                                boxShadow: isWinner ? '0 0 20px rgba(251, 191, 36, 0.25), inset 0 0 30px rgba(251, 191, 36, 0.05)' : undefined,
+                                background: 'rgba(0, 0, 0, 0.6)',
+                                borderColor: `${lotteryGroup.color}4d`,
                               }}
                             >
-                              {isWinner && (
-                                <div
-                                  className="absolute inset-0 pointer-events-none"
-                                  style={{
-                                    background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, transparent 50%, rgba(251, 191, 36, 0.04) 100%)',
-                                  }}
-                                />
-                              )}
-                              <div className="flex items-center justify-between mb-2 relative">
-                                <span className="text-lg sm:text-xl font-bold font-mono" style={{ color: isWinner ? '#fbbf24' : lotteryGroup.color }}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-lg sm:text-xl font-bold font-mono" style={{ color: lotteryGroup.color }}>
                                   #{ticket.number}
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  {isWinner ? (
-                                    <Trophy className="w-3.5 h-3.5" style={{ color: '#fbbf24' }} />
-                                  ) : solscanUrl ? (
+                                  {solscanUrl && (
                                     <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-                                  ) : null}
+                                  )}
                                   <div
-                                    className="px-2 py-1 rounded text-xs font-mono font-bold"
-                                    style={isWinner ? {
-                                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(245, 158, 11, 0.2))',
-                                      border: '1px solid rgba(251, 191, 36, 0.6)',
-                                      color: '#fbbf24',
-                                      boxShadow: '0 0 8px rgba(251, 191, 36, 0.3)',
-                                    } : {
+                                    className="px-2 py-1 rounded text-xs font-mono"
+                                    style={{
                                       background: ticket.status === 'expired'
                                         ? 'rgba(239, 68, 68, 0.2)'
                                         : `${lotteryGroup.color}33`,
@@ -1511,20 +1473,14 @@ export function Profile() {
                                       color: ticket.status === 'expired' ? '#ef4444' : lotteryGroup.color,
                                     }}
                                   >
-                                    {isWinner ? 'WINNER' : ticket.status === 'expired' ? 'DRAWN' : 'ACTIVE'}
+                                    {ticket.status === 'expired' ? 'DRAWN' : 'ACTIVE'}
                                   </div>
                                 </div>
                               </div>
-                              <div className="space-y-1 text-xs font-mono text-zinc-400 relative">
+                              <div className="space-y-1 text-xs font-mono text-zinc-400">
                                 <div>Purchased: {ticket.purchaseDate}</div>
                                 <div>Draw: {ticket.drawDate}</div>
-                                {isWinner && (
-                                  <div className="flex items-center gap-1.5 pt-1.5 font-bold" style={{ color: '#fbbf24' }}>
-                                    <Gift className="w-3 h-3" />
-                                    <span>Tap to claim reward</span>
-                                  </div>
-                                )}
-                                {!isWinner && ticket.transactionSignature && (
+                                {ticket.transactionSignature && (
                                   <div className="flex items-center gap-1 pt-1" style={{ color: lotteryGroup.color }}>
                                     <span>TX: {ticket.transactionSignature.slice(0, 16)}...</span>
                                     <ExternalLink className="w-3 h-3" />

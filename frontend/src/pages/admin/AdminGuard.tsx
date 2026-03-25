@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
-import { isAdminWallet } from '../../services/adminService';
+import { isAdminWallet, setAdminWallet } from '../../services/adminService';
 import { ShieldOff, Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -10,6 +10,13 @@ interface AdminGuardProps {
 
 export function AdminGuard({ children }: AdminGuardProps) {
   const { publicKey, connected } = useWallet();
+
+  useEffect(() => {
+    if (connected && publicKey && isAdminWallet(publicKey)) {
+      setAdminWallet(publicKey);
+    }
+    return () => setAdminWallet(null);
+  }, [connected, publicKey]);
 
   if (!connected || !publicKey) {
     return (

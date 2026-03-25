@@ -47,8 +47,7 @@ Deno.serve(async (req: Request) => {
     if (action === "stats") {
       const [
         { count: userCount },
-        { count: ticketCount },
-        { data: ticketSum },
+        { data: ticketData },
         { count: drawCount },
         { data: prizeSum },
         { count: affiliateCount },
@@ -56,10 +55,7 @@ Deno.serve(async (req: Request) => {
         { data: devTreasurySum },
       ] = await Promise.all([
         supabase.from("users").select("*", { count: "exact", head: true }),
-        supabase
-          .from("ticket_purchases")
-          .select("*", { count: "exact", head: true }),
-        supabase.from("ticket_purchases").select("total_sol"),
+        supabase.from("ticket_purchases").select("quantity, total_sol"),
         supabase
           .from("solana_draws")
           .select("*", { count: "exact", head: true }),
@@ -73,7 +69,11 @@ Deno.serve(async (req: Request) => {
         supabase.from("dev_treasury_transfers").select("amount_lamports"),
       ]);
 
-      const totalRevenueSol = (ticketSum || []).reduce(
+      const totalTickets = (ticketData || []).reduce(
+        (s: number, t: any) => s + Number(t.quantity || 0),
+        0
+      );
+      const totalRevenueSol = (ticketData || []).reduce(
         (s: number, t: any) => s + Number(t.total_sol || 0),
         0
       );
@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
 
       return jsonResponse({
         totalUsers: userCount || 0,
-        totalTickets: ticketCount || 0,
+        totalTickets,
         totalRevenueSol,
         totalDraws: drawCount || 0,
         totalPrizesLamports,

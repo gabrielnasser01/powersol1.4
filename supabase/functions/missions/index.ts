@@ -282,9 +282,13 @@ async function claimMission(walletAddress: string, missionKey: string) {
 
   if (updateError) throw updateError;
 
-  await supabase.rpc("increment_power_points_by_wallet", {
-    wallet_param: walletAddress,
-    points_param: mission.power_points,
+  await supabase.rpc("add_power_points", {
+    p_wallet_address: walletAddress,
+    p_amount: mission.power_points,
+    p_transaction_type: "mission_complete",
+    p_description: `Completed mission: ${mission.name}`,
+    p_reference_type: "mission",
+    p_reference_id: mission.id,
   });
 
   if (safeMissionKey === "weekly_streak") {
@@ -364,9 +368,11 @@ async function recordTicketPurchase(walletAddress: string, body: Record<string, 
   const powerPointsEarned = (powerPointsMap[safeType] || 10) * ticketQty;
   const supabase = getServiceClient();
 
-  await supabase.rpc("increment_power_points_by_wallet", {
-    wallet_param: walletAddress,
-    points_param: powerPointsEarned,
+  await supabase.rpc("add_power_points", {
+    p_wallet_address: walletAddress,
+    p_amount: powerPointsEarned,
+    p_transaction_type: "ticket_purchase",
+    p_description: `Purchased ${ticketQty} ${safeType} ticket${ticketQty > 1 ? "s" : ""}`,
   });
 
   const dailyResult = await tryMarkEligible(walletAddress, "daily_buy_ticket");

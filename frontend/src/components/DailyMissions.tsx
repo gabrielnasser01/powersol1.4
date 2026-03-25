@@ -588,8 +588,7 @@ export function DailyMissions() {
               const isDonationMission = mission.mission_key === 'daily_donation';
               const isEligible = !isCompleted && mission.user_progress?.progress?.eligible === true;
               const isClickable = !isCompleted && (isEligible || isDonationMission ||
-                ['daily_login', 'daily_visit', 'social_discord_join', 'social_join_discord',
-                 'social_twitter_follow', 'social_tiktok_follow', 'social_share',
+                ['daily_login', 'daily_visit', 'social_discord_join', 'social_share',
                  'activity_explore_transparency'].includes(mission.mission_key));
 
               return (
@@ -644,24 +643,10 @@ export function DailyMissions() {
                       return;
                     }
 
-                    if (mission.mission_key === 'social_join_discord' || mission.mission_key === 'social_discord_join') {
+                    if (mission.mission_key === 'social_discord_join') {
                       window.open('https://discord.gg/pbbTU7SWwq', '_blank');
-                      await markEligibleAPI(mission.mission_key);
-                      handleClaimMission(mission.mission_key);
-                      return;
-                    }
-
-                    if (mission.mission_key === 'social_twitter_follow') {
-                      window.open('https://twitter.com/powersol_io', '_blank');
-                      await markEligibleAPI('social_twitter_follow');
-                      handleClaimMission('social_twitter_follow');
-                      return;
-                    }
-
-                    if (mission.mission_key === 'social_tiktok_follow') {
-                      window.open('https://tiktok.com/@powersol', '_blank');
-                      await markEligibleAPI('social_tiktok_follow');
-                      handleClaimMission('social_tiktok_follow');
+                      await markEligibleAPI('social_discord_join');
+                      handleClaimMission('social_discord_join');
                       return;
                     }
 

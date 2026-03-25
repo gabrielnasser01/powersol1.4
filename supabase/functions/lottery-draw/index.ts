@@ -1,5 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "npm:@solana/web3.js@1.98.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +16,8 @@ const corsHeaders = {
 };
 
 const SOLANA_RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
+const AFFILIATES_POOL_PUBLIC = "8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf";
+const DELTA_WALLET_PUBLIC = "2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU";
 
 const LOTTERY_WALLETS: Record<string, string> = {
   "tri-daily": "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx",
@@ -607,6 +617,71 @@ async function createNextLottery(supabase: any, lottery: any) {
   return newLottery;
 }
 
+function getAffiliatesPoolKeypair(): Keypair | null {
+  try {
+    const privateKeyString = Deno.env.get("SOLANA_AFFILIATES_POOL_PRIVATE");
+    if (!privateKeyString) {
+      console.error("SOLANA_AFFILIATES_POOL_PRIVATE not configured");
+      return null;
+    }
+    const privateKeyArray = JSON.parse(privateKeyString);
+    return Keypair.fromSecretKey(new Uint8Array(privateKeyArray));
+  } catch (err) {
+    console.error("Failed to parse affiliates pool keypair:", err);
+    return null;
+  }
+}
+
+async function transferFromAffiliatesPoolToDelta(
+  lamports: number
+): Promise<{ success: boolean; signature?: string; error?: string }> {
+  if (lamports <= 0) {
+    return { success: true, signature: undefined };
+  }
+
+  const keypair = getAffiliatesPoolKeypair();
+  if (!keypair) {
+    return { success: false, error: "Affiliates pool keypair not available" };
+  }
+
+  try {
+    const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+
+    const balance = await connection.getBalance(keypair.publicKey);
+    const rentExempt = await connection.getMinimumBalanceForRentExemption(0);
+    const fee = 5000;
+    const maxTransferable = balance - rentExempt - fee;
+
+    if (maxTransferable < lamports) {
+      console.error(
+        `Affiliates pool insufficient balance: has ${balance}, needs ${lamports} + ${rentExempt} rent + ${fee} fee`
+      );
+      return {
+        success: false,
+        error: `Insufficient balance: pool has ${balance} lamports, needs ${lamports + rentExempt + fee}`,
+      };
+    }
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: keypair.publicKey,
+        toPubkey: new PublicKey(DELTA_WALLET_PUBLIC),
+        lamports,
+      })
+    );
+
+    const signature = await sendAndConfirmTransaction(connection, transaction, [keypair], {
+      commitment: "confirmed",
+    });
+
+    console.log(`Sweep on-chain transfer: ${lamports} lamports -> delta wallet. Sig: ${signature}`);
+    return { success: true, signature };
+  } catch (err) {
+    console.error("On-chain sweep transfer failed:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Unknown transfer error" };
+  }
+}
+
 async function sweepUnclaimedAffiliateRewards(supabase: ReturnType<typeof getSupabaseClient>) {
   try {
     const { data, error } = await supabase.rpc("sweep_unclaimed_affiliate_rewards_to_delta", {
@@ -619,10 +694,27 @@ async function sweepUnclaimedAffiliateRewards(supabase: ReturnType<typeof getSup
     }
 
     const result = data?.[0] || { swept_count: 0, total_swept_lamports: 0 };
+
+    let onchainTransfer = { success: true, signature: undefined as string | undefined };
+    if (result.total_swept_lamports > 0) {
+      onchainTransfer = await transferFromAffiliatesPoolToDelta(
+        Number(result.total_swept_lamports)
+      );
+
+      if (onchainTransfer.success && onchainTransfer.signature) {
+        await supabase
+          .from("delta_transfers")
+          .update({ transaction_signature: onchainTransfer.signature })
+          .eq("source", "unclaimed_sweep")
+          .is("transaction_signature", null);
+      }
+    }
+
     return {
       swept: true,
       swept_count: result.swept_count,
       total_swept_lamports: result.total_swept_lamports,
+      onchain_transfer: onchainTransfer,
     };
   } catch (err) {
     console.error("Sweep unclaimed rewards exception:", err);

@@ -182,16 +182,34 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "affiliates") {
-      const { data: affiliates } = await supabase
-        .from("affiliates")
-        .select("*, users!affiliates_user_id_fkey(wallet_address)")
-        .order("total_earned", { ascending: false });
-
-      const { data: referrals } = await supabase
-        .from("referrals")
-        .select(
-          "referrer_affiliate_id, total_tickets_purchased, total_value_sol, total_commission_earned, is_validated"
-        );
+      const [
+        { data: affiliates },
+        { data: referrals },
+        { data: earnings },
+        { data: weeklyAccum },
+        { data: onchainClaims },
+      ] = await Promise.all([
+        supabase
+          .from("affiliates")
+          .select("*, users!affiliates_user_id_fkey(wallet_address)")
+          .order("total_earned", { ascending: false }),
+        supabase
+          .from("referrals")
+          .select(
+            "referrer_affiliate_id, total_tickets_purchased, total_value_sol, total_commission_earned, is_validated"
+          ),
+        supabase
+          .from("solana_affiliate_earnings")
+          .select("affiliate_wallet, commission_lamports"),
+        supabase
+          .from("affiliate_weekly_accumulator")
+          .select(
+            "affiliate_wallet, pending_lamports, is_released, is_claimed, is_swept_to_delta"
+          ),
+        supabase
+          .from("onchain_affiliate_claims")
+          .select("affiliate_wallet, amount_lamports"),
+      ]);
 
       const refMap: Record<
         string,
@@ -205,20 +223,56 @@ Deno.serve(async (req: Request) => {
         refMap[key].commission += Number(r.total_commission_earned || 0);
       });
 
-      const result = (affiliates || []).map((a: any) => ({
-        affiliate_id: a.id,
-        user_id: a.user_id,
-        wallet_address: a.users?.wallet_address || "",
-        referral_code: a.referral_code,
-        total_earned: Number(a.total_earned || 0),
-        pending_earnings: Number(a.pending_earnings || 0),
-        total_claimed_sol: Number(a.total_claimed_sol || 0),
-        manual_tier: a.manual_tier,
-        referral_count: refMap[a.id]?.count || 0,
-        total_referral_value_sol: refMap[a.id]?.value || 0,
-        total_commission_earned: refMap[a.id]?.commission || 0,
-        created_at: a.created_at,
-      }));
+      const earnedMap: Record<string, number> = {};
+      (earnings || []).forEach((e: any) => {
+        earnedMap[e.affiliate_wallet] =
+          (earnedMap[e.affiliate_wallet] || 0) +
+          Number(e.commission_lamports || 0);
+      });
+
+      const pendingMap: Record<string, number> = {};
+      (weeklyAccum || []).forEach((w: any) => {
+        if (
+          !w.is_released &&
+          !w.is_claimed &&
+          !w.is_swept_to_delta
+        ) {
+          const wallet = w.affiliate_wallet;
+          pendingMap[wallet] =
+            (pendingMap[wallet] || 0) + Number(w.pending_lamports || 0);
+        }
+      });
+
+      const claimedMap: Record<string, number> = {};
+      (onchainClaims || []).forEach((c: any) => {
+        claimedMap[c.affiliate_wallet] =
+          (claimedMap[c.affiliate_wallet] || 0) +
+          Number(c.amount_lamports || 0);
+      });
+
+      const result = (affiliates || []).map((a: any) => {
+        const wallet = a.users?.wallet_address || "";
+        const totalEarnedLamports = earnedMap[wallet] || 0;
+        const totalClaimedLamports = claimedMap[wallet] || 0;
+        const trulyPendingLamports = pendingMap[wallet] || 0;
+
+        return {
+          affiliate_id: a.id,
+          user_id: a.user_id,
+          wallet_address: wallet,
+          referral_code: a.referral_code,
+          total_earned: totalEarnedLamports / 1e9,
+          pending_earnings: trulyPendingLamports / 1e9,
+          total_claimed_sol: totalClaimedLamports / 1e9,
+          manual_tier: a.manual_tier,
+          referral_count: refMap[a.id]?.count || 0,
+          total_referral_value_sol: refMap[a.id]?.value || 0,
+          total_commission_earned: refMap[a.id]?.commission || 0,
+          created_at: a.created_at,
+        };
+      });
+
+      result.sort((a: any, b: any) => b.total_earned - a.total_earned);
 
       return jsonResponse(result);
     }

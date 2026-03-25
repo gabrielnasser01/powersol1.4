@@ -363,11 +363,11 @@ Deno.serve(async (req: Request) => {
       });
 
       (deltaTransfers || []).forEach((d: any) => {
-        addLamports("2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU", d.created_at, d.amount_lamports);
+        addLamports("2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU", d.created_at, Number(d.amount_lamports));
       });
 
       (affiliateEarnings || []).forEach((a: any) => {
-        addLamports("8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf", a.earned_at, a.commission_lamports);
+        addLamports("8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf", a.earned_at, Number(a.commission_lamports));
       });
 
       const result = Object.entries(map).map(([key, lamports]) => {

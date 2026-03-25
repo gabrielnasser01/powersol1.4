@@ -250,9 +250,6 @@ export function AdminPowerPoints() {
                           Power Points <SortIcon field="power_points" />
                         </span>
                       </th>
-                      <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">
-                        Ticket PP
-                      </th>
                       <th
                         className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal cursor-pointer hover:text-zinc-300 transition-colors"
                         onClick={() => toggleSort('missions_completed')}
@@ -299,11 +296,6 @@ export function AdminPowerPoints() {
                         <td className="py-3 px-4 text-right">
                           <span className="text-amber-400 font-mono text-sm font-bold">
                             {user.power_points.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="text-orange-400 font-mono text-sm">
-                            {user.ticket_pp ? user.ticket_pp.toLocaleString() : '0'}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">

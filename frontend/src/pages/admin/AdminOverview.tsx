@@ -3,11 +3,13 @@ import { motion } from 'framer-motion';
 import {
   Users, Ticket, DollarSign, Trophy, TrendingUp, Flame,
   Calendar, ChevronDown, AlertTriangle, ArrowUpRight, ArrowDownRight,
+  BarChart3,
 } from 'lucide-react';
 import { adminService, RevenueData, WalletActivity } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
 import { TreasuryGrowthChart } from '../../components/TreasuryGrowthChart';
+import { solPriceService } from '../../services/solPriceService';
 
 function StatCard({ label, value, subValue, icon: Icon, color, trend }: {
   label: string;
@@ -114,38 +116,200 @@ function RevenueTable({ data, period }: { data: RevenueData[]; period: string })
   );
 }
 
+interface MonthlyVolume {
+  month: string;
+  label: string;
+  ticketCount: number;
+  revenueSol: number;
+  devTreasurySol: number;
+  deltaSol: number;
+}
+
+function MonthlyVolumeSection({ data, solPrice }: { data: MonthlyVolume[]; solPrice: number }) {
+  const recent = useMemo(() => [...data].reverse().slice(0, 12), [data]);
+  const currentMonth = recent[0];
+  const prevMonth = recent[1];
+
+  const monthOverMonthChange = useMemo(() => {
+    if (!currentMonth || !prevMonth || prevMonth.revenueSol === 0) return undefined;
+    return ((currentMonth.revenueSol - prevMonth.revenueSol) / prevMonth.revenueSol) * 100;
+  }, [currentMonth, prevMonth]);
+
+  const maxRevenue = useMemo(
+    () => Math.max(...recent.map(m => m.revenueSol), 0.0001),
+    [recent]
+  );
+
+  const formatUsd = (sol: number) => {
+    const usd = sol * solPrice;
+    if (usd >= 1000) return `$${(usd / 1000).toFixed(1)}k`;
+    return `$${usd.toFixed(2)}`;
+  };
+
+  return (
+    <div
+      className="rounded-xl border border-zinc-800/80 overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, rgba(15,17,23,0.9) 0%, rgba(19,22,33,0.9) 100%)' }}
+    >
+      <div className="flex items-center justify-between p-5 border-b border-zinc-800/50">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-emerald-400" />
+          <h3 className="text-white font-mono text-sm font-bold">Monthly Volume</h3>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-zinc-500 font-mono text-xs">
+            SOL/USD: <span className="text-emerald-400">${solPrice.toFixed(2)}</span>
+          </span>
+          {monthOverMonthChange !== undefined && (
+            <div className={`flex items-center gap-1 text-xs font-mono ${monthOverMonthChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {monthOverMonthChange >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+              {Math.abs(monthOverMonthChange).toFixed(1)}% MoM
+            </div>
+          )}
+        </div>
+      </div>
+
+      {currentMonth && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-zinc-800/30">
+          <div className="p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
+            <p className="text-zinc-500 font-mono text-xs mb-1">This Month Tickets</p>
+            <p className="text-white font-mono text-lg font-bold">{currentMonth.ticketCount.toLocaleString()}</p>
+          </div>
+          <div className="p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
+            <p className="text-zinc-500 font-mono text-xs mb-1">This Month Revenue</p>
+            <p className="text-emerald-400 font-mono text-lg font-bold">{currentMonth.revenueSol.toFixed(4)} SOL</p>
+            <p className="text-zinc-600 font-mono text-xs">{formatUsd(currentMonth.revenueSol)}</p>
+          </div>
+          <div className="p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
+            <p className="text-zinc-500 font-mono text-xs mb-1">This Month Dev Treasury</p>
+            <p className="text-amber-400 font-mono text-lg font-bold">{currentMonth.devTreasurySol.toFixed(4)} SOL</p>
+            <p className="text-zinc-600 font-mono text-xs">{formatUsd(currentMonth.devTreasurySol)}</p>
+          </div>
+          <div className="p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
+            <p className="text-zinc-500 font-mono text-xs mb-1">This Month Delta</p>
+            <p className="text-cyan-400 font-mono text-lg font-bold">{currentMonth.deltaSol.toFixed(4)} SOL</p>
+            <p className="text-zinc-600 font-mono text-xs">{formatUsd(currentMonth.deltaSol)}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="p-5">
+        <div className="space-y-3">
+          {recent.map((month, i) => {
+            const barWidth = (month.revenueSol / maxRevenue) * 100;
+            return (
+              <motion.div
+                key={month.month}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="group"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-zinc-400 font-mono text-xs w-20">{month.label}</span>
+                  <div className="flex items-center gap-4 text-right">
+                    <span className="text-zinc-500 font-mono text-xs w-14">{month.ticketCount} tix</span>
+                    <span className="text-emerald-400 font-mono text-xs w-28">{month.revenueSol.toFixed(4)} SOL</span>
+                    <span className="text-zinc-500 font-mono text-xs w-20">{formatUsd(month.revenueSol)}</span>
+                  </div>
+                </div>
+                <div className="h-2 rounded-full bg-zinc-800/60 overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${barWidth}%` }}
+                    transition={{ duration: 0.6, delay: i * 0.04 }}
+                    className="h-full rounded-full"
+                    style={{
+                      background: i === 0
+                        ? 'linear-gradient(90deg, #10b981, #34d399)'
+                        : 'linear-gradient(90deg, #3f3f46, #52525b)',
+                    }}
+                  />
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {recent.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-zinc-800/50">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-400 font-mono text-xs font-bold">All-Time Total</span>
+              <div className="flex items-center gap-4 text-right">
+                <span className="text-zinc-400 font-mono text-xs font-bold w-14">
+                  {recent.reduce((s, m) => s + m.ticketCount, 0)} tix
+                </span>
+                <span className="text-emerald-400 font-mono text-xs font-bold w-28">
+                  {recent.reduce((s, m) => s + m.revenueSol, 0).toFixed(4)} SOL
+                </span>
+                <span className="text-zinc-400 font-mono text-xs font-bold w-20">
+                  {formatUsd(recent.reduce((s, m) => s + m.revenueSol, 0))}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AdminOverview() {
   const [stats, setStats] = useState<any>(null);
   const [revenue, setRevenue] = useState<RevenueData[]>([]);
   const [heatmap, setHeatmap] = useState<WalletActivity[]>([]);
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [loading, setLoading] = useState(true);
+  const [solPrice, setSolPrice] = useState(solPriceService.getPrice());
 
   useEffect(() => {
     loadData();
+    solPriceService.fetchPrice();
+    return solPriceService.subscribe((price) => setSolPrice(price));
   }, []);
 
   useEffect(() => {
     adminService.getRevenueData(period).then(setRevenue);
   }, [period]);
 
+  const [monthlyRevenue, setMonthlyRevenue] = useState<RevenueData[]>([]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [s, r, h] = await Promise.all([
+      const [s, r, h, m] = await Promise.all([
         adminService.getPlatformStats(),
         adminService.getRevenueData(period),
         adminService.getWalletHeatmap(),
+        adminService.getRevenueData('monthly'),
       ]);
       setStats(s);
       setRevenue(r);
       setHeatmap(h);
+      setMonthlyRevenue(m);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const monthlyVolume: MonthlyVolume[] = useMemo(() => {
+    return monthlyRevenue.map(row => {
+      const [year, monthStr] = row.date.split('-');
+      const monthIdx = parseInt(monthStr, 10) - 1;
+      return {
+        month: row.date,
+        label: `${MONTH_NAMES[monthIdx]} ${year}`,
+        ticketCount: row.ticket_count,
+        revenueSol: row.ticket_revenue_lamports / 1e9,
+        devTreasurySol: row.dev_treasury_lamports / 1e9,
+        deltaSol: row.delta_lamports / 1e9,
+      };
+    });
+  }, [monthlyRevenue]);
 
   return (
     <AdminGuard>
@@ -214,6 +378,8 @@ export function AdminOverview() {
                 color="#eab308"
               />
             </div>
+
+            <MonthlyVolumeSection data={monthlyVolume} solPrice={solPrice} />
 
             <div
               className="rounded-xl border border-zinc-800/80 overflow-hidden"

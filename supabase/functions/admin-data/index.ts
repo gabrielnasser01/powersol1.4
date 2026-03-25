@@ -435,17 +435,6 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(data || []);
     }
 
-    if (action === "wallet-balances") {
-      const balances = await getAllOnChainBalances();
-      const result = Object.entries(balances).map(([address, lamports]) => ({
-        address,
-        label: ALL_TREASURY_WALLETS[address] || address,
-        lamports,
-        sol: lamports / 1e9,
-      }));
-      return jsonResponse(result);
-    }
-
     if (action === "unclaimed-affiliate-rewards") {
       const { data } = await supabase
         .from("affiliate_weekly_accumulator")

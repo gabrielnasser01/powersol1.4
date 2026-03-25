@@ -92,13 +92,6 @@ export interface WalletActivity {
   lamports: number;
 }
 
-export interface WalletBalance {
-  address: string;
-  label: string;
-  lamports: number;
-  sol: number;
-}
-
 export interface MissionAlert {
   wallet_address: string;
   mission_key: string;
@@ -137,10 +130,6 @@ class AdminService {
 
   async getMissionAlerts(): Promise<MissionAlert[]> {
     return adminFetch({ action: 'mission-alerts' }, getWallet());
-  }
-
-  async getWalletBalances(): Promise<WalletBalance[]> {
-    return adminFetch({ action: 'wallet-balances' }, getWallet());
   }
 
   async getExpiredUnclaimedPrizes() {

@@ -4,7 +4,7 @@ import {
   Users, Ticket, DollarSign, Trophy, TrendingUp, Flame,
   Calendar, ChevronDown, AlertTriangle, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
-import { adminService, RevenueData, WalletActivity, WalletBalance } from '../../services/adminService';
+import { adminService, RevenueData, WalletActivity } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
 import { TreasuryGrowthChart } from '../../components/TreasuryGrowthChart';
@@ -118,7 +118,6 @@ export function AdminOverview() {
   const [stats, setStats] = useState<any>(null);
   const [revenue, setRevenue] = useState<RevenueData[]>([]);
   const [heatmap, setHeatmap] = useState<WalletActivity[]>([]);
-  const [walletBalances, setWalletBalances] = useState<WalletBalance[]>([]);
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [loading, setLoading] = useState(true);
 
@@ -133,16 +132,14 @@ export function AdminOverview() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [s, r, h, wb] = await Promise.all([
+      const [s, r, h] = await Promise.all([
         adminService.getPlatformStats(),
         adminService.getRevenueData(period),
         adminService.getWalletHeatmap(),
-        adminService.getWalletBalances(),
       ]);
       setStats(s);
       setRevenue(r);
       setHeatmap(h);
-      setWalletBalances(wb);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -199,10 +196,7 @@ export function AdminOverview() {
               />
               <StatCard
                 label="Delta Pool (SOL)"
-                value={((stats?.deltaOnChainLamports || stats?.totalDeltaLamports || 0) / 1e9).toFixed(4)}
-                subValue={stats?.deltaOnChainLamports && stats?.totalDeltaLamports && stats.deltaOnChainLamports !== stats.totalDeltaLamports
-                  ? `DB tracked: ${(stats.totalDeltaLamports / 1e9).toFixed(4)}`
-                  : undefined}
+                value={((stats?.totalDeltaLamports || 0) / 1e9).toFixed(4)}
                 icon={Flame}
                 color="#f97316"
               />
@@ -240,7 +234,7 @@ export function AdminOverview() {
               <RevenueTable data={revenue} period={period} />
             </div>
 
-            <TreasuryGrowthChart data={heatmap} walletBalances={walletBalances} />
+            <TreasuryGrowthChart data={heatmap} />
           </div>
         )}
       </AdminLayout>

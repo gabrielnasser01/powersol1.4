@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { TrendingUp, ChevronDown, Wallet } from 'lucide-react';
-import type { WalletActivity, WalletBalance } from '../services/adminService';
+import { TrendingUp, ChevronDown } from 'lucide-react';
+import type { WalletActivity } from '../services/adminService';
 
 const TREASURY_WALLETS = [
   { address: '4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx', label: 'Tri-Daily', color: '#3ecbff' },
@@ -62,60 +62,7 @@ interface TooltipInfo {
   items: { label: string; sol: number; color: string }[];
 }
 
-function OnChainBalancesPanel({ balances }: { balances: WalletBalance[] }) {
-  const totalSol = useMemo(() => balances.reduce((s, b) => s + b.sol, 0), [balances]);
-
-  const balanceMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    balances.forEach(b => { map[b.address] = b.sol; });
-    return map;
-  }, [balances]);
-
-  const maxSol = useMemo(() => Math.max(...balances.map(b => b.sol), 0.001), [balances]);
-
-  return (
-    <div className="p-5 border-b border-zinc-800/50">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-emerald-400" />
-          <span className="text-zinc-400 font-mono text-xs">On-Chain Balances (Live)</span>
-        </div>
-        <div className="text-right">
-          <span className="text-white font-mono text-lg font-bold">{totalSol.toFixed(4)}</span>
-          <span className="text-zinc-500 font-mono text-xs ml-1.5">SOL total</span>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {TREASURY_WALLETS.map(w => {
-          const sol = balanceMap[w.address] || 0;
-          const pct = maxSol > 0 ? (sol / maxSol) * 100 : 0;
-          return (
-            <div
-              key={w.address}
-              className="rounded-lg border border-zinc-800/60 p-3 relative overflow-hidden"
-              style={{ background: 'rgba(9,10,15,0.6)' }}
-            >
-              <div
-                className="absolute bottom-0 left-0 h-0.5 transition-all duration-500"
-                style={{ width: `${pct}%`, background: w.color }}
-              />
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <div className="w-2 h-2 rounded-full" style={{ background: w.color }} />
-                <span className="text-zinc-500 font-mono" style={{ fontSize: 10 }}>{w.label}</span>
-              </div>
-              <span className="text-white font-mono text-sm font-bold">
-                {sol < 0.001 ? sol.toFixed(6) : sol < 1 ? sol.toFixed(4) : sol.toFixed(4)}
-              </span>
-              <span className="text-zinc-600 font-mono text-xs ml-1">SOL</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export function TreasuryGrowthChart({ data, walletBalances = [] }: { data: WalletActivity[]; walletBalances?: WalletBalance[] }) {
+export function TreasuryGrowthChart({ data }: { data: WalletActivity[] }) {
   const [period, setPeriod] = useState<Period>('daily');
   const [visibleWallets, setVisibleWallets] = useState<Set<string>>(
     () => new Set(TREASURY_WALLETS.map(w => w.address))
@@ -247,7 +194,7 @@ export function TreasuryGrowthChart({ data, walletBalances = [] }: { data: Walle
       <div className="flex items-center justify-between p-5 border-b border-zinc-800/50">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-emerald-400" />
-          <h3 className="text-white font-mono text-sm font-bold">Treasury Wallets</h3>
+          <h3 className="text-white font-mono text-sm font-bold">Treasury Wallets Growth</h3>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex bg-zinc-800/80 rounded-lg p-0.5">
@@ -280,10 +227,6 @@ export function TreasuryGrowthChart({ data, walletBalances = [] }: { data: Walle
         </div>
       </div>
 
-      {walletBalances.length > 0 && (
-        <OnChainBalancesPanel balances={walletBalances} />
-      )}
-
       <div className="p-5">
         {dates.length === 0 ? (
           <div className="flex items-center justify-center py-16 text-zinc-600 font-mono text-sm">
@@ -291,9 +234,6 @@ export function TreasuryGrowthChart({ data, walletBalances = [] }: { data: Walle
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-zinc-500 font-mono text-xs">Historical Growth (from DB records)</span>
-            </div>
             <div className="relative">
               <svg
                 viewBox={`0 0 ${W} ${H}`}

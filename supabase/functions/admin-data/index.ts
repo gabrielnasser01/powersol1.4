@@ -326,12 +326,10 @@ Deno.serve(async (req: Request) => {
         { data: tickets },
         { data: deltaTransfers },
         { data: affiliateEarnings },
-        { data: houseEarnings },
       ] = await Promise.all([
         supabase.from("ticket_purchases").select("lottery_type, total_sol, created_at"),
         supabase.from("delta_transfers").select("amount_lamports, created_at"),
         supabase.from("solana_affiliate_earnings").select("commission_lamports, earned_at"),
-        supabase.from("house_earnings").select("amount_lamports, created_at"),
       ]);
 
       const map: Record<string, number> = {};
@@ -343,6 +341,10 @@ Deno.serve(async (req: Request) => {
         map[key] = (map[key] || 0) + lamports;
       };
 
+      const DEV_TREASURY = "55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1";
+      const PRIZE_POOL_PCT = 0.40;
+      const TREASURY_PCT = 0.30;
+
       const lotteryWalletMap: Record<string, string> = {
         "tri-daily": "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx",
         "special-event": "AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk",
@@ -351,11 +353,13 @@ Deno.serve(async (req: Request) => {
       };
 
       (tickets || []).forEach((t: any) => {
+        const totalLamports = Math.round(parseFloat(t.total_sol || "0") * 1e9);
+        const prizePoolLamports = Math.floor(totalLamports * PRIZE_POOL_PCT);
+        const treasuryLamports = Math.floor(totalLamports * TREASURY_PCT);
+
         const wallet = lotteryWalletMap[t.lottery_type];
-        if (wallet) {
-          const lamports = Math.round(parseFloat(t.total_sol || "0") * 1e9);
-          addLamports(wallet, t.created_at, lamports);
-        }
+        if (wallet) addLamports(wallet, t.created_at, prizePoolLamports);
+        addLamports(DEV_TREASURY, t.created_at, treasuryLamports);
       });
 
       (deltaTransfers || []).forEach((d: any) => {
@@ -364,10 +368,6 @@ Deno.serve(async (req: Request) => {
 
       (affiliateEarnings || []).forEach((a: any) => {
         addLamports("8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf", a.earned_at, a.commission_lamports);
-      });
-
-      (houseEarnings || []).forEach((h: any) => {
-        addLamports("55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1", h.created_at, h.amount_lamports);
       });
 
       const result = Object.entries(map).map(([key, lamports]) => {

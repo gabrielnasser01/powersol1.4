@@ -612,7 +612,7 @@ export function Whitepaper() {
           </p>
 
           <motion.a
-            href="/PowerSOL_Whitepaper_v1.0.6_(3).pdf"
+            href="/PowerSOL_Whitepaper_(v1.0.6).pdf"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300"

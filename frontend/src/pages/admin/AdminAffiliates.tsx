@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Search, ChevronDown, ChevronUp, X, Network,
@@ -7,6 +7,7 @@ import {
 import { adminService, AffiliateRanking } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
+import { useAdminAutoRefresh } from '../../hooks/useAdminAutoRefresh';
 
 const TIER_LABELS: Record<number, { label: string; color: string }> = {
   1: { label: 'Starter', color: '#a1a1aa' },
@@ -155,12 +156,7 @@ export function AdminAffiliates() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selectedAffiliate, setSelectedAffiliate] = useState<AffiliateRanking | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
     try {
       const [a, u] = await Promise.all([
         adminService.getAffiliateRankings(),
@@ -173,7 +169,13 @@ export function AdminAffiliates() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const { lastRefresh } = useAdminAutoRefresh(loadData);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filtered = useMemo(() => {
     let result = affiliates.filter(a => {
@@ -215,6 +217,15 @@ export function AdminAffiliates() {
           </div>
         ) : (
           <div className="space-y-6">
+            <div className="flex items-center justify-end gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-zinc-600 font-mono text-xs">
+                LIVE {lastRefresh.toLocaleTimeString()}
+              </span>
+            </div>
             {unclaimedRewards.length > 0 && (
               <div
                 className="rounded-xl border border-amber-500/20 p-4"

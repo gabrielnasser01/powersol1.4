@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, Ticket, DollarSign, Trophy, TrendingUp, Flame,
@@ -10,6 +10,7 @@ import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
 import { TreasuryGrowthChart } from '../../components/TreasuryGrowthChart';
 import { solPriceService } from '../../services/solPriceService';
+import { useAdminAutoRefresh } from '../../hooks/useAdminAutoRefresh';
 
 function StatCard({ label, value, subValue, icon: Icon, color, trend }: {
   label: string;
@@ -262,24 +263,15 @@ export function AdminOverview() {
   const [loading, setLoading] = useState(true);
   const [solPrice, setSolPrice] = useState(solPriceService.getPrice());
 
-  useEffect(() => {
-    loadData();
-    solPriceService.fetchPrice();
-    return solPriceService.subscribe((price) => setSolPrice(price));
-  }, []);
-
-  useEffect(() => {
-    adminService.getRevenueData(period).then(setRevenue);
-  }, [period]);
-
   const [monthlyRevenue, setMonthlyRevenue] = useState<RevenueData[]>([]);
+  const periodRef = React.useRef(period);
+  periodRef.current = period;
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
     try {
       const [s, r, h, m] = await Promise.all([
         adminService.getPlatformStats(),
-        adminService.getRevenueData(period),
+        adminService.getRevenueData(periodRef.current),
         adminService.getWalletHeatmap(),
         adminService.getRevenueData('monthly'),
       ]);
@@ -292,7 +284,19 @@ export function AdminOverview() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const { lastRefresh } = useAdminAutoRefresh(loadData);
+
+  useEffect(() => {
+    loadData();
+    solPriceService.fetchPrice();
+    return solPriceService.subscribe((price) => setSolPrice(price));
+  }, [loadData]);
+
+  useEffect(() => {
+    adminService.getRevenueData(period).then(setRevenue);
+  }, [period]);
 
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -320,6 +324,15 @@ export function AdminOverview() {
           </div>
         ) : (
           <div className="space-y-8">
+            <div className="flex items-center justify-end gap-2 mb--4">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-zinc-600 font-mono text-xs">
+                LIVE {lastRefresh.toLocaleTimeString()}
+              </span>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard
                 label="Total Users"

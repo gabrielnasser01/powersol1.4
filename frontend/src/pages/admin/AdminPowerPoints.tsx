@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy, Search, ChevronDown, ChevronUp, AlertTriangle,
@@ -7,6 +7,7 @@ import {
 import { adminService, UserRanking, MissionAlert } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
+import { useAdminAutoRefresh } from '../../hooks/useAdminAutoRefresh';
 
 function MissionDetailModal({ wallet, onClose }: { wallet: string; onClose: () => void }) {
   const [missions, setMissions] = useState<any[]>([]);
@@ -110,12 +111,7 @@ export function AdminPowerPoints() {
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
   const [showAlerts, setShowAlerts] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
     try {
       const [u, a] = await Promise.all([
         adminService.getAllUsers(),
@@ -128,7 +124,13 @@ export function AdminPowerPoints() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const { lastRefresh } = useAdminAutoRefresh(loadData);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filtered = useMemo(() => {
     let result = users.filter(u => {
@@ -172,6 +174,15 @@ export function AdminPowerPoints() {
           </div>
         ) : (
           <div className="space-y-6">
+            <div className="flex items-center justify-end gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-zinc-600 font-mono text-xs">
+                LIVE {lastRefresh.toLocaleTimeString()}
+              </span>
+            </div>
             {alerts.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}

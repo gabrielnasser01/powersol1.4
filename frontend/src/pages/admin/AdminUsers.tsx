@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ChevronDown, ChevronUp, Ban, ShieldCheck,
@@ -8,6 +8,7 @@ import { adminService, UserRanking } from '../../services/adminService';
 import { useWallet } from '../../contexts/WalletContext';
 import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
+import { useAdminAutoRefresh } from '../../hooks/useAdminAutoRefresh';
 
 type SortField = 'total_tickets' | 'total_spent_sol' | 'total_won_lamports' | 'power_points' | 'created_at';
 
@@ -257,12 +258,7 @@ export function AdminUsers() {
   const [detailTarget, setDetailTarget] = useState<UserRanking | null>(null);
   const [showBanned, setShowBanned] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
     try {
       const u = await adminService.getAllUsers();
       setUsers(u);
@@ -271,7 +267,13 @@ export function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const { lastRefresh } = useAdminAutoRefresh(loadData);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filtered = useMemo(() => {
     let result = users.filter(u => {
@@ -320,6 +322,15 @@ export function AdminUsers() {
           </div>
         ) : (
           <div className="space-y-6">
+            <div className="flex items-center justify-end gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-zinc-600 font-mono text-xs">
+                LIVE {lastRefresh.toLocaleTimeString()}
+              </span>
+            </div>
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[200px] max-w-md">
                 <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />

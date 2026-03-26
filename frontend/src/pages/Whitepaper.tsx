@@ -192,7 +192,7 @@ const sections: Section[] = [
     id: 'missions',
     icon: Target,
     title: 'Missions System',
-    content: 'The mission system encourages community engagement through gamified challenges such as connecting wallets, inviting new players, and consistent participation. Players earn Power Points for completing missions, which contribute to their eligibility and ranking in the upcoming PowerSOL token airdrop.',
+    content: 'The mission system encourages community engagement through gamified challenges such as connecting wallets, inviting new players, and consistent participation. Players earn Power Points for completing missions, which contribute to their eligibility and ranking in the upcoming PowerSOL token airdrop. Every ticket on PowerSOL grants you Power Points.',
   },
   {
     id: 'airdrop',

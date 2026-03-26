@@ -305,7 +305,7 @@ async function claimMission(walletAddress: string, missionKey: string) {
   };
 }
 
-async function checkAndCompleteTicketMilestones(walletAddress: string) {
+async function checkAndCompleteTicketMilestones(walletAddress: string, lotteryType?: string) {
   const supabase = getServiceClient();
   const completed: Record<string, unknown>[] = [];
 
@@ -348,6 +348,16 @@ async function checkAndCompleteTicketMilestones(walletAddress: string) {
     if (result) completed.push(result);
   }
 
+  const lotteryMissionMap: Record<string, string> = {
+    special_event: "weekly_buy_special_event",
+    jackpot: "weekly_buy_jackpot",
+    grand_prize: "weekly_buy_grand_prize",
+  };
+  if (lotteryType && lotteryMissionMap[lotteryType]) {
+    const result = await tryMarkEligible(walletAddress, lotteryMissionMap[lotteryType]);
+    if (result) completed.push(result);
+  }
+
   return completed;
 }
 
@@ -377,7 +387,7 @@ async function recordTicketPurchase(walletAddress: string, body: Record<string, 
   });
 
   const dailyResult = await tryMarkEligible(walletAddress, "daily_buy_ticket");
-  const milestoneResults = await checkAndCompleteTicketMilestones(walletAddress);
+  const milestoneResults = await checkAndCompleteTicketMilestones(walletAddress, safeType);
   const completedMissions = [dailyResult, ...milestoneResults].filter(Boolean);
 
   return {

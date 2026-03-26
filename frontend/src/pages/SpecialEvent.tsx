@@ -10,6 +10,7 @@ import { WinnersDisplay } from '../components/WinnersDisplay';
 import { useWallet } from '../contexts/WalletContext';
 import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
+import { apiClient } from '../services/api';
 
 
 export function SpecialEvent() {
@@ -197,6 +198,16 @@ export function SpecialEvent() {
       window.dispatchEvent(new CustomEvent('ticketsPurchased', {
         detail: { quantity, signature }
       }));
+
+      try {
+        await apiClient.recordTicketPurchase(publicKey, {
+          lottery_type: 'special_event',
+          ticket_count: quantity,
+          transaction_signature: signature,
+        });
+      } catch (missionErr) {
+        console.error('Mission update failed:', missionErr);
+      }
 
       if (wallet) {
         await refreshBalance();

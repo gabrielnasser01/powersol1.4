@@ -360,9 +360,9 @@ async function recordTicketPurchase(walletAddress: string, body: Record<string, 
 
   const powerPointsMap: Record<string, number> = {
     tri_daily: 10,
-    jackpot: 20,
-    special_event: 20,
-    grand_prize: 30,
+    jackpot: 10,
+    special_event: 10,
+    grand_prize: 10,
   };
 
   const powerPointsEarned = (powerPointsMap[safeType] || 10) * ticketQty;

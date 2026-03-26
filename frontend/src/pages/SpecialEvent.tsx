@@ -4,6 +4,7 @@ import { Skull, Zap, Shield, Trophy, Plus, Minus, Ticket, Loader, Calendar, User
 import { theme } from '../theme';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { chainAdapter, formatSol, formatUsd, solToUsd, SPECIAL_EVENT_TICKET_PRICE_SOL } from '../chain/adapter';
+import { solPriceService } from '../services/solPriceService';
 import { ticketsStorage } from '../store/ticketStorage';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { WinnersDisplay } from '../components/WinnersDisplay';
@@ -31,13 +32,24 @@ export function SpecialEvent() {
   useMagnetic(buttonRef);
 
   const isConnected = connected && !!publicKey;
+  const [solPrice, setSolPrice] = useState(solPriceService.getPrice());
 
   const totalSol = SPECIAL_EVENT_TICKET_PRICE_SOL * quantity;
-  const totalUsd = solToUsd(totalSol);
+  const totalUsd = totalSol * solPrice;
 
-  // Valentine's countdown
   useEffect(() => {
-    // Load both pool states
+    const stopRefresh = solPriceService.startAutoRefresh(30000);
+    const unsubscribe = solPriceService.subscribe((price) => {
+      setSolPrice(price);
+      setGlobalPool(prev => ({
+        ...prev,
+        prizePoolUsd: prev.prizePoolSol * price,
+      }));
+    });
+    return () => { stopRefresh(); unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
     const loadPoolState = async () => {
       try {
         const [localState, globalState] = await Promise.all([
@@ -50,9 +62,9 @@ export function SpecialEvent() {
         console.error('Failed to load pool state:', error);
       }
     };
-    
+
     loadPoolState();
-    const poolInterval = setInterval(loadPoolState, 10000); // Update every 10 seconds
+    const poolInterval = setInterval(loadPoolState, 10000);
 
     const updateCountdown = () => {
       const valentines = new Date('2026-04-05T23:59:00Z').getTime();

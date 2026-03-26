@@ -4,6 +4,7 @@ import { Trophy, Coins, Plus, Minus, Loader, Calendar, Users, TrendingUp, X, Zap
 import { theme } from '../theme';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { chainAdapter, formatSol, formatUsd, solToUsd, JACKPOT_TICKET_PRICE_SOL } from '../chain/adapter';
+import { solPriceService } from '../services/solPriceService';
 import { ticketsStorage } from '../store/ticketStorage';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { WinnersDisplay } from '../components/WinnersDisplay';
@@ -32,6 +33,20 @@ export function Jackpot() {
 
   useMagnetic(buttonRef);
   useMagnetic(depositButtonRef);
+
+  const [solPrice, setSolPrice] = useState(solPriceService.getPrice());
+
+  useEffect(() => {
+    const stopRefresh = solPriceService.startAutoRefresh(30000);
+    const unsubscribe = solPriceService.subscribe((price) => {
+      setSolPrice(price);
+      setGlobalPool(prev => ({
+        ...prev,
+        prizePoolUsd: prev.prizePoolSol * price,
+      }));
+    });
+    return () => { stopRefresh(); unsubscribe(); };
+  }, []);
 
   useEffect(() => {
     const loadGlobalPool = async () => {
@@ -70,7 +85,7 @@ export function Jackpot() {
   const daysLeft = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
   const totalSol = JACKPOT_TICKET_PRICE_SOL * depositAmount;
-  const totalUsd = solToUsd(totalSol);
+  const totalUsd = totalSol * solPrice;
 
   const banners = [
     {

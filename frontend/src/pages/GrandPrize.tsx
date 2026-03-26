@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Coins, Plus, Minus, Loader, Calendar, Users, TrendingUp, X, Crown, Star, AlertTriangle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { chainAdapter, formatSol, formatUsd, solToUsd, GRAND_PRIZE_TICKET_PRICE_SOL } from '../chain/adapter';
+import { solPriceService } from '../services/solPriceService';
 import { ticketsStorage } from '../store/ticketStorage';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { theme } from '../theme';
@@ -35,6 +36,20 @@ export function GrandPrize() {
 
   useMagnetic(buttonRef);
   useMagnetic(purchaseButtonRef);
+
+  const [solPrice, setSolPrice] = useState(solPriceService.getPrice());
+
+  useEffect(() => {
+    const stopRefresh = solPriceService.startAutoRefresh(30000);
+    const unsubscribe = solPriceService.subscribe((price) => {
+      setSolPrice(price);
+      setGlobalPool(prev => ({
+        ...prev,
+        prizePoolUsd: prev.prizePoolSol * price,
+      }));
+    });
+    return () => { stopRefresh(); unsubscribe(); };
+  }, []);
 
   useEffect(() => {
     const loadGlobalPool = async () => {
@@ -71,7 +86,7 @@ export function GrandPrize() {
   const isConnected = connected && !!publicKey;
 
   const totalSol = GRAND_PRIZE_TICKET_PRICE_SOL * ticketAmount;
-  const totalUsd = solToUsd(totalSol);
+  const totalUsd = totalSol * solPrice;
 
   const banners = [
     {

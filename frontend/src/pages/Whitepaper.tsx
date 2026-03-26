@@ -225,7 +225,7 @@ const sections: Section[] = [
       'Wallet-only access: No accounts, no emails \u2014 just your Solana wallet.',
       'VRF: All draws use a Verifiable Random Function, ensuring provably fair results.',
       'On-chain monitoring: Every ticket and payout is fully traceable on Solana.',
-      'Instant payouts: Rewards are automatically distributed after each draw, directly to your profile to claim.',
+      'Instant payouts: Rewards are automatically distributed after each draw and are available to claim on your profile page.',
     ],
   },
   {

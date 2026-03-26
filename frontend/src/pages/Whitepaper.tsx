@@ -186,7 +186,7 @@ const sections: Section[] = [
     id: 'withdrawals',
     icon: TrendingUp,
     title: 'Withdrawals',
-    content: 'Prize rewards must be claimed before the next draw. Unclaimed prizes accumulate to the next draw. Affiliate rewards must be claimed before the next payout.',
+    content: 'Prize rewards must be claimed before the next draw. Unclaimed prizes accumulate to the next draw. Affiliate rewards must be claimed before the next payout. Unclaimed affiliate rewards fund operations and TGE.',
   },
   {
     id: 'missions',

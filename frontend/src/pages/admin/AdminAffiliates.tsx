@@ -1226,6 +1226,8 @@ export function AdminAffiliates() {
   const [selectedAffiliate, setSelectedAffiliate] = useState<AffiliateRanking | null>(null);
   const [selectedSybilAlert, setSelectedSybilAlert] = useState<SybilAlert | null>(null);
   const [showSybilPanel, setShowSybilPanel] = useState(true);
+  const [showUnclaimedModal, setShowUnclaimedModal] = useState(false);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -1565,8 +1567,9 @@ export function AdminAffiliates() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {unclaimedRewards.length > 0 && (
                   <div
-                    className="rounded-xl border border-amber-500/20 p-4"
+                    className="rounded-xl border border-amber-500/20 p-4 cursor-pointer transition-all hover:border-amber-500/40 hover:bg-amber-500/5"
                     style={{ background: 'rgba(245, 158, 11, 0.03)' }}
+                    onClick={() => setShowUnclaimedModal(true)}
                   >
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-amber-400" />
@@ -1576,13 +1579,15 @@ export function AdminAffiliates() {
                       <span className="text-zinc-600 font-mono text-xs">
                         ({unclaimedRewards.length} pending weeks)
                       </span>
+                      <ChevronRight className="w-3.5 h-3.5 text-amber-500/50 ml-auto" />
                     </div>
                   </div>
                 )}
                 {totalExpiredSol > 0 && (
                   <div
-                    className="rounded-xl border border-orange-500/20 p-4"
+                    className="rounded-xl border border-orange-500/20 p-4 cursor-pointer transition-all hover:border-orange-500/40 hover:bg-orange-500/5"
                     style={{ background: 'rgba(249, 115, 22, 0.03)' }}
+                    onClick={() => setShowExpiredModal(true)}
                   >
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-orange-400" />
@@ -1592,6 +1597,7 @@ export function AdminAffiliates() {
                       <span className="text-zinc-600 font-mono text-xs">
                         ({totalExpiredAffiliates} affiliate{totalExpiredAffiliates !== 1 ? 's' : ''} lost rewards)
                       </span>
+                      <ChevronRight className="w-3.5 h-3.5 text-orange-500/50 ml-auto" />
                     </div>
                   </div>
                 )}
@@ -1770,6 +1776,181 @@ export function AdminAffiliates() {
                   alert={selectedSybilAlert}
                   onClose={() => setSelectedSybilAlert(null)}
                 />
+              )}
+              {showUnclaimedModal && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                  onClick={() => setShowUnclaimedModal(false)}
+                >
+                  <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    onClick={e => e.stopPropagation()}
+                    className="relative w-full max-w-2xl max-h-[80vh] rounded-2xl border border-amber-500/20 overflow-hidden flex flex-col"
+                    style={{ background: 'linear-gradient(135deg, #0f1117 0%, #131621 100%)' }}
+                  >
+                    <div className="flex items-center justify-between p-5 border-b border-zinc-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(245, 158, 11, 0.15)' }}>
+                          <Clock className="w-5 h-5 text-amber-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-mono text-sm font-bold">Unclaimed Affiliate Rewards</h3>
+                          <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                            {(totalUnclaimedLamports / 1e9).toFixed(4)} SOL across {Object.keys(
+                              unclaimedRewards.reduce((acc: Record<string, boolean>, r: any) => { acc[r.affiliate_wallet] = true; return acc; }, {})
+                            ).length} wallets
+                          </p>
+                        </div>
+                      </div>
+                      <button onClick={() => setShowUnclaimedModal(false)} className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="overflow-y-auto p-5 space-y-3">
+                      {(() => {
+                        const byWallet: Record<string, { total: number; weeks: any[] }> = {};
+                        unclaimedRewards.forEach((r: any) => {
+                          const w = r.affiliate_wallet;
+                          if (!byWallet[w]) byWallet[w] = { total: 0, weeks: [] };
+                          byWallet[w].total += Number(r.pending_lamports || 0);
+                          byWallet[w].weeks.push(r);
+                        });
+                        const sorted = Object.entries(byWallet).sort((a, b) => b[1].total - a[1].total);
+                        return sorted.map(([wallet, info]) => (
+                          <div
+                            key={wallet}
+                            className="rounded-lg border border-zinc-800/60 p-4 hover:border-amber-500/20 transition-colors"
+                            style={{ background: 'rgba(15, 15, 20, 0.6)' }}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-zinc-300 font-mono text-xs truncate">{wallet}</span>
+                                <a
+                                  href={`https://solscan.io/account/${wallet}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-zinc-600 hover:text-cyan-400 transition-colors shrink-0"
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                              <span className="text-amber-400 font-mono text-sm font-bold shrink-0 ml-3">
+                                {(info.total / 1e9).toFixed(4)} SOL
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {info.weeks
+                                .sort((a: any, b: any) => (a.week_number || 0) - (b.week_number || 0))
+                                .map((w: any, j: number) => (
+                                  <span
+                                    key={j}
+                                    className="font-mono rounded-md px-2 py-0.5 border"
+                                    style={{
+                                      fontSize: '10px',
+                                      color: '#f59e0b',
+                                      background: 'rgba(245, 158, 11, 0.08)',
+                                      borderColor: 'rgba(245, 158, 11, 0.15)',
+                                    }}
+                                  >
+                                    W{w.week_number || '?'}: {(Number(w.pending_lamports || 0) / 1e9).toFixed(4)}
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+              {showExpiredModal && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                  onClick={() => setShowExpiredModal(false)}
+                >
+                  <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    onClick={e => e.stopPropagation()}
+                    className="relative w-full max-w-2xl max-h-[80vh] rounded-2xl border border-orange-500/20 overflow-hidden flex flex-col"
+                    style={{ background: 'linear-gradient(135deg, #0f1117 0%, #131621 100%)' }}
+                  >
+                    <div className="flex items-center justify-between p-5 border-b border-zinc-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(249, 115, 22, 0.15)' }}>
+                          <AlertTriangle className="w-5 h-5 text-orange-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-mono text-sm font-bold">Expired Affiliate Rewards</h3>
+                          <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                            {totalExpiredSol.toFixed(4)} SOL lost across {totalExpiredAffiliates} affiliates
+                          </p>
+                        </div>
+                      </div>
+                      <button onClick={() => setShowExpiredModal(false)} className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="overflow-y-auto p-5 space-y-3">
+                      {affiliates
+                        .filter(a => (a.expired_rewards_sol || 0) > 0)
+                        .sort((a, b) => (b.expired_rewards_sol || 0) - (a.expired_rewards_sol || 0))
+                        .map(aff => (
+                          <div
+                            key={aff.affiliate_id}
+                            className="rounded-lg border border-zinc-800/60 p-4 hover:border-orange-500/20 transition-colors"
+                            style={{ background: 'rgba(15, 15, 20, 0.6)' }}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-zinc-300 font-mono text-xs truncate">{aff.wallet_address}</span>
+                                <a
+                                  href={`https://solscan.io/account/${aff.wallet_address}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-zinc-600 hover:text-cyan-400 transition-colors shrink-0"
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                              <span className="text-orange-400 font-mono text-sm font-bold shrink-0 ml-3">
+                                {aff.expired_rewards_sol.toFixed(4)} SOL
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span
+                                className="font-mono rounded-md px-2 py-0.5 border"
+                                style={{
+                                  fontSize: '10px',
+                                  color: '#f97316',
+                                  background: 'rgba(249, 115, 22, 0.08)',
+                                  borderColor: 'rgba(249, 115, 22, 0.15)',
+                                }}
+                              >
+                                {aff.expired_weeks} expired week{aff.expired_weeks !== 1 ? 's' : ''}
+                              </span>
+                              <span className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                                {aff.referral_count} referrals | Tier {aff.manual_tier || '?'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </motion.div>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>

@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export interface SocialAccount {
   id: string;
   wallet_address: string;
-  platform: 'discord' | 'youtube' | 'tiktok';
+  platform: 'discord' | 'youtube' | 'tiktok' | 'twitter';
   platform_user_id: string;
   platform_username: string;
   platform_avatar_url: string;
@@ -26,7 +26,7 @@ async function getLinkedAccounts(walletAddress: string): Promise<SocialAccount[]
   return Array.isArray(data) ? data : [];
 }
 
-function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok', walletAddress: string): Promise<SocialAccount | null> {
+function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', walletAddress: string): Promise<SocialAccount | null> {
   return new Promise((resolve) => {
     const oauthUrl = `${API_BASE}/oauth/${platform}?wallet_address=${walletAddress}`;
     const width = 500;

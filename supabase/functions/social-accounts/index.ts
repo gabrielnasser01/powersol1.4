@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-const VALID_PLATFORMS = new Set(["discord", "youtube", "tiktok"]);
+const VALID_PLATFORMS = new Set(["discord", "youtube", "tiktok", "twitter"]);
 
 function isValidWallet(addr: string): boolean {
   return typeof addr === "string" && SOLANA_ADDR_RE.test(addr.trim());
@@ -68,7 +68,7 @@ Deno.serve(async (req: Request) => {
         return errorResponse("Valid wallet_address required", 400);
       }
       if (!platform || !VALID_PLATFORMS.has(platform)) {
-        return errorResponse("Invalid platform. Must be discord, youtube, or tiktok", 400);
+        return errorResponse("Invalid platform. Must be discord, youtube, tiktok, or twitter", 400);
       }
       if (!platform_user_id || typeof platform_user_id !== "string" || platform_user_id.length > 200) {
         return errorResponse("Valid platform_user_id required", 400);
@@ -397,6 +397,123 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         buildCallbackHtml("success", `TikTok account linked: ${tiktokUser?.display_name || "TikTok User"}`),
+        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
+      );
+    }
+
+    if (req.method === "GET" && path === "/oauth/twitter") {
+      const clientId = Deno.env.get("TWITTER_CLIENT_ID");
+      if (!clientId) return errorResponse("X (Twitter) OAuth not configured", 503);
+
+      const wallet = url.searchParams.get("wallet_address");
+      if (!wallet || !isValidWallet(wallet)) {
+        return errorResponse("Valid wallet_address required", 400);
+      }
+
+      const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-accounts/oauth/twitter/callback`;
+      const state = btoa(JSON.stringify({ wallet: wallet.trim() }));
+
+      const codeVerifier = crypto.randomUUID() + crypto.randomUUID();
+      const encoder = new TextEncoder();
+      const data = encoder.encode(codeVerifier);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)))
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+      const stateWithVerifier = btoa(JSON.stringify({ wallet: wallet.trim(), cv: codeVerifier }));
+
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: "tweet.read users.read offline.access",
+        state: stateWithVerifier,
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+      });
+
+      const authUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
+
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, Location: authUrl },
+      });
+    }
+
+    if (req.method === "GET" && path === "/oauth/twitter/callback") {
+      const code = url.searchParams.get("code");
+      const stateParam = url.searchParams.get("state");
+
+      if (!code || !stateParam) {
+        return new Response(buildCallbackHtml("error", "Missing code or state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
+      }
+
+      let wallet: string;
+      let codeVerifier: string;
+      try {
+        const stateData = JSON.parse(atob(stateParam));
+        wallet = stateData.wallet;
+        codeVerifier = stateData.cv;
+      } catch {
+        return new Response(buildCallbackHtml("error", "Invalid state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
+      }
+
+      const clientId = Deno.env.get("TWITTER_CLIENT_ID");
+      const clientSecret = Deno.env.get("TWITTER_CLIENT_SECRET");
+      const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-accounts/oauth/twitter/callback`;
+
+      const basicAuth = btoa(`${clientId}:${clientSecret}`);
+
+      const tokenRes = await fetch("https://api.x.com/2/oauth2/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${basicAuth}`,
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: redirectUri,
+          code_verifier: codeVerifier,
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
+      }
+
+      const tokenData = await tokenRes.json();
+
+      const userRes = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url", {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+
+      if (!userRes.ok) {
+        return new Response(buildCallbackHtml("error", "Failed to get X user info"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
+      }
+
+      const xUserData = await userRes.json();
+      const xUser = xUserData.data;
+
+      const supabase = getServiceClient();
+      await supabase.rpc("link_social_account", {
+        p_wallet_address: wallet,
+        p_platform: "twitter",
+        p_platform_user_id: xUser?.id || "unknown",
+        p_platform_username: xUser?.username ? `@${xUser.username}` : "X User",
+        p_platform_avatar_url: xUser?.profile_image_url || "",
+      });
+
+      return new Response(
+        buildCallbackHtml("success", `X account linked: @${xUser?.username || "unknown"}`),
         { headers: { ...corsHeaders, "Content-Type": "text/html" } }
       );
     }

@@ -1468,42 +1468,44 @@ export function Profile() {
                               className="relative"
                             >
                               <motion.a
-                                href={solscanUrl || undefined}
-                                target={solscanUrl ? '_blank' : undefined}
-                                rel={solscanUrl ? 'noopener noreferrer' : undefined}
+                                href={isWinner ? undefined : (solscanUrl || undefined)}
+                                target={!isWinner && solscanUrl ? '_blank' : undefined}
+                                rel={!isWinner && solscanUrl ? 'noopener noreferrer' : undefined}
                                 whileHover={{ scale: 1.02 }}
-                                className={`p-3 sm:p-4 rounded-lg border block transition-colors ${solscanUrl ? 'cursor-pointer hover:border-opacity-80' : 'cursor-default'}`}
+                                onClick={isWinner ? (e: React.MouseEvent) => {
+                                  e.preventDefault();
+                                  setShowTicketsModal(false);
+                                  setTimeout(() => setShowRewardsModal(true), 200);
+                                } : undefined}
+                                className={`p-3 sm:p-4 rounded-lg border block transition-colors ${isWinner || solscanUrl ? 'cursor-pointer hover:border-opacity-80' : 'cursor-default'}`}
                                 style={{
-                                  background: isWinner ? 'rgba(34, 197, 94, 0.08)' : 'rgba(0, 0, 0, 0.6)',
-                                  borderColor: isWinner ? 'rgba(34, 197, 94, 0.5)' : `${lotteryGroup.color}4d`,
-                                  boxShadow: isWinner ? '0 0 20px rgba(34, 197, 94, 0.15)' : 'none',
+                                  background: 'rgba(0, 0, 0, 0.6)',
+                                  borderColor: `${lotteryGroup.color}4d`,
+                                  boxShadow: 'none',
                                 }}
                               >
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-lg sm:text-xl font-bold font-mono" style={{ color: isWinner ? '#22c55e' : lotteryGroup.color }}>
+                                    <span className="text-lg sm:text-xl font-bold font-mono" style={{ color: lotteryGroup.color }}>
                                       #{ticket.number}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {solscanUrl && (
+                                    {!isWinner && solscanUrl && (
                                       <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
                                     )}
                                     {isWinner ? (
-                                      <motion.div
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
+                                      <div
                                         className="px-2 py-1 rounded text-xs font-mono font-bold flex items-center gap-1"
                                         style={{
-                                          background: 'rgba(34, 197, 94, 0.25)',
-                                          border: '1px solid rgba(34, 197, 94, 0.6)',
+                                          background: 'rgba(34, 197, 94, 0.2)',
+                                          border: '1px solid rgba(34, 197, 94, 0.5)',
                                           color: '#22c55e',
-                                          boxShadow: '0 0 10px rgba(34, 197, 94, 0.2)',
                                         }}
                                       >
                                         <Award className="w-3 h-3" />
                                         WINNER
-                                      </motion.div>
+                                      </div>
                                     ) : (
                                       <div
                                         className="px-2 py-1 rounded text-xs font-mono"
@@ -1524,34 +1526,13 @@ export function Profile() {
                                   <div>Purchased: {ticket.purchaseDate}</div>
                                   <div>Draw: {ticket.drawDate}</div>
                                   {ticket.transactionSignature && (
-                                    <div className="flex items-center gap-1 pt-1" style={{ color: isWinner ? '#22c55e' : lotteryGroup.color }}>
+                                    <div className="flex items-center gap-1 pt-1" style={{ color: lotteryGroup.color }}>
                                       <span>TX: {ticket.transactionSignature.slice(0, 16)}...</span>
                                       <ExternalLink className="w-3 h-3" />
                                     </div>
                                   )}
                                 </div>
                               </motion.a>
-                              {isWinner && (
-                                <motion.button
-                                  initial={{ opacity: 0, y: 5 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.2 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowTicketsModal(false);
-                                    setTimeout(() => setShowRewardsModal(true), 200);
-                                  }}
-                                  className="w-full mt-2 py-2 rounded-lg font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all hover:scale-[1.02]"
-                                  style={{
-                                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1))',
-                                    border: '1px solid rgba(34, 197, 94, 0.4)',
-                                    color: '#22c55e',
-                                  }}
-                                >
-                                  <Gift className="w-3.5 h-3.5" />
-                                  VIEW PRIZE REWARDS
-                                </motion.button>
-                              )}
                             </div>
                           );
                         })}

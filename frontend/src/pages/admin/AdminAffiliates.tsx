@@ -1287,7 +1287,11 @@ export function AdminAffiliates() {
     ));
   };
 
-  const totalUnclaimedLamports = unclaimedRewards.reduce((s, r) => s + Number(r.pending_lamports || 0), 0);
+  const releasedUnclaimed = unclaimedRewards.filter((r: any) => r.is_released);
+  const pendingRelease = unclaimedRewards.filter((r: any) => !r.is_released);
+  const totalReleasedLamports = releasedUnclaimed.reduce((s: number, r: any) => s + Number(r.pending_lamports || 0), 0);
+  const totalPendingReleaseLamports = pendingRelease.reduce((s: number, r: any) => s + Number(r.pending_lamports || 0), 0);
+  const totalUnclaimedLamports = totalReleasedLamports + totalPendingReleaseLamports;
   const totalExpiredSol = affiliates.reduce((s, a) => s + (a.expired_rewards_sol || 0), 0);
   const totalExpiredAffiliates = affiliates.filter(a => (a.expired_rewards_sol || 0) > 0).length;
   const criticalAlerts = sybilAlerts.filter(a => a.risk_score >= 70);
@@ -1571,14 +1575,21 @@ export function AdminAffiliates() {
                     style={{ background: 'rgba(245, 158, 11, 0.03)' }}
                     onClick={() => setShowUnclaimedModal(true)}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Clock className="w-4 h-4 text-amber-400" />
                       <span className="text-amber-400 font-mono text-sm font-bold">
-                        Unclaimed: {(totalUnclaimedLamports / 1e9).toFixed(4)} SOL
+                        Pending: {(totalUnclaimedLamports / 1e9).toFixed(4)} SOL
                       </span>
-                      <span className="text-zinc-600 font-mono text-xs">
-                        ({unclaimedRewards.length} pending weeks)
-                      </span>
+                      {totalReleasedLamports > 0 && (
+                        <span className="font-mono text-xs px-1.5 py-0.5 rounded border border-amber-500/20 text-amber-300" style={{ fontSize: '10px', background: 'rgba(245,158,11,0.1)' }}>
+                          {(totalReleasedLamports / 1e9).toFixed(4)} available
+                        </span>
+                      )}
+                      {totalPendingReleaseLamports > 0 && (
+                        <span className="font-mono text-xs px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400" style={{ fontSize: '10px' }}>
+                          {(totalPendingReleaseLamports / 1e9).toFixed(4)} accumulating
+                        </span>
+                      )}
                       <ChevronRight className="w-3.5 h-3.5 text-amber-500/50 ml-auto" />
                     </div>
                   </div>
@@ -1800,7 +1811,7 @@ export function AdminAffiliates() {
                           <Clock className="w-5 h-5 text-amber-400" />
                         </div>
                         <div>
-                          <h3 className="text-white font-mono text-sm font-bold">Unclaimed Affiliate Rewards</h3>
+                          <h3 className="text-white font-mono text-sm font-bold">Pending Affiliate Rewards</h3>
                           <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
                             {(totalUnclaimedLamports / 1e9).toFixed(4)} SOL across {Object.keys(
                               unclaimedRewards.reduce((acc: Record<string, boolean>, r: any) => { acc[r.affiliate_wallet] = true; return acc; }, {})
@@ -1814,11 +1825,14 @@ export function AdminAffiliates() {
                     </div>
                     <div className="overflow-y-auto p-5 space-y-3">
                       {(() => {
-                        const byWallet: Record<string, { total: number; weeks: any[] }> = {};
+                        const byWallet: Record<string, { total: number; released: number; pending: number; weeks: any[] }> = {};
                         unclaimedRewards.forEach((r: any) => {
                           const w = r.affiliate_wallet;
-                          if (!byWallet[w]) byWallet[w] = { total: 0, weeks: [] };
-                          byWallet[w].total += Number(r.pending_lamports || 0);
+                          if (!byWallet[w]) byWallet[w] = { total: 0, released: 0, pending: 0, weeks: [] };
+                          const lam = Number(r.pending_lamports || 0);
+                          byWallet[w].total += lam;
+                          if (r.is_released) byWallet[w].released += lam;
+                          else byWallet[w].pending += lam;
                           byWallet[w].weeks.push(r);
                         });
                         const sorted = Object.entries(byWallet).sort((a, b) => b[1].total - a[1].total);
@@ -1845,23 +1859,34 @@ export function AdminAffiliates() {
                                 {(info.total / 1e9).toFixed(4)} SOL
                               </span>
                             </div>
+                            {info.released > 0 && (
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <span className="font-mono rounded px-1.5 py-0.5 text-amber-300 border border-amber-500/20" style={{ fontSize: '10px', background: 'rgba(245,158,11,0.1)' }}>
+                                  {(info.released / 1e9).toFixed(4)} available to claim
+                                </span>
+                              </div>
+                            )}
                             <div className="flex flex-wrap gap-1.5">
                               {info.weeks
                                 .sort((a: any, b: any) => (a.week_number || 0) - (b.week_number || 0))
-                                .map((w: any, j: number) => (
-                                  <span
-                                    key={j}
-                                    className="font-mono rounded-md px-2 py-0.5 border"
-                                    style={{
-                                      fontSize: '10px',
-                                      color: '#f59e0b',
-                                      background: 'rgba(245, 158, 11, 0.08)',
-                                      borderColor: 'rgba(245, 158, 11, 0.15)',
-                                    }}
-                                  >
-                                    W{w.week_number || '?'}: {(Number(w.pending_lamports || 0) / 1e9).toFixed(4)}
-                                  </span>
-                                ))}
+                                .map((w: any, j: number) => {
+                                  const isReleased = w.is_released;
+                                  return (
+                                    <span
+                                      key={j}
+                                      className="font-mono rounded-md px-2 py-0.5 border"
+                                      style={{
+                                        fontSize: '10px',
+                                        color: isReleased ? '#fcd34d' : '#a1a1aa',
+                                        background: isReleased ? 'rgba(245, 158, 11, 0.08)' : 'rgba(63, 63, 70, 0.15)',
+                                        borderColor: isReleased ? 'rgba(245, 158, 11, 0.2)' : 'rgba(63, 63, 70, 0.3)',
+                                      }}
+                                    >
+                                      W{w.week_number || '?'}: {(Number(w.pending_lamports || 0) / 1e9).toFixed(4)}
+                                      {isReleased ? ' (claim)' : ' (accum)'}
+                                    </span>
+                                  );
+                                })}
                             </div>
                           </div>
                         ));

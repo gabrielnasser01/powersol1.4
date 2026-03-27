@@ -519,7 +519,6 @@ Deno.serve(async (req: Request) => {
       const { data } = await supabase
         .from("affiliate_weekly_accumulator")
         .select("*")
-        .eq("is_released", true)
         .eq("is_claimed", false)
         .eq("is_swept_to_delta", false)
         .order("pending_lamports", { ascending: false });

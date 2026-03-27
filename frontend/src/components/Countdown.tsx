@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy } from 'lucide-react';
+import { Trophy, Ticket } from 'lucide-react';
 import { chainAdapter } from '../chain/adapter';
 import { lotteryService, NextDraw } from '../services/lotteryService';
 
@@ -9,16 +9,19 @@ export function Countdown() {
   const [nextDraw, setNextDraw] = useState<NextDraw | null>(null);
   const [loading, setLoading] = useState(true);
   const [globalPool, setGlobalPool] = useState({ prizePoolSol: 0, prizePoolUsd: 0, ticketCount: 0 });
+  const [localPool, setLocalPool] = useState({ totalSol: 0, ticketCount: 0 });
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [draw, globalState] = await Promise.all([
+        const [draw, globalState, localState] = await Promise.all([
           lotteryService.getNextDraw(),
-          chainAdapter.getGlobalPoolState()
+          chainAdapter.getGlobalPoolState(),
+          chainAdapter.getPoolState()
         ]);
         setNextDraw(draw);
         setGlobalPool(globalState);
+        setLocalPool(localState);
       } catch (error) {
         console.error('Failed to load lottery data:', error);
       } finally {
@@ -29,12 +32,14 @@ export function Countdown() {
     loadData();
     const poolInterval = setInterval(async () => {
       try {
-        const [draw, globalState] = await Promise.all([
+        const [draw, globalState, localState] = await Promise.all([
           lotteryService.getNextDraw(),
-          chainAdapter.getGlobalPoolState()
+          chainAdapter.getGlobalPoolState(),
+          chainAdapter.getPoolState()
         ]);
         setNextDraw(draw);
         setGlobalPool(globalState);
+        setLocalPool(localState);
       } catch (error) {
         console.error('Failed to refresh pool state:', error);
       }
@@ -246,6 +251,36 @@ export function Countdown() {
           </motion.div>
         ))}
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="mt-5 px-4 py-2.5 rounded-lg flex items-center justify-center gap-2"
+        style={{
+          background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(10, 10, 10, 0.6))',
+          border: '1px solid rgba(255, 20, 147, 0.25)',
+          boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.8), 0 0 8px rgba(255, 20, 147, 0.15)',
+        }}
+      >
+        <Ticket className="w-3.5 h-3.5" style={{ color: '#ff69b4' }} />
+        <span className="font-mono text-xs" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+          TICKETS IN POOL:
+        </span>
+        <motion.span
+          key={localPool.ticketCount}
+          initial={{ opacity: 0.5, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="font-mono text-sm font-bold tabular-nums"
+          style={{
+            color: '#ff1493',
+            textShadow: '0 0 8px rgba(255, 20, 147, 0.6)',
+            letterSpacing: '1px',
+          }}
+        >
+          {localPool.ticketCount.toLocaleString()}
+        </motion.span>
+      </motion.div>
 
       {timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0 && (
         <motion.div

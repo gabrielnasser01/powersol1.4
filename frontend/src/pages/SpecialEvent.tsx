@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Skull, Zap, Shield, Trophy, Plus, Minus, Ticket, Loader, Calendar, Users, TrendingUp, Ghost, Crown, AlertTriangle } from 'lucide-react';
+import { Zap, Shield, Trophy, Plus, Minus, Ticket, Loader, Calendar, Users, TrendingUp, Ghost, Crown, AlertTriangle } from 'lucide-react';
 import { theme } from '../theme';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { chainAdapter, formatSol, formatUsd, solToUsd, SPECIAL_EVENT_TICKET_PRICE_SOL } from '../chain/adapter';
@@ -619,6 +619,36 @@ export function SpecialEvent() {
                 </motion.div>
               ))}
             </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="mt-5 px-4 py-2.5 rounded-lg flex items-center justify-center gap-2"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(20, 15, 30, 0.6))',
+                border: '1px solid rgba(255, 142, 200, 0.2)',
+                boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.8), 0 0 8px rgba(255, 142, 200, 0.12)',
+              }}
+            >
+              <Ticket className="w-3.5 h-3.5" style={{ color: '#FF8EC8' }} />
+              <span className="font-mono text-xs" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                TICKETS IN POOL:
+              </span>
+              <motion.span
+                key={poolState.ticketCount}
+                initial={{ opacity: 0.5, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="font-mono text-sm font-bold tabular-nums"
+                style={{
+                  color: '#FF8EC8',
+                  textShadow: '0 0 8px rgba(255, 142, 200, 0.5)',
+                  letterSpacing: '1px',
+                }}
+              >
+                {poolState.ticketCount.toLocaleString()}
+              </motion.span>
+            </motion.div>
           </motion.div>
 
           {/* Ticket Purchase */}

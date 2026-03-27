@@ -569,6 +569,123 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: true });
     }
 
+    if (action === "sybil-analysis") {
+      const { data: affiliates } = await supabase
+        .from("affiliates")
+        .select("id, user_id, referral_code, manual_tier, total_earned, pending_earnings, users!affiliates_user_id_fkey(wallet_address)")
+        .order("total_earned", { ascending: false });
+
+      const { data: referrals } = await supabase
+        .from("referrals")
+        .select("referrer_affiliate_id, referred_user_id, is_validated, total_tickets_purchased, total_value_sol, total_commission_earned, created_at, users!referrals_referred_user_id_fkey(wallet_address, created_at)");
+
+      const { data: ticketPurchases } = await supabase
+        .from("ticket_purchases")
+        .select("wallet_address, quantity, total_sol, created_at");
+
+      const ticketsByWallet: Record<string, { totalTickets: number; totalSol: number; purchaseDates: string[] }> = {};
+      (ticketPurchases || []).forEach((t: any) => {
+        if (!ticketsByWallet[t.wallet_address]) {
+          ticketsByWallet[t.wallet_address] = { totalTickets: 0, totalSol: 0, purchaseDates: [] };
+        }
+        ticketsByWallet[t.wallet_address].totalTickets += t.quantity;
+        ticketsByWallet[t.wallet_address].totalSol += Number(t.total_sol || 0);
+        ticketsByWallet[t.wallet_address].purchaseDates.push(t.created_at);
+      });
+
+      const refsByAffiliate: Record<string, any[]> = {};
+      (referrals || []).forEach((r: any) => {
+        const key = r.referrer_affiliate_id;
+        if (!refsByAffiliate[key]) refsByAffiliate[key] = [];
+        refsByAffiliate[key].push(r);
+      });
+
+      const alerts: any[] = [];
+
+      (affiliates || []).forEach((aff: any) => {
+        const wallet = aff.users?.wallet_address || "";
+        const refs = refsByAffiliate[aff.id] || [];
+        if (refs.length === 0) return;
+
+        const validatedRefs = refs.filter((r: any) => r.is_validated);
+        const singleTicketRefs: any[] = [];
+        const zeroTicketRefs: any[] = [];
+        const lowValueRefs: any[] = [];
+        const rapidSignupWallets: any[] = [];
+
+        refs.forEach((r: any) => {
+          const refWallet = r.users?.wallet_address || "";
+          const ticketData = ticketsByWallet[refWallet];
+          const totalTickets = ticketData?.totalTickets || Number(r.total_tickets_purchased || 0);
+          const totalSol = ticketData?.totalSol || Number(r.total_value_sol || 0);
+
+          if (totalTickets === 0) {
+            zeroTicketRefs.push({ wallet: refWallet, tickets: 0, sol: 0, created: r.created_at });
+          } else if (totalTickets === 1) {
+            singleTicketRefs.push({ wallet: refWallet, tickets: 1, sol: totalSol, created: r.created_at });
+          }
+
+          if (totalTickets > 0 && totalSol > 0 && totalSol / totalTickets < 0.005) {
+            lowValueRefs.push({ wallet: refWallet, tickets: totalTickets, sol: totalSol, created: r.created_at });
+          }
+        });
+
+        const signupTimes = refs
+          .map((r: any) => new Date(r.created_at).getTime())
+          .sort((a: number, b: number) => a - b);
+
+        for (let j = 1; j < signupTimes.length; j++) {
+          const diffMinutes = (signupTimes[j] - signupTimes[j - 1]) / (1000 * 60);
+          if (diffMinutes < 5) {
+            const matchingRef = refs.find((r: any) =>
+              new Date(r.created_at).getTime() === signupTimes[j]
+            );
+            if (matchingRef) {
+              rapidSignupWallets.push({
+                wallet: matchingRef.users?.wallet_address || "",
+                gap_minutes: Math.round(diffMinutes * 10) / 10,
+                created: matchingRef.created_at,
+              });
+            }
+          }
+        }
+
+        const singleTicketRate = refs.length > 0
+          ? (singleTicketRefs.length + zeroTicketRefs.length) / refs.length
+          : 0;
+
+        const riskScore =
+          (singleTicketRate > 0.7 ? 40 : singleTicketRate > 0.5 ? 20 : 0) +
+          (rapidSignupWallets.length > 3 ? 30 : rapidSignupWallets.length > 1 ? 15 : 0) +
+          (zeroTicketRefs.length > refs.length * 0.5 ? 20 : zeroTicketRefs.length > refs.length * 0.3 ? 10 : 0) +
+          (refs.length > 10 && singleTicketRate > 0.6 ? 10 : 0);
+
+        if (riskScore > 0 || singleTicketRefs.length > 0 || rapidSignupWallets.length > 0) {
+          alerts.push({
+            affiliate_id: aff.id,
+            wallet_address: wallet,
+            referral_code: aff.referral_code,
+            manual_tier: aff.manual_tier,
+            total_earned: Number(aff.total_earned || 0),
+            total_referrals: refs.length,
+            validated_referrals: validatedRefs.length,
+            single_ticket_referrals: singleTicketRefs.length,
+            zero_ticket_referrals: zeroTicketRefs.length,
+            single_ticket_rate: Math.round(singleTicketRate * 100),
+            rapid_signups: rapidSignupWallets,
+            single_ticket_wallets: singleTicketRefs.slice(0, 20),
+            zero_ticket_wallets: zeroTicketRefs.slice(0, 20),
+            low_value_refs: lowValueRefs.slice(0, 10),
+            risk_score: Math.min(riskScore, 100),
+          });
+        }
+      });
+
+      alerts.sort((a: any, b: any) => b.risk_score - a.risk_score);
+
+      return jsonResponse(alerts);
+    }
+
     return errorResponse("Unknown action", 400);
   } catch (err) {
     return errorResponse(

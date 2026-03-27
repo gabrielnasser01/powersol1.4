@@ -92,6 +92,24 @@ export interface WalletActivity {
   lamports: number;
 }
 
+export interface SybilAlert {
+  affiliate_id: string;
+  wallet_address: string;
+  referral_code: string;
+  manual_tier: number | null;
+  total_earned: number;
+  total_referrals: number;
+  validated_referrals: number;
+  single_ticket_referrals: number;
+  zero_ticket_referrals: number;
+  single_ticket_rate: number;
+  rapid_signups: { wallet: string; gap_minutes: number; created: string }[];
+  single_ticket_wallets: { wallet: string; tickets: number; sol: number; created: string }[];
+  zero_ticket_wallets: { wallet: string; tickets: number; sol: number; created: string }[];
+  low_value_refs: { wallet: string; tickets: number; sol: number; created: string }[];
+  risk_score: number;
+}
+
 export interface MissionAlert {
   wallet_address: string;
   mission_key: string;
@@ -138,6 +156,10 @@ class AdminService {
 
   async getUnclaimedAffiliateRewards() {
     return adminFetch({ action: 'unclaimed-affiliate-rewards' }, getWallet());
+  }
+
+  async getSybilAnalysis(): Promise<SybilAlert[]> {
+    return adminFetch({ action: 'sybil-analysis' }, getWallet());
   }
 
   async banUser(targetWallet: string, adminWallet: string, reason: string) {

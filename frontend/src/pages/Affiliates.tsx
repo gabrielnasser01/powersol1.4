@@ -218,8 +218,9 @@ export function Affiliates() {
   };
 
   const copyReferralLink = async () => {
-    if (!walletAddress) return;
-    const link = `https://powersol1-4-mjc2.vercel.app?ref=${walletAddress}`;
+    if (!walletAddress || !canAccessDashboard) return;
+    const shortRef = walletAddress.slice(0, 5) + walletAddress.slice(-5);
+    const link = `https://powersol1-4-mjc2.vercel.app?ref=${shortRef}`;
     await navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -391,24 +392,33 @@ export function Affiliates() {
           >
             <motion.button
               onClick={copyReferralLink}
-              disabled={!connected}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 border font-mono ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!canAccessDashboard}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 border font-mono ${!canAccessDashboard ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: theme.colors.text,
+                background: canAccessDashboard
+                  ? 'rgba(255, 255, 255, 0.05)'
+                  : 'rgba(255, 255, 255, 0.02)',
+                borderColor: canAccessDashboard ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                color: canAccessDashboard ? theme.colors.text : 'rgba(255, 255, 255, 0.3)',
                 backdropFilter: 'blur(10px)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
               }}
-              whileHover={connected ? {
+              whileHover={canAccessDashboard ? {
                 background: 'rgba(255, 255, 255, 0.1)',
                 scale: 1.02,
               } : {}}
-              whileTap={connected ? { scale: 0.98 } : {}}
+              whileTap={canAccessDashboard ? { scale: 0.98 } : {}}
             >
-              {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-              <span>{copied ? 'COPIED!' : !connected ? 'CONNECT_WALLET' : 'COPY_AFFILIATE_LINK'}</span>
+              {canAccessDashboard ? (
+                copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />
+              ) : (
+                <Lock className="w-5 h-5" />
+              )}
+              <span>{copied ? 'COPIED!' : 'COPY_AFFILIATE_LINK'}</span>
+              {!canAccessDashboard && (
+                <span className="text-xs ml-2 opacity-70">{getDashboardButtonText()}</span>
+              )}
             </motion.button>
           </motion.div>
         </motion.div>

@@ -188,7 +188,7 @@ async function updateApplicationStatus(applicationId: string, body: Record<strin
             .from("affiliates")
             .insert({
               user_id: user.id,
-              referral_code: app.wallet_address,
+              referral_code: app.wallet_address.slice(0, 5) + app.wallet_address.slice(-5),
               total_earned: 0,
               pending_earnings: 0,
               manual_tier: 1,

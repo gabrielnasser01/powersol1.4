@@ -6,7 +6,9 @@ import {
   ExternalLink, Wallet, BarChart3, Eye, ShieldAlert,
   TrendingUp, TrendingDown, Minus, History, Save, CheckCircle,
 } from 'lucide-react';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { adminService, UserRanking, WhaleUser, WhaleAnalysis, WhaleHistoryData, WhaleHistoryEntry } from '../../services/adminService';
+import { walletBalanceService } from '../../services/walletBalanceService';
 import { useWallet } from '../../contexts/WalletContext';
 import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
@@ -672,6 +674,21 @@ function WhaleAnalysisPanel({ whaleData, onSelectWhale, onSnapshotSaved }: {
   const [showTable, setShowTable] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [balances, setBalances] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!whaleData?.users.length) return;
+    const wallets = whaleData.users.map(u => u.wallet_address);
+    Promise.allSettled(
+      wallets.map(w => walletBalanceService.getWalletBalance(w).then(b => ({ w, b })))
+    ).then(results => {
+      const map: Record<string, number> = {};
+      results.forEach(r => {
+        if (r.status === 'fulfilled') map[r.value.w] = r.value.b;
+      });
+      setBalances(map);
+    });
+  }, [whaleData]);
 
   const hasUsers = whaleData && whaleData.users.length > 0;
   const flagged = hasUsers ? whaleData.users.filter(u => u.whale_score >= 15) : [];
@@ -795,6 +812,7 @@ function WhaleAnalysisPanel({ whaleData, onSelectWhale, onSnapshotSaved }: {
                   <thead>
                     <tr className="border-b border-zinc-800">
                       <th className="text-left py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Wallet</th>
+                      <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Balance</th>
                       {['tri-daily', 'jackpot', 'special-event', 'grand-prize'].map(lt => (
                         <th key={lt} className="text-center py-2 px-2 font-mono text-xs font-normal" style={{ color: LOTTERY_COLORS[lt] }}>
                           {LOTTERY_LABELS[lt]}
@@ -820,6 +838,16 @@ function WhaleAnalysisPanel({ whaleData, onSelectWhale, onSnapshotSaved }: {
                           <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
                             {whale.total_current_tickets} current / {whale.total_all_time_tickets} total
                           </p>
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {balances[whale.wallet_address] !== undefined ? (
+                            <span className="text-amber-400 font-mono text-xs font-bold">
+                              {(balances[whale.wallet_address] / LAMPORTS_PER_SOL).toFixed(4)}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-700 font-mono text-xs">...</span>
+                          )}
+                          <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>SOL</p>
                         </td>
                         {['tri-daily', 'jackpot', 'special-event', 'grand-prize'].map(lt => {
                           const c = whale.concentration[lt];

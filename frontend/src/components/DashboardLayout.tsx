@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, BarChart3, HeadphonesIcon, ChevronLeft, Lock } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Headphones as HeadphonesIcon, ChevronLeft, Lock } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -80,7 +80,7 @@ export function DashboardLayout({ children, walletAddress, tier = 1 }: Dashboard
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="flex gap-2 mb-8 overflow-x-auto pb-2"
+          className="flex gap-1.5 sm:gap-2 mb-8 pb-2"
         >
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -91,12 +91,12 @@ export function DashboardLayout({ children, walletAddress, tier = 1 }: Dashboard
               return (
                 <div
                   key={item.path}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-mono text-sm border border-zinc-800 bg-zinc-900/50 text-zinc-600 whitespace-nowrap cursor-not-allowed relative group"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg font-mono text-xs sm:text-sm border border-zinc-800 bg-zinc-900/50 text-zinc-600 cursor-not-allowed relative group min-w-0"
                   title={`Requires Silver tier or higher`}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                  <Lock className="w-3 h-3 ml-1" />
+                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                  <Lock className="w-3 h-3 shrink-0" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-800 text-zinc-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                     Silver+ only
                   </div>
@@ -109,8 +109,8 @@ export function DashboardLayout({ children, walletAddress, tier = 1 }: Dashboard
                 key={item.path}
                 to={item.path}
                 className={`
-                  flex items-center gap-2 px-4 py-2.5 rounded-lg font-mono text-sm
-                  border transition-all duration-300 whitespace-nowrap
+                  flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg font-mono text-xs sm:text-sm
+                  border transition-all duration-300 min-w-0
                   ${isActive
                     ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-400'
                     : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
@@ -118,8 +118,8 @@ export function DashboardLayout({ children, walletAddress, tier = 1 }: Dashboard
                 `}
                 style={isActive ? { boxShadow: '0 0 20px rgba(62, 203, 255, 0.2)' } : {}}
               >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
               </NavLink>
             );
           })}

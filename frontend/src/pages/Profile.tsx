@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check, Trash2, ExternalLink, Link2 } from 'lucide-react';
+import { Settings, Trophy, Target, Wallet, Copy, TrendingUp, Zap, Globe, Bell, BellOff, X, Ticket, Gift, Users, Check, Trash2, ExternalLink, Link2, Award } from 'lucide-react';
 import { SocialAccountsCard } from '../components/SocialAccountsCard';
 import { useNavigate } from 'react-router-dom';
 import { userStorage, userStatsStorage } from '../store/persist';
@@ -1415,14 +1415,27 @@ export function Profile() {
                       </p>
                     </div>
                   ) : (
-                    userTickets.map((lotteryGroup, index) => (
+                    userTickets.map((lotteryGroup, index) => {
+                      const winCountByRound: Record<number, number> = {};
+                      userPrizes.forEach(p => {
+                        const normType = p.lottery_type.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
+                        const normGroupType = lotteryGroup.lottery === 'Tri-Daily Lottery' ? 'tri-daily'
+                          : lotteryGroup.lottery === 'Special Event' ? 'special-event'
+                          : lotteryGroup.lottery === 'Jackpot' ? 'jackpot'
+                          : lotteryGroup.lottery === 'Grand Prize' ? 'grand-prize' : '';
+                        if (normType === normGroupType) {
+                          winCountByRound[p.round] = (winCountByRound[p.round] || 0) + 1;
+                        }
+                      });
+                      const assignedWins: Record<number, number> = {};
+
+                      return (
                     <motion.div
                       key={lotteryGroup.lottery}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ ...transition30fps, delay: index * 0.1 }}
                     >
-                      {/* Lottery Title */}
                       <div
                         className="flex items-center space-x-2 mb-3 pb-2 border-b"
                         style={{ borderColor: `${lotteryGroup.color}33` }}
@@ -1436,63 +1449,116 @@ export function Profile() {
                         </span>
                       </div>
 
-                      {/* Tickets Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {lotteryGroup.tickets.map((ticket) => {
+                          const roundId = ticket.lotteryRoundId || 0;
+                          const totalWinsForRound = winCountByRound[roundId] || 0;
+                          const alreadyAssigned = assignedWins[roundId] || 0;
+                          const isWinner = ticket.status === 'expired' && totalWinsForRound > 0 && alreadyAssigned < totalWinsForRound;
+                          if (isWinner) {
+                            assignedWins[roundId] = alreadyAssigned + 1;
+                          }
+
                           const solscanUrl = ticket.transactionSignature
                             ? `https://solscan.io/tx/${ticket.transactionSignature}?cluster=devnet`
                             : null;
                           return (
-                            <motion.a
+                            <div
                               key={ticket.id}
-                              href={solscanUrl || undefined}
-                              target={solscanUrl ? '_blank' : undefined}
-                              rel={solscanUrl ? 'noopener noreferrer' : undefined}
-                              whileHover={{ scale: 1.02 }}
-                              className={`p-3 sm:p-4 rounded-lg border block transition-colors ${solscanUrl ? 'cursor-pointer hover:border-opacity-80' : 'cursor-default'}`}
-                              style={{
-                                background: 'rgba(0, 0, 0, 0.6)',
-                                borderColor: `${lotteryGroup.color}4d`,
-                              }}
+                              className="relative"
                             >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-lg sm:text-xl font-bold font-mono" style={{ color: lotteryGroup.color }}>
-                                  #{ticket.number}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  {solscanUrl && (
-                                    <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-                                  )}
-                                  <div
-                                    className="px-2 py-1 rounded text-xs font-mono"
-                                    style={{
-                                      background: ticket.status === 'expired'
-                                        ? 'rgba(239, 68, 68, 0.2)'
-                                        : `${lotteryGroup.color}33`,
-                                      border: `1px solid ${ticket.status === 'expired' ? 'rgba(239, 68, 68, 0.5)' : `${lotteryGroup.color}66`}`,
-                                      color: ticket.status === 'expired' ? '#ef4444' : lotteryGroup.color,
-                                    }}
-                                  >
-                                    {ticket.status === 'expired' ? 'DRAWN' : 'ACTIVE'}
+                              <motion.a
+                                href={solscanUrl || undefined}
+                                target={solscanUrl ? '_blank' : undefined}
+                                rel={solscanUrl ? 'noopener noreferrer' : undefined}
+                                whileHover={{ scale: 1.02 }}
+                                className={`p-3 sm:p-4 rounded-lg border block transition-colors ${solscanUrl ? 'cursor-pointer hover:border-opacity-80' : 'cursor-default'}`}
+                                style={{
+                                  background: isWinner ? 'rgba(34, 197, 94, 0.08)' : 'rgba(0, 0, 0, 0.6)',
+                                  borderColor: isWinner ? 'rgba(34, 197, 94, 0.5)' : `${lotteryGroup.color}4d`,
+                                  boxShadow: isWinner ? '0 0 20px rgba(34, 197, 94, 0.15)' : 'none',
+                                }}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg sm:text-xl font-bold font-mono" style={{ color: isWinner ? '#22c55e' : lotteryGroup.color }}>
+                                      #{ticket.number}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {solscanUrl && (
+                                      <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                                    )}
+                                    {isWinner ? (
+                                      <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        className="px-2 py-1 rounded text-xs font-mono font-bold flex items-center gap-1"
+                                        style={{
+                                          background: 'rgba(34, 197, 94, 0.25)',
+                                          border: '1px solid rgba(34, 197, 94, 0.6)',
+                                          color: '#22c55e',
+                                          boxShadow: '0 0 10px rgba(34, 197, 94, 0.2)',
+                                        }}
+                                      >
+                                        <Award className="w-3 h-3" />
+                                        WINNER
+                                      </motion.div>
+                                    ) : (
+                                      <div
+                                        className="px-2 py-1 rounded text-xs font-mono"
+                                        style={{
+                                          background: ticket.status === 'expired'
+                                            ? 'rgba(239, 68, 68, 0.2)'
+                                            : `${lotteryGroup.color}33`,
+                                          border: `1px solid ${ticket.status === 'expired' ? 'rgba(239, 68, 68, 0.5)' : `${lotteryGroup.color}66`}`,
+                                          color: ticket.status === 'expired' ? '#ef4444' : lotteryGroup.color,
+                                        }}
+                                      >
+                                        {ticket.status === 'expired' ? 'DRAWN' : 'ACTIVE'}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                              </div>
-                              <div className="space-y-1 text-xs font-mono text-zinc-400">
-                                <div>Purchased: {ticket.purchaseDate}</div>
-                                <div>Draw: {ticket.drawDate}</div>
-                                {ticket.transactionSignature && (
-                                  <div className="flex items-center gap-1 pt-1" style={{ color: lotteryGroup.color }}>
-                                    <span>TX: {ticket.transactionSignature.slice(0, 16)}...</span>
-                                    <ExternalLink className="w-3 h-3" />
-                                  </div>
-                                )}
-                              </div>
-                            </motion.a>
+                                <div className="space-y-1 text-xs font-mono text-zinc-400">
+                                  <div>Purchased: {ticket.purchaseDate}</div>
+                                  <div>Draw: {ticket.drawDate}</div>
+                                  {ticket.transactionSignature && (
+                                    <div className="flex items-center gap-1 pt-1" style={{ color: isWinner ? '#22c55e' : lotteryGroup.color }}>
+                                      <span>TX: {ticket.transactionSignature.slice(0, 16)}...</span>
+                                      <ExternalLink className="w-3 h-3" />
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.a>
+                              {isWinner && (
+                                <motion.button
+                                  initial={{ opacity: 0, y: 5 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.2 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowTicketsModal(false);
+                                    setTimeout(() => setShowRewardsModal(true), 200);
+                                  }}
+                                  className="w-full mt-2 py-2 rounded-lg font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all hover:scale-[1.02]"
+                                  style={{
+                                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1))',
+                                    border: '1px solid rgba(34, 197, 94, 0.4)',
+                                    color: '#22c55e',
+                                  }}
+                                >
+                                  <Gift className="w-3.5 h-3.5" />
+                                  VIEW PRIZE REWARDS
+                                </motion.button>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
                     </motion.div>
-                  )))}
+                      );
+                    }))}
                 </div>
               </div>
             </motion.div>

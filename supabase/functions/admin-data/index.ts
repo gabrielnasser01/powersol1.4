@@ -828,6 +828,95 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "save-whale-snapshot") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { users } = body;
+      if (!Array.isArray(users) || users.length === 0) {
+        return errorResponse("Missing users array", 400);
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+      const rows = users.map((u: any) => ({
+        wallet_address: u.wallet_address,
+        whale_score: u.whale_score || 0,
+        overall_concentration: u.overall_concentration || 0,
+        global_ticket_share: u.global_ticket_share || 0,
+        win_rate: u.win_rate || 0,
+        total_current_tickets: u.total_current_tickets || 0,
+        total_all_time_tickets: u.total_all_time_tickets || 0,
+        prizes_won: u.prizes_won || 0,
+        prizes_won_lamports: u.prizes_won_lamports || 0,
+        concentration_data: u.concentration || {},
+        snapshot_date: today,
+      }));
+
+      const { error: upsertError } = await supabase
+        .from("whale_score_history")
+        .upsert(rows, { onConflict: "wallet_address,snapshot_date" });
+
+      if (upsertError) return errorResponse(upsertError.message, 500);
+
+      return jsonResponse({ success: true, saved: rows.length, date: today });
+    }
+
+    if (action === "whale-history") {
+      const days = parseInt(url.searchParams.get("days") || "30", 10);
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      const sinceStr = since.toISOString().split("T")[0];
+
+      const { data } = await supabase
+        .from("whale_score_history")
+        .select("*")
+        .gte("snapshot_date", sinceStr)
+        .order("snapshot_date", { ascending: false })
+        .order("whale_score", { ascending: false });
+
+      const walletPeaks: Record<string, any> = {};
+      (data || []).forEach((row: any) => {
+        const w = row.wallet_address;
+        if (!walletPeaks[w] || row.whale_score > walletPeaks[w].peak_score) {
+          walletPeaks[w] = {
+            wallet_address: w,
+            peak_score: row.whale_score,
+            peak_date: row.snapshot_date,
+            latest_score: walletPeaks[w]?.latest_score ?? row.whale_score,
+            latest_date: walletPeaks[w]?.latest_date ?? row.snapshot_date,
+            snapshots: walletPeaks[w]?.snapshots || 0,
+            peak_concentration: row.overall_concentration,
+            peak_global_share: row.global_ticket_share,
+            peak_win_rate: row.win_rate,
+            all_time_tickets: row.total_all_time_tickets,
+            prizes_won: row.prizes_won,
+            prizes_won_lamports: row.prizes_won_lamports,
+          };
+        }
+        if (!walletPeaks[w].latest_date || row.snapshot_date > walletPeaks[w].latest_date) {
+          walletPeaks[w].latest_score = row.whale_score;
+          walletPeaks[w].latest_date = row.snapshot_date;
+        }
+        walletPeaks[w].snapshots = (walletPeaks[w].snapshots || 0) + 1;
+      });
+
+      const timeline: Record<string, any[]> = {};
+      (data || []).forEach((row: any) => {
+        const w = row.wallet_address;
+        if (!timeline[w]) timeline[w] = [];
+        timeline[w].push({
+          date: row.snapshot_date,
+          score: row.whale_score,
+          concentration: row.overall_concentration,
+          global_share: row.global_ticket_share,
+        });
+      });
+
+      const ranking = Object.values(walletPeaks)
+        .sort((a: any, b: any) => b.peak_score - a.peak_score);
+
+      return jsonResponse({ ranking, timeline, total_snapshots: (data || []).length });
+    }
+
     return errorResponse("Unknown action", 400);
   } catch (err) {
     return errorResponse(

@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ChevronDown, ChevronUp, Ban, ShieldCheck,
   Ticket, DollarSign, Trophy, Calendar, X, AlertTriangle,
-  ExternalLink, Wallet, BarChart3, Eye,
+  ExternalLink, Wallet, BarChart3, Eye, ShieldAlert,
+  TrendingUp, TrendingDown, Minus, History, Save, CheckCircle,
 } from 'lucide-react';
-import { adminService, UserRanking, WhaleUser, WhaleAnalysis } from '../../services/adminService';
+import { adminService, UserRanking, WhaleUser, WhaleAnalysis, WhaleHistoryData, WhaleHistoryEntry } from '../../services/adminService';
 import { useWallet } from '../../contexts/WalletContext';
 import { AdminLayout } from './AdminLayout';
 import { AdminGuard } from './AdminGuard';
@@ -462,14 +463,234 @@ function WhaleDetailModal({ whale, onClose }: { whale: WhaleUser; onClose: () =>
   );
 }
 
-function WhaleAnalysisPanel({ whaleData, onSelectWhale }: {
+function ScoreTrend({ current, peak }: { current: number; peak: number }) {
+  if (current > peak) return <TrendingUp className="w-3 h-3 text-red-400" />;
+  if (current < peak) return <TrendingDown className="w-3 h-3 text-emerald-400" />;
+  return <Minus className="w-3 h-3 text-zinc-600" />;
+}
+
+function WhaleHistoryRanking({ history, onSelectWhale, whaleData }: {
+  history: WhaleHistoryData | null;
+  onSelectWhale: (whale: WhaleUser) => void;
+  whaleData: WhaleAnalysis | null;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  const currentScoreMap = useMemo(() => {
+    const map: Record<string, WhaleUser> = {};
+    (whaleData?.users || []).forEach(u => { map[u.wallet_address] = u; });
+    return map;
+  }, [whaleData]);
+
+  const entries = useMemo(() => {
+    if (!history) return [];
+    return history.ranking.map(entry => ({
+      ...entry,
+      current_whale: currentScoreMap[entry.wallet_address] || null,
+      current_score: currentScoreMap[entry.wallet_address]?.whale_score ?? null,
+    }));
+  }, [history, currentScoreMap]);
+
+  if (!history || entries.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl border border-zinc-800/60 overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.02) 0%, rgba(15, 15, 20, 0.95) 100%)' }}
+    >
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <History className="w-4 h-4 text-amber-400" />
+            <span className="text-white font-mono text-sm font-bold">Historical Whale Risk Ranking</span>
+            <span className="text-zinc-600 font-mono px-2 py-0.5 rounded-full border border-zinc-800" style={{ fontSize: '10px' }}>
+              {entries.length} wallets tracked
+            </span>
+          </div>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-zinc-500 hover:text-white transition-colors p-1"
+          >
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-zinc-800">
+                      <th className="text-left py-2 px-3 text-zinc-500 font-mono text-xs font-normal">#</th>
+                      <th className="text-left py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Wallet</th>
+                      <th className="text-center py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Peak Score</th>
+                      <th className="text-center py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Current</th>
+                      <th className="text-center py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Trend</th>
+                      <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Peak Conc.</th>
+                      <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Win Rate</th>
+                      <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Tickets</th>
+                      <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Won (SOL)</th>
+                      <th className="text-center py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Snapshots</th>
+                      <th className="text-center py-2 px-2 text-zinc-500 font-mono text-xs font-normal">Links</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entries.map((entry, i) => {
+                      const currentScore = entry.current_score;
+                      const scoreChange = currentScore !== null ? currentScore - entry.peak_score : null;
+                      const peakLevel = entry.peak_score >= 70 ? 'critical' : entry.peak_score >= 40 ? 'high' : entry.peak_score >= 15 ? 'medium' : 'low';
+                      const rowBorderColor = peakLevel === 'critical' ? 'rgba(239, 68, 68, 0.08)' : peakLevel === 'high' ? 'rgba(245, 158, 11, 0.06)' : 'transparent';
+
+                      return (
+                        <tr
+                          key={entry.wallet_address}
+                          className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors cursor-pointer"
+                          style={{ background: rowBorderColor }}
+                          onClick={() => {
+                            const whale = entry.current_whale;
+                            if (whale) onSelectWhale(whale);
+                          }}
+                        >
+                          <td className="py-2.5 px-3">
+                            <span className={`font-mono text-sm ${
+                              i === 0 ? 'text-red-400 font-bold' :
+                              i === 1 ? 'text-amber-400 font-bold' :
+                              i === 2 ? 'text-orange-400 font-bold' :
+                              'text-zinc-600'
+                            }`}>
+                              {i + 1}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <p className="text-zinc-300 font-mono text-xs">
+                              {entry.wallet_address.slice(0, 6)}...{entry.wallet_address.slice(-4)}
+                            </p>
+                            <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                              Peak: {entry.peak_date}
+                            </p>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <WhaleScoreBadge score={entry.peak_score} />
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {currentScore !== null ? (
+                              <WhaleScoreBadge score={currentScore} />
+                            ) : (
+                              <span className="text-zinc-700 font-mono text-xs">--</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {currentScore !== null ? (
+                                <>
+                                  <ScoreTrend current={currentScore} peak={entry.peak_score} />
+                                  {scoreChange !== null && scoreChange !== 0 && (
+                                    <span className={`font-mono ${scoreChange > 0 ? 'text-red-400' : 'text-emerald-400'}`} style={{ fontSize: '10px' }}>
+                                      {scoreChange > 0 ? '+' : ''}{scoreChange}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-zinc-700 font-mono" style={{ fontSize: '10px' }}>N/A</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <span className={`font-mono text-xs ${
+                              entry.peak_concentration > 50 ? 'text-red-400 font-bold' :
+                              entry.peak_concentration > 30 ? 'text-amber-400' : 'text-zinc-400'
+                            }`}>
+                              {Number(entry.peak_concentration).toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <span className={`font-mono text-xs ${
+                              entry.peak_win_rate > 20 ? 'text-red-400 font-bold' :
+                              entry.peak_win_rate > 10 ? 'text-amber-400' : 'text-zinc-400'
+                            }`}>
+                              {Number(entry.peak_win_rate).toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-zinc-300 font-mono text-xs">
+                            {entry.all_time_tickets}
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-emerald-400 font-mono text-xs">
+                            {(entry.prizes_won_lamports / 1e9).toFixed(4)}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className="text-zinc-500 font-mono text-xs">{entry.snapshots}</span>
+                          </td>
+                          <td className="py-2.5 px-2">
+                            <div className="flex items-center gap-1 justify-center" onClick={e => e.stopPropagation()}>
+                              <a
+                                href={`https://solscan.io/account/${entry.wallet_address}?cluster=devnet`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                                title="Solscan"
+                              >
+                                <Wallet className="w-3 h-3 text-cyan-400" />
+                              </a>
+                              <a
+                                href={`https://solsniffer.com/address/${entry.wallet_address}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                                title="SolSniffer"
+                              >
+                                <Eye className="w-3 h-3 text-orange-400" />
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+function WhaleAnalysisPanel({ whaleData, onSelectWhale, onSnapshotSaved }: {
   whaleData: WhaleAnalysis | null;
   onSelectWhale: (whale: WhaleUser) => void;
+  onSnapshotSaved: () => void;
 }) {
-  if (!whaleData || whaleData.users.length === 0) return null;
+  const [showTable, setShowTable] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const flagged = whaleData.users.filter(u => u.whale_score >= 15);
-  const critical = whaleData.users.filter(u => u.whale_score >= 70);
+  const hasUsers = whaleData && whaleData.users.length > 0;
+  const flagged = hasUsers ? whaleData.users.filter(u => u.whale_score >= 15) : [];
+  const critical = hasUsers ? whaleData.users.filter(u => u.whale_score >= 70) : [];
+
+  const handleSaveSnapshot = async () => {
+    if (!whaleData || whaleData.users.length === 0) return;
+    setSaving(true);
+    try {
+      await adminService.saveWhaleSnapshot(whaleData.users);
+      setSaved(true);
+      onSnapshotSaved();
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save snapshot:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <motion.div
@@ -477,24 +698,51 @@ function WhaleAnalysisPanel({ whaleData, onSelectWhale }: {
       animate={{ opacity: 1, y: 0 }}
       className="rounded-xl border overflow-hidden"
       style={{
-        borderColor: critical.length > 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)',
-        background: critical.length > 0
-          ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.03) 0%, rgba(15, 15, 20, 0.95) 100%)'
-          : 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(15, 15, 20, 0.95) 100%)',
+        borderColor: !hasUsers
+          ? 'rgba(16, 185, 129, 0.2)'
+          : critical.length > 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)',
+        background: !hasUsers
+          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.02) 0%, rgba(15, 15, 20, 0.95) 100%)'
+          : critical.length > 0
+            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.03) 0%, rgba(15, 15, 20, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(15, 15, 20, 0.95) 100%)',
       }}
     >
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-red-400" />
+            {hasUsers ? (
+              <BarChart3 className="w-4 h-4 text-red-400" />
+            ) : (
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            )}
             <span className="text-white font-mono text-sm font-bold">Whale / Pool Manipulation Analysis</span>
             {critical.length > 0 && (
               <span className="text-red-400 font-mono text-xs px-2 py-0.5 rounded-full border border-red-500/30 bg-red-500/10">
                 {critical.length} critical
               </span>
             )}
+            {hasUsers && flagged.length === 0 && (
+              <span className="text-emerald-400 font-mono text-xs px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                all clear
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
+            {hasUsers && (
+              <button
+                onClick={handleSaveSnapshot}
+                disabled={saving || saved}
+                className={`flex items-center gap-1.5 font-mono text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                  saved
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                    : 'border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:text-white hover:border-zinc-500'
+                }`}
+              >
+                {saved ? <CheckCircle className="w-3 h-3" /> : <Save className="w-3 h-3" />}
+                {saving ? 'Saving...' : saved ? 'Saved' : 'Save Snapshot'}
+              </button>
+            )}
             <a
               href={`https://app.bubblemaps.io/sol/token/${CLAIM_PROGRAM_ID}`}
               target="_blank"
@@ -511,100 +759,131 @@ function WhaleAnalysisPanel({ whaleData, onSelectWhale }: {
             >
               SolSniffer <ExternalLink className="w-3 h-3" />
             </a>
+            {hasUsers && (
+              <button
+                onClick={() => setShowTable(!showTable)}
+                className="text-zinc-500 hover:text-white transition-colors p-1"
+              >
+                {showTable ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Wallet</th>
-                {['tri-daily', 'jackpot', 'special-event', 'grand-prize'].map(lt => (
-                  <th key={lt} className="text-center py-2 px-2 font-mono text-xs font-normal" style={{ color: LOTTERY_COLORS[lt] }}>
-                    {LOTTERY_LABELS[lt]}
-                  </th>
-                ))}
-                <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Win Rate</th>
-                <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Prizes</th>
-                <th className="text-center py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Score</th>
-                <th className="text-center py-2 px-2 text-zinc-500 font-mono text-xs font-normal">Links</th>
-              </tr>
-            </thead>
-            <tbody>
-              {whaleData.users.map((whale) => (
-                <tr
-                  key={whale.wallet_address}
-                  className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors cursor-pointer"
-                  onClick={() => onSelectWhale(whale)}
-                >
-                  <td className="py-2.5 px-3">
-                    <p className="text-zinc-300 font-mono text-xs">
-                      {whale.wallet_address.slice(0, 6)}...{whale.wallet_address.slice(-4)}
-                    </p>
-                    <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
-                      {whale.total_current_tickets} current / {whale.total_all_time_tickets} total
-                    </p>
-                  </td>
-                  {['tri-daily', 'jackpot', 'special-event', 'grand-prize'].map(lt => {
-                    const c = whale.concentration[lt];
-                    return (
-                      <td key={lt} className="py-2.5 px-2">
-                        {c ? (
-                          <div>
-                            <ConcentrationBar pct={c.pct} color={LOTTERY_COLORS[lt]} />
-                            <p className="text-zinc-600 font-mono text-center" style={{ fontSize: '9px' }}>
-                              {c.user}/{c.total}
-                            </p>
+        {!hasUsers && (
+          <div className="flex items-center gap-3 p-3 rounded-lg border border-emerald-500/15 bg-emerald-500/5">
+            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <p className="text-emerald-300 font-mono text-sm font-bold">No Active Whale Risks</p>
+              <p className="text-zinc-500 font-mono" style={{ fontSize: '10px' }}>
+                No users have active (undrawn) tickets in current rounds, or all concentration levels are within normal ranges.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <AnimatePresence>
+          {hasUsers && showTable && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-zinc-800">
+                      <th className="text-left py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Wallet</th>
+                      {['tri-daily', 'jackpot', 'special-event', 'grand-prize'].map(lt => (
+                        <th key={lt} className="text-center py-2 px-2 font-mono text-xs font-normal" style={{ color: LOTTERY_COLORS[lt] }}>
+                          {LOTTERY_LABELS[lt]}
+                        </th>
+                      ))}
+                      <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Win Rate</th>
+                      <th className="text-right py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Prizes</th>
+                      <th className="text-center py-2 px-3 text-zinc-500 font-mono text-xs font-normal">Score</th>
+                      <th className="text-center py-2 px-2 text-zinc-500 font-mono text-xs font-normal">Links</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {whaleData!.users.map((whale) => (
+                      <tr
+                        key={whale.wallet_address}
+                        className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors cursor-pointer"
+                        onClick={() => onSelectWhale(whale)}
+                      >
+                        <td className="py-2.5 px-3">
+                          <p className="text-zinc-300 font-mono text-xs">
+                            {whale.wallet_address.slice(0, 6)}...{whale.wallet_address.slice(-4)}
+                          </p>
+                          <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                            {whale.total_current_tickets} current / {whale.total_all_time_tickets} total
+                          </p>
+                        </td>
+                        {['tri-daily', 'jackpot', 'special-event', 'grand-prize'].map(lt => {
+                          const c = whale.concentration[lt];
+                          return (
+                            <td key={lt} className="py-2.5 px-2">
+                              {c ? (
+                                <div>
+                                  <ConcentrationBar pct={c.pct} color={LOTTERY_COLORS[lt]} />
+                                  <p className="text-zinc-600 font-mono text-center" style={{ fontSize: '9px' }}>
+                                    {c.user}/{c.total}
+                                  </p>
+                                </div>
+                              ) : (
+                                <span className="text-zinc-800 font-mono text-xs block text-center">--</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="py-2.5 px-3 text-right">
+                          <span className={`font-mono text-xs font-bold ${
+                            whale.win_rate > 20 ? 'text-red-400' : whale.win_rate > 10 ? 'text-amber-400' : 'text-zinc-400'
+                          }`}>
+                            {whale.win_rate}%
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <span className="text-emerald-400 font-mono text-xs">{whale.prizes_won}</span>
+                          <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>
+                            {(whale.prizes_won_lamports / 1e9).toFixed(4)}
+                          </p>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <WhaleScoreBadge score={whale.whale_score} />
+                        </td>
+                        <td className="py-2.5 px-2">
+                          <div className="flex items-center gap-1 justify-center" onClick={e => e.stopPropagation()}>
+                            <a
+                              href={`https://solscan.io/account/${whale.wallet_address}?cluster=devnet`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                              title="Solscan"
+                            >
+                              <Wallet className="w-3 h-3 text-cyan-400" />
+                            </a>
+                            <a
+                              href={`https://solsniffer.com/address/${whale.wallet_address}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 rounded hover:bg-zinc-800 transition-colors"
+                              title="SolSniffer"
+                            >
+                              <Eye className="w-3 h-3 text-orange-400" />
+                            </a>
                           </div>
-                        ) : (
-                          <span className="text-zinc-800 font-mono text-xs block text-center">--</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="py-2.5 px-3 text-right">
-                    <span className={`font-mono text-xs font-bold ${
-                      whale.win_rate > 20 ? 'text-red-400' : whale.win_rate > 10 ? 'text-amber-400' : 'text-zinc-400'
-                    }`}>
-                      {whale.win_rate}%
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-right">
-                    <span className="text-emerald-400 font-mono text-xs">{whale.prizes_won}</span>
-                    <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>
-                      {(whale.prizes_won_lamports / 1e9).toFixed(4)}
-                    </p>
-                  </td>
-                  <td className="py-2.5 px-3 text-center">
-                    <WhaleScoreBadge score={whale.whale_score} />
-                  </td>
-                  <td className="py-2.5 px-2">
-                    <div className="flex items-center gap-1 justify-center" onClick={e => e.stopPropagation()}>
-                      <a
-                        href={`https://solscan.io/account/${whale.wallet_address}?cluster=devnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1 rounded hover:bg-zinc-800 transition-colors"
-                        title="Solscan"
-                      >
-                        <Wallet className="w-3 h-3 text-cyan-400" />
-                      </a>
-                      <a
-                        href={`https://solsniffer.com/address/${whale.wallet_address}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1 rounded hover:bg-zinc-800 transition-colors"
-                        title="SolSniffer"
-                      >
-                        <Eye className="w-3 h-3 text-orange-400" />
-                      </a>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
@@ -614,6 +893,7 @@ export function AdminUsers() {
   const { publicKey } = useWallet();
   const [users, setUsers] = useState<UserRanking[]>([]);
   const [whaleData, setWhaleData] = useState<WhaleAnalysis | null>(null);
+  const [whaleHistory, setWhaleHistory] = useState<WhaleHistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortField>('total_spent_sol');
@@ -623,6 +903,15 @@ export function AdminUsers() {
   const [selectedWhale, setSelectedWhale] = useState<WhaleUser | null>(null);
   const [showBanned, setShowBanned] = useState(false);
 
+  const loadHistory = useCallback(async () => {
+    try {
+      const h = await adminService.getWhaleHistory(30);
+      setWhaleHistory(h);
+    } catch (err) {
+      console.error('Failed to load whale history:', err);
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       const [u, w] = await Promise.all([
@@ -631,12 +920,13 @@ export function AdminUsers() {
       ]);
       setUsers(u);
       setWhaleData(w);
+      loadHistory();
     } catch (err) {
       console.error('Failed to load users:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadHistory]);
 
   const { lastRefresh } = useAdminAutoRefresh(loadData);
 
@@ -727,7 +1017,9 @@ export function AdminUsers() {
               </div>
             </div>
 
-            <WhaleAnalysisPanel whaleData={whaleData} onSelectWhale={setSelectedWhale} />
+            <WhaleAnalysisPanel whaleData={whaleData} onSelectWhale={setSelectedWhale} onSnapshotSaved={loadHistory} />
+
+            <WhaleHistoryRanking history={whaleHistory} onSelectWhale={setSelectedWhale} whaleData={whaleData} />
 
             <div
               className="rounded-xl border border-zinc-800/80 overflow-hidden"

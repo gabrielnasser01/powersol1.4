@@ -144,6 +144,34 @@ export interface WhaleAnalysis {
   lottery_types: string[];
 }
 
+export interface WhaleHistoryEntry {
+  wallet_address: string;
+  peak_score: number;
+  peak_date: string;
+  latest_score: number;
+  latest_date: string;
+  snapshots: number;
+  peak_concentration: number;
+  peak_global_share: number;
+  peak_win_rate: number;
+  all_time_tickets: number;
+  prizes_won: number;
+  prizes_won_lamports: number;
+}
+
+export interface WhaleHistoryTimeline {
+  date: string;
+  score: number;
+  concentration: number;
+  global_share: number;
+}
+
+export interface WhaleHistoryData {
+  ranking: WhaleHistoryEntry[];
+  timeline: Record<string, WhaleHistoryTimeline[]>;
+  total_snapshots: number;
+}
+
 class AdminService {
   async getPlatformStats() {
     return adminFetch({ action: 'stats' }, getWallet());
@@ -191,6 +219,14 @@ class AdminService {
 
   async getWhaleAnalysis(): Promise<WhaleAnalysis> {
     return adminFetch({ action: 'whale-analysis' }, getWallet());
+  }
+
+  async saveWhaleSnapshot(users: WhaleUser[]): Promise<{ success: boolean; saved: number; date: string }> {
+    return adminFetch({ action: 'save-whale-snapshot' }, getWallet(), 'POST', { users });
+  }
+
+  async getWhaleHistory(days = 30): Promise<WhaleHistoryData> {
+    return adminFetch({ action: 'whale-history', days: String(days) }, getWallet());
   }
 
   async banUser(targetWallet: string, adminWallet: string, reason: string) {

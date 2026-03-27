@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Search, ChevronDown, ChevronUp, X, Network,
   ArrowRight, Clock, AlertTriangle, ExternalLink, Shield,
-  Eye, EyeOff, Zap, Activity,
+  Eye, EyeOff, Zap, Activity, CheckCircle, ShieldCheck,
+  TrendingUp, UserX, Ticket, Timer,
 } from 'lucide-react';
 import { adminService, AffiliateRanking, SybilAlert } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
@@ -984,6 +985,19 @@ export function AdminAffiliates() {
     return map;
   }, [sybilAlerts]);
 
+  const monitoringStats = useMemo(() => {
+    const totalRefs = affiliates.reduce((s, a) => s + a.referral_count, 0);
+    const totalVolume = affiliates.reduce((s, a) => s + a.total_referral_value_sol, 0);
+    const totalCommissions = affiliates.reduce((s, a) => s + a.total_earned, 0);
+    const avgRefsPerAffiliate = affiliates.length > 0 ? totalRefs / affiliates.length : 0;
+    const tiersBreakdown = affiliates.reduce((acc, a) => {
+      const t = a.manual_tier || 1;
+      acc[t] = (acc[t] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+    return { totalRefs, totalVolume, totalCommissions, avgRefsPerAffiliate, tiersBreakdown };
+  }, [affiliates]);
+
   return (
     <AdminGuard>
       <AdminLayout>
@@ -1003,52 +1017,70 @@ export function AdminAffiliates() {
               </span>
             </div>
 
-            {sybilAlerts.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border overflow-hidden"
-                style={{
-                  borderColor: criticalAlerts.length > 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)',
-                  background: criticalAlerts.length > 0
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border overflow-hidden"
+              style={{
+                borderColor: sybilAlerts.length > 0
+                  ? criticalAlerts.length > 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'
+                  : 'rgba(16, 185, 129, 0.2)',
+                background: sybilAlerts.length > 0
+                  ? criticalAlerts.length > 0
                     ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.03) 0%, rgba(15, 15, 20, 0.95) 100%)'
-                    : 'linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, rgba(15, 15, 20, 0.95) 100%)',
-                }}
-              >
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <AlertTriangle className="w-5 h-5 text-red-400" />
-                        {criticalAlerts.length > 0 && (
-                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="text-white font-mono text-sm font-bold">Sybil Attack Detection</h3>
-                        <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
-                          {sybilAlerts.length} flagged {sybilAlerts.length === 1 ? 'affiliate' : 'affiliates'}
-                          {criticalAlerts.length > 0 && <span className="text-red-400 ml-2">{criticalAlerts.length} critical</span>}
-                          {highAlerts.length > 0 && <span className="text-amber-400 ml-2">{highAlerts.length} high</span>}
-                        </p>
-                      </div>
+                    : 'linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, rgba(15, 15, 20, 0.95) 100%)'
+                  : 'linear-gradient(135deg, rgba(16, 185, 129, 0.02) 0%, rgba(15, 15, 20, 0.95) 100%)',
+              }}
+            >
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      {sybilAlerts.length > 0 ? (
+                        <>
+                          <AlertTriangle className="w-5 h-5 text-red-400" />
+                          {criticalAlerts.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                          )}
+                        </>
+                      ) : (
+                        <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                      )}
                     </div>
-                    <button
-                      onClick={() => setShowSybilPanel(!showSybilPanel)}
-                      className="text-zinc-500 hover:text-white transition-colors p-1"
-                    >
-                      {showSybilPanel ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    <div>
+                      <h3 className="text-white font-mono text-sm font-bold">Sybil Attack Detection</h3>
+                      <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                        {sybilAlerts.length > 0 ? (
+                          <>
+                            {sybilAlerts.length} flagged {sybilAlerts.length === 1 ? 'affiliate' : 'affiliates'}
+                            {criticalAlerts.length > 0 && <span className="text-red-400 ml-2">{criticalAlerts.length} critical</span>}
+                            {highAlerts.length > 0 && <span className="text-amber-400 ml-2">{highAlerts.length} high</span>}
+                          </>
+                        ) : (
+                          <span className="text-emerald-400/80">
+                            All clear -- monitoring {affiliates.length} affiliates with {monitoringStats.totalRefs} referrals
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => setShowSybilPanel(!showSybilPanel)}
+                    className="text-zinc-500 hover:text-white transition-colors p-1"
+                  >
+                    {showSybilPanel ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
 
-                  <AnimatePresence>
-                    {showSybilPanel && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
+                <AnimatePresence>
+                  {showSybilPanel && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      {sybilAlerts.length > 0 ? (
                         <div className="space-y-2 mt-2">
                           {sybilAlerts.map(alert => {
                             const riskColor = getRiskColor(alert.risk_score);
@@ -1120,12 +1152,101 @@ export function AdminAffiliates() {
                             );
                           })}
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            )}
+                      ) : (
+                        <div className="mt-2 space-y-4">
+                          <div className="flex items-center gap-3 p-3 rounded-lg border border-emerald-500/15 bg-emerald-500/5">
+                            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+                            <div>
+                              <p className="text-emerald-300 font-mono text-sm font-bold">No Sybil Risks Detected</p>
+                              <p className="text-zinc-500 font-mono" style={{ fontSize: '10px' }}>
+                                All affiliate referral patterns appear organic. No single-ticket farming, ghost wallets, or rapid signup bursts found.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="rounded-lg border border-zinc-800/50 p-3 text-center" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+                              <div className="flex items-center justify-center mb-2">
+                                <Users className="w-4 h-4 text-zinc-500" />
+                              </div>
+                              <p className="text-white font-mono text-lg font-bold">{affiliates.length}</p>
+                              <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>AFFILIATES MONITORED</p>
+                            </div>
+                            <div className="rounded-lg border border-zinc-800/50 p-3 text-center" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+                              <div className="flex items-center justify-center mb-2">
+                                <Network className="w-4 h-4 text-zinc-500" />
+                              </div>
+                              <p className="text-white font-mono text-lg font-bold">{monitoringStats.totalRefs}</p>
+                              <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>REFERRALS SCANNED</p>
+                            </div>
+                            <div className="rounded-lg border border-zinc-800/50 p-3 text-center" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+                              <div className="flex items-center justify-center mb-2">
+                                <TrendingUp className="w-4 h-4 text-zinc-500" />
+                              </div>
+                              <p className="text-white font-mono text-lg font-bold">{monitoringStats.totalVolume.toFixed(2)}</p>
+                              <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>REFERRAL VOL (SOL)</p>
+                            </div>
+                            <div className="rounded-lg border border-zinc-800/50 p-3 text-center" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+                              <div className="flex items-center justify-center mb-2">
+                                <Ticket className="w-4 h-4 text-zinc-500" />
+                              </div>
+                              <p className="text-white font-mono text-lg font-bold">{monitoringStats.avgRefsPerAffiliate.toFixed(1)}</p>
+                              <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>AVG REFS / AFFILIATE</p>
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg border border-zinc-800/50 p-4" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+                            <h4 className="text-zinc-400 font-mono text-xs font-bold mb-3 uppercase tracking-wider">Detection Rules Active</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {[
+                                { icon: <UserX className="w-3.5 h-3.5" />, label: 'Ghost Wallet Detection', desc: 'Referrals with 0 ticket purchases', color: '#ef4444' },
+                                { icon: <Ticket className="w-3.5 h-3.5" />, label: 'Single-Ticket Farming', desc: 'Referrals buying only 1 ticket (minimum to validate)', color: '#f59e0b' },
+                                { icon: <Timer className="w-3.5 h-3.5" />, label: 'Rapid Signup Bursts', desc: 'Multiple referrals within 5-minute windows', color: '#f97316' },
+                                { icon: <TrendingUp className="w-3.5 h-3.5" />, label: 'Low-Value Referrals', desc: 'Abnormally low SOL per ticket ratio', color: '#eab308' },
+                                { icon: <Shield className="w-3.5 h-3.5" />, label: 'Tier Promotion Abuse', desc: 'Fake referrals to reach higher commission tiers', color: '#06b6d4' },
+                                { icon: <Activity className="w-3.5 h-3.5" />, label: 'Volume-Based Scoring', desc: 'Weighted risk score combining all indicators', color: '#8b5cf6' },
+                              ].map(rule => (
+                                <div key={rule.label} className="flex items-start gap-2.5 p-2 rounded border border-zinc-800/30">
+                                  <div className="mt-0.5 shrink-0" style={{ color: rule.color }}>{rule.icon}</div>
+                                  <div>
+                                    <p className="text-zinc-300 font-mono text-xs font-bold">{rule.label}</p>
+                                    <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>{rule.desc}</p>
+                                  </div>
+                                  <CheckCircle className="w-3 h-3 text-emerald-500/60 shrink-0 ml-auto mt-0.5" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {Object.keys(monitoringStats.tiersBreakdown).length > 0 && (
+                            <div className="rounded-lg border border-zinc-800/50 p-4" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+                              <h4 className="text-zinc-400 font-mono text-xs font-bold mb-3 uppercase tracking-wider">Tier Distribution</h4>
+                              <div className="flex items-center gap-3">
+                                {Object.entries(monitoringStats.tiersBreakdown)
+                                  .sort(([a], [b]) => Number(a) - Number(b))
+                                  .map(([tier, count]) => {
+                                    const t = TIER_LABELS[Number(tier)] || TIER_LABELS[1];
+                                    return (
+                                      <div key={tier} className="flex items-center gap-2">
+                                        <div
+                                          className="w-2.5 h-2.5 rounded-full"
+                                          style={{ background: t.color }}
+                                        />
+                                        <span className="font-mono text-xs" style={{ color: t.color }}>{t.label}</span>
+                                        <span className="text-zinc-500 font-mono text-xs font-bold">{count}</span>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
 
             {(unclaimedRewards.length > 0 || totalExpiredSol > 0) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

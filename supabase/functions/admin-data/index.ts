@@ -250,6 +250,16 @@ Deno.serve(async (req: Request) => {
           Number(c.amount_lamports || 0);
       });
 
+      const expiredMap: Record<string, { lamports: number; weeks: number }> = {};
+      (weeklyAccum || []).forEach((w: any) => {
+        if (w.is_swept_to_delta && !w.is_claimed) {
+          const wallet = w.affiliate_wallet;
+          if (!expiredMap[wallet]) expiredMap[wallet] = { lamports: 0, weeks: 0 };
+          expiredMap[wallet].lamports += Number(w.pending_lamports || 0);
+          expiredMap[wallet].weeks += 1;
+        }
+      });
+
       const result = (affiliates || []).map((a: any) => {
         const wallet = a.users?.wallet_address || "";
         const totalEarnedLamports = earnedMap[wallet] || 0;
@@ -268,6 +278,8 @@ Deno.serve(async (req: Request) => {
           referral_count: refMap[a.id]?.count || 0,
           total_referral_value_sol: refMap[a.id]?.value || 0,
           total_commission_earned: refMap[a.id]?.commission || 0,
+          expired_rewards_sol: (expiredMap[wallet]?.lamports || 0) / 1e9,
+          expired_weeks: expiredMap[wallet]?.weeks || 0,
           created_at: a.created_at,
         };
       });

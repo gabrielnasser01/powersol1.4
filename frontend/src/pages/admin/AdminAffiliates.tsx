@@ -972,6 +972,8 @@ export function AdminAffiliates() {
   };
 
   const totalUnclaimedLamports = unclaimedRewards.reduce((s, r) => s + Number(r.pending_lamports || 0), 0);
+  const totalExpiredSol = affiliates.reduce((s, a) => s + (a.expired_rewards_sol || 0), 0);
+  const totalExpiredAffiliates = affiliates.filter(a => (a.expired_rewards_sol || 0) > 0).length;
   const criticalAlerts = sybilAlerts.filter(a => a.risk_score >= 70);
   const highAlerts = sybilAlerts.filter(a => a.risk_score >= 40 && a.risk_score < 70);
 
@@ -1125,20 +1127,40 @@ export function AdminAffiliates() {
               </motion.div>
             )}
 
-            {unclaimedRewards.length > 0 && (
-              <div
-                className="rounded-xl border border-amber-500/20 p-4"
-                style={{ background: 'rgba(245, 158, 11, 0.03)' }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock className="w-4 h-4 text-amber-400" />
-                  <span className="text-amber-400 font-mono text-sm font-bold">
-                    Unclaimed Rewards: {(totalUnclaimedLamports / 1e9).toFixed(4)} SOL
-                  </span>
-                  <span className="text-zinc-600 font-mono text-xs">
-                    ({unclaimedRewards.length} pending weeks)
-                  </span>
-                </div>
+            {(unclaimedRewards.length > 0 || totalExpiredSol > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {unclaimedRewards.length > 0 && (
+                  <div
+                    className="rounded-xl border border-amber-500/20 p-4"
+                    style={{ background: 'rgba(245, 158, 11, 0.03)' }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-amber-400" />
+                      <span className="text-amber-400 font-mono text-sm font-bold">
+                        Unclaimed: {(totalUnclaimedLamports / 1e9).toFixed(4)} SOL
+                      </span>
+                      <span className="text-zinc-600 font-mono text-xs">
+                        ({unclaimedRewards.length} pending weeks)
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {totalExpiredSol > 0 && (
+                  <div
+                    className="rounded-xl border border-orange-500/20 p-4"
+                    style={{ background: 'rgba(249, 115, 22, 0.03)' }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-orange-400" />
+                      <span className="text-orange-400 font-mono text-sm font-bold">
+                        Expired: {totalExpiredSol.toFixed(4)} SOL
+                      </span>
+                      <span className="text-zinc-600 font-mono text-xs">
+                        ({totalExpiredAffiliates} affiliate{totalExpiredAffiliates !== 1 ? 's' : ''} lost rewards)
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1195,6 +1217,7 @@ export function AdminAffiliates() {
                       </th>
                       <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Claimed</th>
                       <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Pending</th>
+                      <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Expired</th>
                       <th className="text-center py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Risk</th>
                       <th className="text-center py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Network</th>
                     </tr>
@@ -1259,6 +1282,15 @@ export function AdminAffiliates() {
                           </td>
                           <td className="py-3 px-4 text-right text-red-400 font-mono text-sm">
                             {aff.pending_earnings.toFixed(4)}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono text-sm">
+                            {aff.expired_rewards_sol > 0 ? (
+                              <span className="text-orange-400" title={`${aff.expired_weeks} expired week${aff.expired_weeks !== 1 ? 's' : ''}`}>
+                                {aff.expired_rewards_sol.toFixed(4)}
+                              </span>
+                            ) : (
+                              <span className="text-zinc-700">--</span>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-center">
                             {isFlagged ? (

@@ -74,6 +74,8 @@ export interface AffiliateRanking {
   referral_count: number;
   total_referral_value_sol: number;
   total_commission_earned: number;
+  expired_rewards_sol: number;
+  expired_weeks: number;
   created_at: string;
 }
 

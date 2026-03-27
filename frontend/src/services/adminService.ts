@@ -119,6 +119,31 @@ export interface MissionAlert {
   issue: string;
 }
 
+export interface WhaleConcentration {
+  user: number;
+  total: number;
+  pct: number;
+}
+
+export interface WhaleUser {
+  wallet_address: string;
+  concentration: Record<string, WhaleConcentration>;
+  overall_concentration: number;
+  total_current_tickets: number;
+  total_all_time_tickets: number;
+  global_ticket_share: number;
+  prizes_won: number;
+  prizes_won_lamports: number;
+  win_rate: number;
+  whale_score: number;
+}
+
+export interface WhaleAnalysis {
+  users: WhaleUser[];
+  round_totals: Record<string, number>;
+  lottery_types: string[];
+}
+
 class AdminService {
   async getPlatformStats() {
     return adminFetch({ action: 'stats' }, getWallet());
@@ -162,6 +187,10 @@ class AdminService {
 
   async getSybilAnalysis(): Promise<SybilAlert[]> {
     return adminFetch({ action: 'sybil-analysis' }, getWallet());
+  }
+
+  async getWhaleAnalysis(): Promise<WhaleAnalysis> {
+    return adminFetch({ action: 'whale-analysis' }, getWallet());
   }
 
   async banUser(targetWallet: string, adminWallet: string, reason: string) {

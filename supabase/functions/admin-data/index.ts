@@ -698,6 +698,136 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(alerts);
     }
 
+    if (action === "whale-analysis") {
+      const [
+        { data: currentTickets },
+        { data: allTickets },
+        { data: prizes },
+        { data: draws },
+      ] = await Promise.all([
+        supabase
+          .from("ticket_purchases")
+          .select("wallet_address, lottery_type, lottery_round_id, quantity")
+          .eq("is_drawn", false),
+        supabase
+          .from("ticket_purchases")
+          .select("wallet_address, lottery_type, quantity"),
+        supabase
+          .from("prizes")
+          .select("user_wallet, lottery_type, prize_amount_lamports, prize_position"),
+        supabase
+          .from("solana_draws")
+          .select("lottery_type, round, participants_count"),
+      ]);
+
+      const roundTotals: Record<string, number> = {};
+      (currentTickets || []).forEach((t: any) => {
+        const key = `${t.lottery_type}|${t.lottery_round_id}`;
+        roundTotals[key] = (roundTotals[key] || 0) + Number(t.quantity || 0);
+      });
+
+      const userCurrentByLottery: Record<string, Record<string, number>> = {};
+      (currentTickets || []).forEach((t: any) => {
+        if (!userCurrentByLottery[t.wallet_address]) userCurrentByLottery[t.wallet_address] = {};
+        const key = `${t.lottery_type}|${t.lottery_round_id}`;
+        userCurrentByLottery[t.wallet_address][t.lottery_type] =
+          (userCurrentByLottery[t.wallet_address][t.lottery_type] || 0) + Number(t.quantity || 0);
+        userCurrentByLottery[t.wallet_address][`${t.lottery_type}_total`] = roundTotals[key] || 0;
+      });
+
+      const userAllTickets: Record<string, number> = {};
+      (allTickets || []).forEach((t: any) => {
+        userAllTickets[t.wallet_address] = (userAllTickets[t.wallet_address] || 0) + Number(t.quantity || 0);
+      });
+
+      const totalDrawParticipants: Record<string, number> = {};
+      const drawCounts: Record<string, number> = {};
+      (draws || []).forEach((d: any) => {
+        totalDrawParticipants[d.lottery_type] =
+          (totalDrawParticipants[d.lottery_type] || 0) + Number(d.participants_count || 0);
+        drawCounts[d.lottery_type] = (drawCounts[d.lottery_type] || 0) + 1;
+      });
+
+      const userPrizes: Record<string, { count: number; lamports: number }> = {};
+      (prizes || []).forEach((p: any) => {
+        if (!userPrizes[p.user_wallet]) userPrizes[p.user_wallet] = { count: 0, lamports: 0 };
+        userPrizes[p.user_wallet].count += 1;
+        userPrizes[p.user_wallet].lamports += Number(p.prize_amount_lamports || 0);
+      });
+
+      const totalAllTickets = Object.values(userAllTickets).reduce((s, v) => s + v, 0);
+
+      const wallets = new Set<string>();
+      (currentTickets || []).forEach((t: any) => wallets.add(t.wallet_address));
+
+      const lotteryTypes = ["tri-daily", "jackpot", "special-event", "grand-prize"];
+
+      const result = Array.from(wallets).map((wallet) => {
+        const concentration: Record<string, { user: number; total: number; pct: number }> = {};
+        let totalUserCurrent = 0;
+        let totalCurrentPool = 0;
+
+        lotteryTypes.forEach((lt) => {
+          const userT = userCurrentByLottery[wallet]?.[lt] || 0;
+          const totalT = userCurrentByLottery[wallet]?.[`${lt}_total`] || 0;
+          if (userT > 0) {
+            concentration[lt] = {
+              user: userT,
+              total: totalT,
+              pct: totalT > 0 ? Math.round((userT / totalT) * 10000) / 100 : 0,
+            };
+            totalUserCurrent += userT;
+            totalCurrentPool += totalT;
+          }
+        });
+
+        const overallConcentration = totalCurrentPool > 0
+          ? Math.round((totalUserCurrent / totalCurrentPool) * 10000) / 100
+          : 0;
+
+        const prizeData = userPrizes[wallet] || { count: 0, lamports: 0 };
+        const totalTicketsAll = userAllTickets[wallet] || 0;
+        const winRate = totalTicketsAll > 0
+          ? Math.round((prizeData.count / totalTicketsAll) * 10000) / 100
+          : 0;
+
+        const globalShare = totalAllTickets > 0
+          ? Math.round((totalTicketsAll / totalAllTickets) * 10000) / 100
+          : 0;
+
+        const maxConcentration = Object.values(concentration).reduce(
+          (max, c) => Math.max(max, c.pct), 0
+        );
+
+        const whaleScore =
+          (maxConcentration > 50 ? 40 : maxConcentration > 30 ? 25 : maxConcentration > 20 ? 10 : 0) +
+          (overallConcentration > 40 ? 25 : overallConcentration > 25 ? 15 : 0) +
+          (winRate > 20 ? 20 : winRate > 10 ? 10 : 0) +
+          (globalShare > 15 ? 15 : globalShare > 10 ? 10 : globalShare > 5 ? 5 : 0);
+
+        return {
+          wallet_address: wallet,
+          concentration,
+          overall_concentration: overallConcentration,
+          total_current_tickets: totalUserCurrent,
+          total_all_time_tickets: totalTicketsAll,
+          global_ticket_share: globalShare,
+          prizes_won: prizeData.count,
+          prizes_won_lamports: prizeData.lamports,
+          win_rate: winRate,
+          whale_score: Math.min(whaleScore, 100),
+        };
+      });
+
+      result.sort((a: any, b: any) => b.whale_score - a.whale_score);
+
+      return jsonResponse({
+        users: result,
+        round_totals: roundTotals,
+        lottery_types: lotteryTypes,
+      });
+    }
+
     return errorResponse("Unknown action", 400);
   } catch (err) {
     return errorResponse(

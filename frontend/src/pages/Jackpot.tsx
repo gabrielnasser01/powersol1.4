@@ -28,6 +28,7 @@ export function Jackpot() {
   const [liveContributors, setLiveContributors] = useState(0);
   const [liveGrowthRate, setLiveGrowthRate] = useState(0);
   const [liveDaysLeft, setLiveDaysLeft] = useState(0);
+  const [drawCycle, setDrawCycle] = useState<{ startTs: number; endTs: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const depositButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -77,7 +78,28 @@ export function Jackpot() {
         console.error('Failed to fetch jackpot stats:', err);
       }
     };
+    const fetchDrawCycle = async () => {
+      try {
+        const { data } = await supabase
+          .from('blockchain_lotteries')
+          .select('created_at, draw_timestamp')
+          .eq('lottery_type', 'jackpot')
+          .eq('is_drawn', false)
+          .order('draw_timestamp', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (data) {
+          setDrawCycle({
+            startTs: new Date(data.created_at).getTime(),
+            endTs: data.draw_timestamp * 1000,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch draw cycle:', err);
+      }
+    };
     fetchLotteryStats();
+    fetchDrawCycle();
   }, []);
 
   const now = new Date();
@@ -570,28 +592,63 @@ export function Jackpot() {
               {/* 40% indicator */}
             </div>
 
-            {/* Progress Bar */}
-            <div className="mb-6">
-              <div className="flex justify-between text-sm mb-2">
-                <span style={{ color: '#ffffff' }}>Jackpot Pool Growth</span>
-                <span style={{ color: '#0099ff' }}>${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div 
-                className="w-full h-4 rounded-full overflow-hidden"
-                style={{ background: 'rgba(0, 0, 0, 0.5)' }}
-              >
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{
-                    background: 'linear-gradient(90deg, #0099ff, #00ccff)',
-                    boxShadow: '0 0 20px rgba(0, 153, 255, 0.5)',
-                  }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((globalPool.prizePoolUsd / 10000) * 100, 100)}%` }}
-                  transition={{ duration: 2, ease: 'easeOut' }}
-                />
-              </div>
-            </div>
+            {/* Progress Bar - Draw Cycle */}
+            {(() => {
+              const nowMs = Date.now();
+              let progressPct = 0;
+              let dayLabel = '';
+              if (drawCycle) {
+                const total = drawCycle.endTs - drawCycle.startTs;
+                const elapsed = nowMs - drawCycle.startTs;
+                progressPct = total > 0 ? Math.max(0, Math.min((elapsed / total) * 100, 100)) : 0;
+                const totalDays = Math.ceil(total / (1000 * 60 * 60 * 24));
+                const elapsedDays = Math.min(Math.floor(elapsed / (1000 * 60 * 60 * 24)) + 1, totalDays);
+                dayLabel = `Day ${elapsedDays} / ${totalDays}`;
+              } else {
+                const n = new Date();
+                const totalDays = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+                progressPct = ((n.getDate() - 1 + n.getHours() / 24) / totalDays) * 100;
+                dayLabel = `Day ${n.getDate()} / ${totalDays}`;
+              }
+              return (
+                <div className="mb-6">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span style={{ color: '#ffffff' }}>Draw Cycle</span>
+                    <span className="font-mono" style={{ color: '#0099ff' }}>{dayLabel}</span>
+                  </div>
+                  <div
+                    className="w-full h-4 rounded-full overflow-hidden relative"
+                    style={{ background: 'rgba(0, 0, 0, 0.5)', border: '1px solid rgba(0, 153, 255, 0.15)' }}
+                  >
+                    <motion.div
+                      className="h-full rounded-full relative"
+                      style={{
+                        background: 'linear-gradient(90deg, #0066ff, #0099ff, #00ccff)',
+                        boxShadow: '0 0 20px rgba(0, 153, 255, 0.5)',
+                      }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progressPct}%` }}
+                      transition={{ duration: 2, ease: 'easeOut' }}
+                    >
+                      <div
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+                          backgroundSize: '200% 100%',
+                          animation: 'progressShine 3s ease-in-out infinite',
+                        }}
+                      />
+                    </motion.div>
+                  </div>
+                  <style>{`
+                    @keyframes progressShine {
+                      0% { background-position: 200% 0; }
+                      100% { background-position: -200% 0; }
+                    }
+                  `}</style>
+                </div>
+              );
+            })()}
 
             {/* Contribute Button */}
             <div className="text-center">

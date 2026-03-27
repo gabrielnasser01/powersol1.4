@@ -104,11 +104,11 @@ class RealChainAdapter implements ChainAdapter {
 
     let ticketCount = 0;
     if (lottery) {
-      const { count } = await supabase
-        .from('blockchain_tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('lottery_id', lottery.lottery_id);
-      ticketCount = count || 0;
+      const { data: sumData } = await supabase
+        .from('ticket_purchases')
+        .select('quantity')
+        .eq('lottery_round_id', lottery.lottery_id);
+      ticketCount = (sumData || []).reduce((s, r) => s + (r.quantity || 0), 0);
     }
 
     return {

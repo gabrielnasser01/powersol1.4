@@ -917,6 +917,105 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ranking, timeline, total_snapshots: (data || []).length });
     }
 
+    if (action === "update-tier") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { affiliate_id, new_tier } = body;
+      if (!affiliate_id || new_tier === undefined) {
+        return errorResponse("Missing affiliate_id or new_tier", 400);
+      }
+      if (![1, 2, 3, 4].includes(Number(new_tier))) {
+        return errorResponse("Invalid tier (must be 1-4)", 400);
+      }
+
+      const { error: updateError } = await supabase
+        .from("affiliates")
+        .update({ manual_tier: Number(new_tier), updated_at: new Date().toISOString() })
+        .eq("id", affiliate_id);
+
+      if (updateError) return errorResponse(updateError.message, 500);
+
+      return jsonResponse({ success: true, affiliate_id, new_tier: Number(new_tier) });
+    }
+
+    if (action === "applications") {
+      const statusFilter = url.searchParams.get("status") || "all";
+
+      let query = supabase
+        .from("affiliate_applications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
+
+      const { data, error: fetchError } = await query;
+      if (fetchError) return errorResponse(fetchError.message, 500);
+
+      return jsonResponse(data || []);
+    }
+
+    if (action === "review-application") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { application_id, decision, admin_notes } = body;
+      if (!application_id || !decision) {
+        return errorResponse("Missing application_id or decision", 400);
+      }
+      if (!["approved", "rejected"].includes(decision)) {
+        return errorResponse("Decision must be 'approved' or 'rejected'", 400);
+      }
+
+      const { data: app, error: fetchErr } = await supabase
+        .from("affiliate_applications")
+        .select("*")
+        .eq("id", application_id)
+        .maybeSingle();
+
+      if (fetchErr) return errorResponse(fetchErr.message, 500);
+      if (!app) return errorResponse("Application not found", 404);
+
+      const { error: updateError } = await supabase
+        .from("affiliate_applications")
+        .update({
+          status: decision,
+          admin_notes: admin_notes || null,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", application_id);
+
+      if (updateError) return errorResponse(updateError.message, 500);
+
+      if (decision === "approved") {
+        const { data: existingUser } = await supabase
+          .from("users")
+          .select("id")
+          .eq("wallet_address", app.wallet_address)
+          .maybeSingle();
+
+        if (existingUser) {
+          const { data: existingAffiliate } = await supabase
+            .from("affiliates")
+            .select("id")
+            .eq("user_id", existingUser.id)
+            .maybeSingle();
+
+          if (!existingAffiliate) {
+            const code = app.wallet_address.slice(0, 4) + app.wallet_address.slice(-4);
+            await supabase.from("affiliates").insert({
+              user_id: existingUser.id,
+              referral_code: code.toLowerCase(),
+              manual_tier: 1,
+            });
+          }
+        }
+      }
+
+      return jsonResponse({ success: true, application_id, decision });
+    }
+
     return errorResponse("Unknown action", 400);
   } catch (err) {
     return errorResponse(

@@ -112,6 +112,22 @@ export interface SybilAlert {
   risk_score: number;
 }
 
+export interface AffiliateApplication {
+  id: string;
+  wallet_address: string;
+  full_name: string;
+  email: string;
+  country: string | null;
+  social_media: string | null;
+  marketing_experience: string | null;
+  marketing_strategy: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_notes: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MissionAlert {
   wallet_address: string;
   mission_key: string;
@@ -235,6 +251,22 @@ class AdminService {
 
   async unbanUser(targetWallet: string, adminWallet: string) {
     return adminFetch({ action: 'unban-user' }, adminWallet, 'POST', { target_wallet: targetWallet });
+  }
+
+  async updateAffiliateTier(affiliateId: string, newTier: number): Promise<{ success: boolean }> {
+    return adminFetch({ action: 'update-tier' }, getWallet(), 'POST', { affiliate_id: affiliateId, new_tier: newTier });
+  }
+
+  async getApplications(status: 'all' | 'pending' | 'approved' | 'rejected' = 'all'): Promise<AffiliateApplication[]> {
+    return adminFetch({ action: 'applications', status }, getWallet());
+  }
+
+  async reviewApplication(applicationId: string, decision: 'approved' | 'rejected', adminNotes?: string): Promise<{ success: boolean }> {
+    return adminFetch({ action: 'review-application' }, getWallet(), 'POST', {
+      application_id: applicationId,
+      decision,
+      admin_notes: adminNotes,
+    });
   }
 }
 

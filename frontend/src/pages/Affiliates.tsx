@@ -325,7 +325,7 @@ export function Affiliates() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4"
           >
             <motion.button
               ref={ctaButtonRef}
@@ -346,35 +346,6 @@ export function Affiliates() {
               <ArrowRight className="w-5 h-5" />
             </motion.button>
 
-            <motion.button
-              onClick={copyReferralLink}
-              disabled={!connected}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 border font-mono ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: theme.colors.text,
-                backdropFilter: 'blur(10px)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}
-              whileHover={connected ? {
-                background: 'rgba(255, 255, 255, 0.1)',
-                scale: 1.02,
-              } : {}}
-              whileTap={connected ? { scale: 0.98 } : {}}
-            >
-              {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-              <span>{copied ? 'COPIED!' : !connected ? 'CONNECT_WALLET' : 'COPY_AFFILIATE_LINK'}</span>
-            </motion.button>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="flex justify-center"
-          >
             <motion.button
               ref={dashboardButtonRef}
               onClick={handleDashboardClick}
@@ -409,6 +380,35 @@ export function Affiliates() {
               {!canAccessDashboard && (
                 <span className="text-xs ml-2 opacity-70">{getDashboardButtonText()}</span>
               )}
+            </motion.button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="flex justify-center mb-12"
+          >
+            <motion.button
+              onClick={copyReferralLink}
+              disabled={!connected}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center space-x-2 border font-mono ${!connected ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                color: theme.colors.text,
+                backdropFilter: 'blur(10px)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+              whileHover={connected ? {
+                background: 'rgba(255, 255, 255, 0.1)',
+                scale: 1.02,
+              } : {}}
+              whileTap={connected ? { scale: 0.98 } : {}}
+            >
+              {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+              <span>{copied ? 'COPIED!' : !connected ? 'CONNECT_WALLET' : 'COPY_AFFILIATE_LINK'}</span>
             </motion.button>
           </motion.div>
         </motion.div>

@@ -31,14 +31,477 @@ function getRiskLabel(score: number): string {
   return 'MEDIUM';
 }
 
-function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'wallets' | 'rapid' | 'tools'>('overview');
-  const riskColor = getRiskColor(alert.risk_score);
+interface ClusterNode {
+  id: string;
+  label: string;
+  type: 'affiliate' | 'single-ticket' | 'ghost' | 'rapid';
+  x: number;
+  y: number;
+  radius: number;
+  tickets: number;
+  sol: number;
+}
 
-  const bubblemapsUrl = `https://app.bubblemaps.io/sol/token/${CLAIM_PROGRAM_ID}`;
+function ClusterVisualization({ alert }: { alert: SybilAlert }) {
+  const svgRef = React.useRef<SVGSVGElement>(null);
+  const [hoveredNode, setHoveredNode] = useState<ClusterNode | null>(null);
+  const [dimensions, setDimensions] = useState({ width: 600, height: 500 });
+
+  useEffect(() => {
+    const parent = svgRef.current?.parentElement;
+    if (parent) {
+      const rect = parent.getBoundingClientRect();
+      setDimensions({ width: rect.width, height: Math.max(400, Math.min(rect.width * 0.7, 500)) });
+    }
+  }, []);
+
+  const nodes = useMemo(() => {
+    const cx = dimensions.width / 2;
+    const cy = dimensions.height / 2;
+    const result: ClusterNode[] = [];
+
+    result.push({
+      id: alert.wallet_address,
+      label: `${alert.wallet_address.slice(0, 6)}...${alert.wallet_address.slice(-4)}`,
+      type: 'affiliate',
+      x: cx,
+      y: cy,
+      radius: 28,
+      tickets: 0,
+      sol: alert.total_earned,
+    });
+
+    const rapidWalletSet = new Set(alert.rapid_signups.map(s => s.wallet));
+
+    const allSuspect = [
+      ...alert.single_ticket_wallets.map(w => ({ ...w, type: 'single-ticket' as const })),
+      ...alert.zero_ticket_wallets.map(w => ({ ...w, type: 'ghost' as const })),
+    ];
+
+    const maxNodes = Math.min(allSuspect.length, 40);
+    const angleStep = (2 * Math.PI) / Math.max(maxNodes, 1);
+    const baseOrbit = Math.min(cx, cy) * 0.55;
+    const outerOrbit = Math.min(cx, cy) * 0.8;
+
+    for (let i = 0; i < maxNodes; i++) {
+      const w = allSuspect[i];
+      const isRapid = rapidWalletSet.has(w.wallet);
+      const angle = angleStep * i - Math.PI / 2;
+      const orbit = isRapid ? outerOrbit : baseOrbit + (Math.random() - 0.5) * 30;
+      const jitterX = (Math.random() - 0.5) * 20;
+      const jitterY = (Math.random() - 0.5) * 20;
+
+      result.push({
+        id: w.wallet,
+        label: `${w.wallet.slice(0, 6)}...${w.wallet.slice(-4)}`,
+        type: isRapid ? 'rapid' : w.type,
+        x: cx + Math.cos(angle) * orbit + jitterX,
+        y: cy + Math.sin(angle) * orbit + jitterY,
+        radius: w.type === 'ghost' ? 8 : Math.max(6, Math.min(14, w.tickets * 3)),
+        tickets: w.tickets,
+        sol: w.sol,
+      });
+    }
+
+    return result;
+  }, [alert, dimensions]);
+
+  const affiliateNode = nodes[0];
+  const typeColors: Record<string, string> = {
+    'affiliate': '#ef4444',
+    'single-ticket': '#f59e0b',
+    'ghost': '#6b7280',
+    'rapid': '#f97316',
+  };
+
+  return (
+    <div className="relative rounded-lg border border-zinc-800/50 overflow-hidden" style={{ background: 'rgba(5, 5, 10, 0.8)' }}>
+      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+        {[
+          { color: '#ef4444', label: 'Affiliate (center)' },
+          { color: '#f59e0b', label: 'Single-ticket wallet' },
+          { color: '#6b7280', label: 'Ghost wallet (0 tickets)' },
+          { color: '#f97316', label: 'Rapid signup' },
+        ].map(item => (
+          <div key={item.label} className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+            <span className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <svg
+        ref={svgRef}
+        width={dimensions.width}
+        height={dimensions.height}
+        className="w-full"
+        style={{ minHeight: 400 }}
+      >
+        <defs>
+          <radialGradient id="cluster-glow-red" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+          </radialGradient>
+          <filter id="node-glow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <circle
+          cx={affiliateNode.x}
+          cy={affiliateNode.y}
+          r={Math.min(dimensions.width, dimensions.height) * 0.35}
+          fill="url(#cluster-glow-red)"
+        />
+
+        {nodes.slice(1).map(node => (
+          <line
+            key={`line-${node.id}`}
+            x1={affiliateNode.x}
+            y1={affiliateNode.y}
+            x2={node.x}
+            y2={node.y}
+            stroke={typeColors[node.type]}
+            strokeOpacity={hoveredNode?.id === node.id ? 0.5 : 0.08}
+            strokeWidth={hoveredNode?.id === node.id ? 1.5 : 0.5}
+            strokeDasharray={node.type === 'ghost' ? '3 3' : undefined}
+          />
+        ))}
+
+        {nodes.slice(1).map(node => {
+          const color = typeColors[node.type];
+          const isHovered = hoveredNode?.id === node.id;
+          return (
+            <g
+              key={node.id}
+              onMouseEnter={() => setHoveredNode(node)}
+              onMouseLeave={() => setHoveredNode(null)}
+              style={{ cursor: 'pointer' }}
+              onClick={() => window.open(`https://solscan.io/account/${node.id}?cluster=devnet`, '_blank')}
+            >
+              <circle
+                cx={node.x}
+                cy={node.y}
+                r={isHovered ? node.radius + 3 : node.radius}
+                fill={color}
+                fillOpacity={isHovered ? 0.4 : 0.2}
+                stroke={color}
+                strokeOpacity={isHovered ? 0.8 : 0.4}
+                strokeWidth={isHovered ? 1.5 : 0.75}
+                filter={isHovered ? 'url(#node-glow)' : undefined}
+              />
+              {node.type === 'ghost' && (
+                <line
+                  x1={node.x - node.radius * 0.4}
+                  y1={node.y - node.radius * 0.4}
+                  x2={node.x + node.radius * 0.4}
+                  y2={node.y + node.radius * 0.4}
+                  stroke={color}
+                  strokeOpacity={0.6}
+                  strokeWidth={1}
+                />
+              )}
+            </g>
+          );
+        })}
+
+        <g filter="url(#node-glow)">
+          <circle
+            cx={affiliateNode.x}
+            cy={affiliateNode.y}
+            r={affiliateNode.radius}
+            fill="#ef4444"
+            fillOpacity={0.3}
+            stroke="#ef4444"
+            strokeWidth={2}
+          />
+          <circle
+            cx={affiliateNode.x}
+            cy={affiliateNode.y}
+            r={affiliateNode.radius - 6}
+            fill="none"
+            stroke="#ef4444"
+            strokeOpacity={0.4}
+            strokeWidth={0.5}
+          />
+          <text
+            x={affiliateNode.x}
+            y={affiliateNode.y + 1}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="#ef4444"
+            fontSize="8"
+            fontFamily="monospace"
+            fontWeight="bold"
+          >
+            AFF
+          </text>
+        </g>
+      </svg>
+
+      {hoveredNode && (
+        <div
+          className="absolute z-20 pointer-events-none rounded-lg border p-2.5"
+          style={{
+            left: Math.min(hoveredNode.x + 15, dimensions.width - 200),
+            top: Math.max(hoveredNode.y - 60, 10),
+            background: 'rgba(10, 11, 15, 0.95)',
+            borderColor: `${typeColors[hoveredNode.type]}40`,
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <p className="text-zinc-300 font-mono text-xs font-bold">{hoveredNode.label}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span
+              className="px-1.5 py-0.5 rounded font-mono font-bold"
+              style={{ fontSize: '9px', background: `${typeColors[hoveredNode.type]}20`, color: typeColors[hoveredNode.type] }}
+            >
+              {hoveredNode.type.replace('-', ' ').toUpperCase()}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 mt-1.5 text-zinc-500 font-mono" style={{ fontSize: '10px' }}>
+            <span>{hoveredNode.tickets} tickets</span>
+            <span>{hoveredNode.sol.toFixed(4)} SOL</span>
+          </div>
+          <p className="text-zinc-700 font-mono mt-1" style={{ fontSize: '9px' }}>Click to view on Solscan</p>
+        </div>
+      )}
+
+      <div className="absolute bottom-3 right-3">
+        <span className="text-zinc-700 font-mono" style={{ fontSize: '9px' }}>
+          {nodes.length - 1} connected wallets
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ClusterAnalysisTab({ alert, riskColor }: { alert: SybilAlert; riskColor: string }) {
+  const [iframeWallet, setIframeWallet] = useState(alert.wallet_address);
+  const [showIframe, setShowIframe] = useState(true);
+
+  const bubblemapsIframeUrl = `https://iframe.bubblemaps.io/map?address=${iframeWallet}&chain=solana&partnerId=demo`;
   const solsniffUrl = `https://solsniff.com/address/${alert.wallet_address}`;
   const solscanProgramUrl = `https://solscan.io/account/${CLAIM_PROGRAM_ID}?cluster=devnet#transactions`;
   const solscanWalletUrl = `https://solscan.io/account/${alert.wallet_address}?cluster=devnet`;
+
+  const suspectWallets = [...alert.single_ticket_wallets, ...alert.zero_ticket_wallets];
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-zinc-800/50 p-4" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+        <h4 className="text-zinc-400 font-mono text-xs font-bold mb-3 uppercase tracking-wider">Suspect Wallet Cluster Map</h4>
+        <p className="text-zinc-600 font-mono text-xs mb-3 leading-relaxed">
+          Interactive visualization of the affiliate's referral network. Bubble size reflects ticket count.
+          Click any node to open in Solscan.
+        </p>
+        <ClusterVisualization alert={alert} />
+      </div>
+
+      <div className="rounded-lg border border-cyan-500/20 p-4" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Network className="w-4 h-4 text-cyan-400" />
+            <h4 className="text-cyan-400 font-mono text-xs font-bold uppercase tracking-wider">Bubblemaps Live View</h4>
+          </div>
+          <button
+            onClick={() => setShowIframe(!showIframe)}
+            className="text-zinc-500 hover:text-cyan-400 transition-colors font-mono text-xs px-2 py-1 rounded border border-zinc-800 hover:border-cyan-500/30"
+          >
+            {showIframe ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        {showIframe && (
+          <>
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <button
+                onClick={() => setIframeWallet(alert.wallet_address)}
+                className="font-mono text-xs px-2.5 py-1 rounded transition-all"
+                style={{
+                  background: iframeWallet === alert.wallet_address ? 'rgba(6, 182, 212, 0.15)' : 'rgba(39, 39, 42, 0.5)',
+                  border: `1px solid ${iframeWallet === alert.wallet_address ? 'rgba(6, 182, 212, 0.4)' : 'rgba(63, 63, 70, 0.5)'}`,
+                  color: iframeWallet === alert.wallet_address ? '#06b6d4' : '#71717a',
+                }}
+              >
+                Affiliate
+              </button>
+              <button
+                onClick={() => setIframeWallet(CLAIM_PROGRAM_ID)}
+                className="font-mono text-xs px-2.5 py-1 rounded transition-all"
+                style={{
+                  background: iframeWallet === CLAIM_PROGRAM_ID ? 'rgba(6, 182, 212, 0.15)' : 'rgba(39, 39, 42, 0.5)',
+                  border: `1px solid ${iframeWallet === CLAIM_PROGRAM_ID ? 'rgba(6, 182, 212, 0.4)' : 'rgba(63, 63, 70, 0.5)'}`,
+                  color: iframeWallet === CLAIM_PROGRAM_ID ? '#06b6d4' : '#71717a',
+                }}
+              >
+                Claim Program
+              </button>
+              {suspectWallets.slice(0, 5).map((w, i) => (
+                <button
+                  key={w.wallet}
+                  onClick={() => setIframeWallet(w.wallet)}
+                  className="font-mono px-2.5 py-1 rounded transition-all"
+                  style={{
+                    fontSize: '10px',
+                    background: iframeWallet === w.wallet ? 'rgba(6, 182, 212, 0.15)' : 'rgba(39, 39, 42, 0.5)',
+                    border: `1px solid ${iframeWallet === w.wallet ? 'rgba(6, 182, 212, 0.4)' : 'rgba(63, 63, 70, 0.5)'}`,
+                    color: iframeWallet === w.wallet ? '#06b6d4' : '#71717a',
+                  }}
+                >
+                  #{i + 1} {w.wallet.slice(0, 4)}...{w.wallet.slice(-3)}
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-lg overflow-hidden border border-cyan-500/10">
+              <iframe
+                src={bubblemapsIframeUrl}
+                style={{ width: '100%', height: 500, border: 'none' }}
+                title="Bubblemaps Cluster Analysis"
+                allow="clipboard-read; clipboard-write"
+                sandbox="allow-scripts allow-same-origin allow-popups"
+              />
+            </div>
+            <p className="text-zinc-700 font-mono mt-2 text-center" style={{ fontSize: '9px' }}>
+              Viewing: {iframeWallet.slice(0, 12)}...{iframeWallet.slice(-8)}
+            </p>
+          </>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-zinc-800/50 p-4" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+        <h4 className="text-zinc-400 font-mono text-xs font-bold mb-3 uppercase tracking-wider">External Analysis Tools</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <a
+            href={`https://app.bubblemaps.io/sol/token/${CLAIM_PROGRAM_ID}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 rounded-lg border border-cyan-500/20 bg-cyan-500/5 hover:border-cyan-500/40 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20">
+              <Network className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-cyan-400 font-mono text-sm font-bold">Bubblemaps Full</span>
+                <ExternalLink className="w-3 h-3 text-cyan-400/50 group-hover:text-cyan-400 transition-colors" />
+              </div>
+              <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                Open full Bubblemaps for claim program
+              </p>
+            </div>
+          </a>
+          <a
+            href={solsniffUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
+              <Shield className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 font-mono text-sm font-bold">SolSniff</span>
+                <ExternalLink className="w-3 h-3 text-emerald-400/50 group-hover:text-emerald-400 transition-colors" />
+              </div>
+              <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                Affiliate wallet risk analysis
+              </p>
+            </div>
+          </a>
+          <a
+            href={solscanWalletUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 rounded-lg border border-blue-500/20 bg-blue-500/5 hover:border-blue-500/40 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500/10 border border-blue-500/20">
+              <Eye className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-400 font-mono text-sm font-bold">Solscan Wallet</span>
+                <ExternalLink className="w-3 h-3 text-blue-400/50 group-hover:text-blue-400 transition-colors" />
+              </div>
+              <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                View affiliate wallet transactions
+              </p>
+            </div>
+          </a>
+          <a
+            href={solscanProgramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 rounded-lg border border-orange-500/20 bg-orange-500/5 hover:border-orange-500/40 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-500/10 border border-orange-500/20">
+              <Activity className="w-5 h-5 text-orange-400" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-orange-400 font-mono text-sm font-bold">Claim Program TX</span>
+                <ExternalLink className="w-3 h-3 text-orange-400/50 group-hover:text-orange-400 transition-colors" />
+              </div>
+              <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
+                All claim program transactions
+              </p>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-zinc-800/50 p-4" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
+        <h4 className="text-zinc-400 font-mono text-xs font-bold mb-3 uppercase tracking-wider">Quick Links - Suspect Wallets</h4>
+        <div className="space-y-1.5 max-h-60 overflow-y-auto">
+          {suspectWallets.slice(0, 15).map((w, i) => (
+            <div key={i} className="flex items-center gap-2 p-2 rounded border border-zinc-800/30 bg-zinc-900/30">
+              <span className="text-zinc-300 font-mono text-xs flex-1 truncate">{w.wallet}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <a
+                  href={`https://app.bubblemaps.io/sol/token/${w.wallet}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400/50 hover:text-cyan-400 transition-colors"
+                  title="Bubblemaps"
+                >
+                  <Network className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href={`https://solsniff.com/address/${w.wallet}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-400/50 hover:text-emerald-400 transition-colors"
+                  title="SolSniff"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href={`https://solscan.io/account/${w.wallet}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400/50 hover:text-blue-400 transition-colors"
+                  title="Solscan"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'wallets' | 'rapid' | 'tools'>('overview');
+  const riskColor = getRiskColor(alert.risk_score);
 
   return (
     <motion.div
@@ -305,133 +768,7 @@ function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () =
           )}
 
           {activeTab === 'tools' && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-zinc-800/50 p-4" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
-                <h4 className="text-zinc-400 font-mono text-xs font-bold mb-3 uppercase tracking-wider">On-Chain Cluster Analysis</h4>
-                <p className="text-zinc-600 font-mono text-xs mb-4 leading-relaxed">
-                  Use these tools to verify wallet clustering. Sybil attackers typically fund multiple wallets from
-                  a single source, creating traceable on-chain patterns.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <a
-                    href={bubblemapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-4 rounded-lg border border-cyan-500/20 bg-cyan-500/5 hover:border-cyan-500/40 transition-all group"
-                  >
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20">
-                      <Network className="w-5 h-5 text-cyan-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-cyan-400 font-mono text-sm font-bold">Bubblemaps</span>
-                        <ExternalLink className="w-3 h-3 text-cyan-400/50 group-hover:text-cyan-400 transition-colors" />
-                      </div>
-                      <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
-                        Visual wallet clustering for claim program interactions
-                      </p>
-                    </div>
-                  </a>
-                  <a
-                    href={solsniffUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40 transition-all group"
-                  >
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
-                      <Shield className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-mono text-sm font-bold">SolSniff</span>
-                        <ExternalLink className="w-3 h-3 text-emerald-400/50 group-hover:text-emerald-400 transition-colors" />
-                      </div>
-                      <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
-                        Affiliate wallet risk analysis and funding source trace
-                      </p>
-                    </div>
-                  </a>
-                  <a
-                    href={solscanWalletUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-4 rounded-lg border border-blue-500/20 bg-blue-500/5 hover:border-blue-500/40 transition-all group"
-                  >
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500/10 border border-blue-500/20">
-                      <Eye className="w-5 h-5 text-blue-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-blue-400 font-mono text-sm font-bold">Solscan Wallet</span>
-                        <ExternalLink className="w-3 h-3 text-blue-400/50 group-hover:text-blue-400 transition-colors" />
-                      </div>
-                      <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
-                        View affiliate wallet transactions and token flows
-                      </p>
-                    </div>
-                  </a>
-                  <a
-                    href={solscanProgramUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-4 rounded-lg border border-orange-500/20 bg-orange-500/5 hover:border-orange-500/40 transition-all group"
-                  >
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-500/10 border border-orange-500/20">
-                      <Activity className="w-5 h-5 text-orange-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-orange-400 font-mono text-sm font-bold">Claim Program TX</span>
-                        <ExternalLink className="w-3 h-3 text-orange-400/50 group-hover:text-orange-400 transition-colors" />
-                      </div>
-                      <p className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>
-                        All claim program transactions for pattern analysis
-                      </p>
-                    </div>
-                  </a>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-zinc-800/50 p-4" style={{ background: 'rgba(15, 15, 20, 0.6)' }}>
-                <h4 className="text-zinc-400 font-mono text-xs font-bold mb-3 uppercase tracking-wider">Quick Links - Suspect Wallets</h4>
-                <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                  {[...alert.single_ticket_wallets, ...alert.zero_ticket_wallets].slice(0, 15).map((w, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded border border-zinc-800/30 bg-zinc-900/30">
-                      <span className="text-zinc-300 font-mono text-xs flex-1 truncate">{w.wallet}</span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <a
-                          href={`https://app.bubblemaps.io/sol/token/${w.wallet}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-cyan-400/50 hover:text-cyan-400 transition-colors"
-                          title="Bubblemaps"
-                        >
-                          <Network className="w-3.5 h-3.5" />
-                        </a>
-                        <a
-                          href={`https://solsniff.com/address/${w.wallet}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-emerald-400/50 hover:text-emerald-400 transition-colors"
-                          title="SolSniff"
-                        >
-                          <Shield className="w-3.5 h-3.5" />
-                        </a>
-                        <a
-                          href={`https://solscan.io/account/${w.wallet}?cluster=devnet`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400/50 hover:text-blue-400 transition-colors"
-                          title="Solscan"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <ClusterAnalysisTab alert={alert} riskColor={riskColor} />
           )}
         </div>
       </motion.div>

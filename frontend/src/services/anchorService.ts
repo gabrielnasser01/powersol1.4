@@ -117,18 +117,20 @@ class AnchorService {
   }
 
   derivePrizeVaultPDA(lotteryTypeNum: number): [PublicKey, number] {
+    const encoder = new TextEncoder();
     return PublicKey.findProgramAddressSync(
-      [Buffer.from('prize_vault'), Buffer.from([lotteryTypeNum])],
+      [encoder.encode('prize_vault'), Uint8Array.from([lotteryTypeNum])],
       CLAIM_PROGRAM_ID,
     );
   }
 
   deriveVaultSolPDA(lotteryTypeNum: number, prizeVaultKey: PublicKey): [PublicKey, number] {
+    const encoder = new TextEncoder();
     return PublicKey.findProgramAddressSync(
       [
-        Buffer.from('vault_sol'),
-        Buffer.from([lotteryTypeNum]),
-        prizeVaultKey.toBuffer(),
+        encoder.encode('vault_sol'),
+        Uint8Array.from([lotteryTypeNum]),
+        prizeVaultKey.toBytes(),
       ],
       CLAIM_PROGRAM_ID,
     );

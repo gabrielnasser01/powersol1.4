@@ -3,7 +3,7 @@ import { anchorService } from './anchorService';
 
 const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 
-export const LOTTERY_WALLETS = anchorService.getAllPrizeVaultAddresses() as Record<string, string>;
+export const LOTTERY_WALLETS = anchorService.getAllPrizeVaultAddresses();
 
 export type LotteryType = 'tri-daily' | 'jackpot' | 'grand-prize' | 'special-event';
 

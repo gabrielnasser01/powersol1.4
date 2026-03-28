@@ -432,7 +432,7 @@ export function Affiliates() {
               ) : (
                 <Lock className="w-5 h-5" />
               )}
-              <span>{copied ? 'COPIED!' : 'COPY_AFFILIATE_LINK'}</span>
+              <span>{copied ? 'COPIED!' : 'COPY AFFILIATE LINK'}</span>
               {!canAccessDashboard && (
                 <span className="text-xs ml-2 opacity-70">{getDashboardButtonText()}</span>
               )}

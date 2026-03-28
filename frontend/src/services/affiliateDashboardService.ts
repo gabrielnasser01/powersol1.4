@@ -79,14 +79,17 @@ export interface ApplicationStatus {
 class AffiliateDashboardService {
   async getReferralCode(walletAddress: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
-        .from('affiliates')
-        .select('referral_code')
-        .eq('wallet_address', walletAddress)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data?.referral_code || null;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/affiliates/stats?wallet=${encodeURIComponent(walletAddress)}`;
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data.is_affiliate || !data.affiliate) return null;
+      return data.affiliate.referral_code || null;
     } catch (error) {
       console.error('Error fetching referral code:', error);
       return null;
@@ -95,13 +98,15 @@ class AffiliateDashboardService {
 
   async checkApplicationStatus(walletAddress: string): Promise<ApplicationStatus> {
     try {
-      const { data, error } = await supabase
-        .from('affiliate_applications')
-        .select('status, created_at')
-        .eq('wallet_address', walletAddress)
-        .maybeSingle();
-
-      if (error) throw error;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/affiliates/my-application?wallet=${encodeURIComponent(walletAddress)}`;
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+      });
+      if (!res.ok) return { hasApplied: false, status: null, appliedAt: null };
+      const data = await res.json();
 
       return {
         hasApplied: !!data,

@@ -6,7 +6,6 @@ import {
   Eye, EyeOff, Zap, Activity, CheckCircle, ShieldCheck,
   TrendingUp, UserX, Ticket, Timer, FileText, Check,
   XCircle, ChevronRight, Loader, Mail, Globe, MessageSquare,
-  Save, Undo2, Pencil,
 } from 'lucide-react';
 import { adminService, AffiliateRanking, AffiliateApplication, SybilAlert } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
@@ -910,21 +909,35 @@ function NetworkModal({ affiliate, onClose }: { affiliate: AffiliateRanking; onC
   );
 }
 
-function TierSelector({ currentTier, isModified, onSelect }: { currentTier: number; isModified: boolean; onSelect: (tier: number) => void }) {
+function TierSelector({ affiliate, onTierChanged }: { affiliate: AffiliateRanking; onTierChanged: (id: string, tier: number) => void }) {
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const currentTier = affiliate.manual_tier || 1;
   const tier = TIER_LABELS[currentTier] || TIER_LABELS[1];
+
+  const handleSelect = async (newTier: number) => {
+    if (newTier === currentTier) { setOpen(false); return; }
+    setSaving(true);
+    try {
+      await adminService.updateAffiliateTier(affiliate.affiliate_id, newTier);
+      onTierChanged(affiliate.affiliate_id, newTier);
+    } catch (err) {
+      console.error('Failed to update tier:', err);
+    } finally {
+      setSaving(false);
+      setOpen(false);
+    }
+  };
 
   return (
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
+        disabled={saving}
         className="font-mono text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all hover:brightness-125"
-        style={{
-          color: tier.color,
-          borderColor: isModified ? '#22d3ee' : `${tier.color}40`,
-          background: isModified ? 'rgba(34,211,238,0.08)' : `${tier.color}10`,
-        }}
+        style={{ color: tier.color, borderColor: `${tier.color}40`, background: `${tier.color}10` }}
       >
+        {saving ? <Loader className="w-3 h-3 animate-spin" /> : null}
         {tier.label}
         <ChevronDown className="w-3 h-3" />
       </button>
@@ -941,7 +954,7 @@ function TierSelector({ currentTier, isModified, onSelect }: { currentTier: numb
               return (
                 <button
                   key={k}
-                  onClick={() => { onSelect(tierNum); setOpen(false); }}
+                  onClick={() => handleSelect(tierNum)}
                   className="w-full px-3 py-2 flex items-center gap-2 font-mono text-xs transition-colors hover:bg-zinc-800"
                   style={{ color: v.color, background: isActive ? `${v.color}15` : undefined }}
                 >
@@ -1215,70 +1228,6 @@ export function AdminAffiliates() {
   const [showSybilPanel, setShowSybilPanel] = useState(true);
   const [showUnclaimedModal, setShowUnclaimedModal] = useState(false);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
-  const [pendingEdits, setPendingEdits] = useState<Record<string, { referral_code?: string; new_tier?: number }>>({});
-  const [saving, setSaving] = useState(false);
-  const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  const hasPendingEdits = Object.keys(pendingEdits).length > 0;
-
-  const updateEdit = (affiliateId: string, field: 'referral_code' | 'new_tier', value: string | number, original: string | number) => {
-    setPendingEdits(prev => {
-      const existing = prev[affiliateId] || {};
-      const updated = { ...existing, [field]: value };
-      const originalFieldKey = field === 'referral_code' ? 'referral_code' : 'new_tier';
-      if (updated[originalFieldKey] === original) {
-        delete updated[originalFieldKey];
-      }
-      if (Object.keys(updated).length === 0) {
-        const next = { ...prev };
-        delete next[affiliateId];
-        return next;
-      }
-      return { ...prev, [affiliateId]: updated };
-    });
-    setSaveResult(null);
-  };
-
-  const discardEdits = () => {
-    setPendingEdits({});
-    setSaveResult(null);
-  };
-
-  const saveEdits = async () => {
-    const changes = Object.entries(pendingEdits).map(([affiliate_id, edits]) => ({
-      affiliate_id,
-      ...edits,
-    }));
-    if (changes.length === 0) return;
-
-    setSaving(true);
-    setSaveResult(null);
-    try {
-      const res = await adminService.batchUpdateAffiliates(changes);
-      const failed = res.results.filter(r => !r.success);
-      if (failed.length > 0) {
-        const errMsg = failed.map(f => f.error || 'Unknown error').join('; ');
-        setSaveResult({ type: 'error', message: errMsg });
-        const failedIds = new Set(failed.map(f => f.affiliate_id));
-        setPendingEdits(prev => {
-          const next: typeof prev = {};
-          Object.entries(prev).forEach(([id, edits]) => {
-            if (failedIds.has(id)) next[id] = edits;
-          });
-          return next;
-        });
-      } else {
-        setPendingEdits({});
-        setSaveResult({ type: 'success', message: `${changes.length} affiliate${changes.length > 1 ? 's' : ''} updated` });
-        setTimeout(() => setSaveResult(null), 3000);
-      }
-      await loadData();
-    } catch (err) {
-      setSaveResult({ type: 'error', message: err instanceof Error ? err.message : 'Save failed' });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const loadData = useCallback(async () => {
     try {
@@ -1332,11 +1281,11 @@ export function AdminAffiliates() {
       : <ChevronUp className="w-3 h-3 text-red-400" />;
   };
 
-  const getEffectiveTier = (aff: AffiliateRanking) =>
-    pendingEdits[aff.affiliate_id]?.new_tier ?? aff.manual_tier ?? 1;
-
-  const getEffectiveCode = (aff: AffiliateRanking) =>
-    pendingEdits[aff.affiliate_id]?.referral_code ?? aff.referral_code;
+  const handleTierChanged = (affiliateId: string, newTier: number) => {
+    setAffiliates(prev => prev.map(a =>
+      a.affiliate_id === affiliateId ? { ...a, manual_tier: newTier } : a
+    ));
+  };
 
   const releasedUnclaimed = unclaimedRewards.filter((r: any) => r.is_released);
   const pendingRelease = unclaimedRewards.filter((r: any) => !r.is_released);
@@ -1755,30 +1704,16 @@ export function AdminAffiliates() {
                               {isFlagged && (
                                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" style={{ color: riskColor }} />
                               )}
-                              <div className="min-w-0">
+                              <div>
                                 <p className="text-zinc-300 font-mono text-sm">
                                   {aff.wallet_address.slice(0, 6)}...{aff.wallet_address.slice(-4)}
                                 </p>
-                                <input
-                                  type="text"
-                                  value={getEffectiveCode(aff)}
-                                  onChange={e => updateEdit(aff.affiliate_id, 'referral_code', e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''), aff.referral_code)}
-                                  className="font-mono text-xs bg-transparent border-b outline-none w-full max-w-[140px] py-0.5 transition-colors"
-                                  style={{
-                                    color: pendingEdits[aff.affiliate_id]?.referral_code !== undefined ? '#22d3ee' : '#52525b',
-                                    borderColor: pendingEdits[aff.affiliate_id]?.referral_code !== undefined ? 'rgba(34,211,238,0.4)' : 'transparent',
-                                  }}
-                                  spellCheck={false}
-                                />
+                                <p className="text-zinc-600 font-mono text-xs">{aff.referral_code}</p>
                               </div>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <TierSelector
-                              currentTier={getEffectiveTier(aff)}
-                              isModified={pendingEdits[aff.affiliate_id]?.new_tier !== undefined}
-                              onSelect={tier => updateEdit(aff.affiliate_id, 'new_tier', tier, aff.manual_tier || 1)}
-                            />
+                            <TierSelector affiliate={aff} onTierChanged={handleTierChanged} />
                           </td>
                           <td className="py-3 px-4 text-right text-zinc-300 font-mono text-sm">
                             {aff.referral_count}
@@ -1839,78 +1774,6 @@ export function AdminAffiliates() {
                 </table>
               </div>
             </div>
-
-            <AnimatePresence>
-              {hasPendingEdits && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="flex items-center justify-between gap-4 rounded-xl border p-4"
-                  style={{
-                    borderColor: 'rgba(34, 211, 238, 0.25)',
-                    background: 'linear-gradient(135deg, rgba(34,211,238,0.04) 0%, rgba(15,15,20,0.8) 100%)',
-                  }}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Pencil className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span className="text-zinc-300 font-mono text-sm">
-                      {Object.keys(pendingEdits).length} unsaved change{Object.keys(pendingEdits).length !== 1 ? 's' : ''}
-                    </span>
-                    {saveResult && (
-                      <span
-                        className="font-mono text-xs px-2 py-0.5 rounded"
-                        style={{
-                          color: saveResult.type === 'success' ? '#34d399' : '#f87171',
-                          background: saveResult.type === 'success' ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
-                        }}
-                      >
-                        {saveResult.message}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={discardEdits}
-                      disabled={saving}
-                      className="flex items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors disabled:opacity-50"
-                    >
-                      <Undo2 className="w-3.5 h-3.5" />
-                      Discard
-                    </button>
-                    <button
-                      onClick={saveEdits}
-                      disabled={saving}
-                      className="flex items-center gap-1.5 font-mono text-xs px-4 py-1.5 rounded-lg font-bold transition-all disabled:opacity-50"
-                      style={{
-                        background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)',
-                        color: '#fff',
-                        boxShadow: '0 0 20px rgba(6,182,212,0.2)',
-                      }}
-                    >
-                      {saving ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                      {saving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {saveResult && !hasPendingEdits && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center gap-2 font-mono text-xs px-4 py-2 rounded-lg"
-                style={{
-                  color: saveResult.type === 'success' ? '#34d399' : '#f87171',
-                  background: saveResult.type === 'success' ? 'rgba(52,211,153,0.06)' : 'rgba(248,113,113,0.06)',
-                  border: `1px solid ${saveResult.type === 'success' ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)'}`,
-                }}
-              >
-                {saveResult.type === 'success' ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                {saveResult.message}
-              </motion.div>
-            )}
 
             <AnimatePresence>
               {selectedAffiliate && (

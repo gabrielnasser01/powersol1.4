@@ -257,10 +257,6 @@ class AdminService {
     return adminFetch({ action: 'update-tier' }, getWallet(), 'POST', { affiliate_id: affiliateId, new_tier: newTier });
   }
 
-  async batchUpdateAffiliates(changes: { affiliate_id: string; referral_code?: string; new_tier?: number }[]): Promise<{ success: boolean; results: { affiliate_id: string; success: boolean; error?: string }[] }> {
-    return adminFetch({ action: 'batch-update-affiliates' }, getWallet(), 'POST', { changes });
-  }
-
   async getApplications(status: 'all' | 'pending' | 'approved' | 'rejected' = 'all'): Promise<AffiliateApplication[]> {
     return adminFetch({ action: 'applications', status }, getWallet());
   }

@@ -86,6 +86,7 @@ export function Affiliates() {
     { label: 'Average Monthly Earnings', value: '...', icon: TrendingUp, color: theme.colors.neonPink },
     { label: 'Top Affiliate Earnings', value: '...', icon: Crown, color: '#b347ff' },
   ]);
+  const [referralCode, setReferralCode] = useState('');
   const spanRef = useRef<HTMLSpanElement>(null);
   const ctaButtonRef = useRef<HTMLButtonElement>(null);
   const applyButtonRef = useRef<HTMLButtonElement>(null);
@@ -94,6 +95,13 @@ export function Affiliates() {
   useMagnetic(ctaButtonRef);
   useMagnetic(applyButtonRef);
   useMagnetic(dashboardButtonRef);
+
+  useEffect(() => {
+    if (!walletAddress) return;
+    affiliateDashboardService.getReferralCode(walletAddress).then(code => {
+      if (code) setReferralCode(code);
+    });
+  }, [walletAddress]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -218,9 +226,8 @@ export function Affiliates() {
   };
 
   const copyReferralLink = async () => {
-    if (!walletAddress || !canAccessDashboard) return;
-    const shortRef = walletAddress.slice(0, 5) + walletAddress.slice(-5);
-    const link = `https://powersol1-4-mjc2.vercel.app?ref=${shortRef}`;
+    if (!walletAddress || !canAccessDashboard || !referralCode) return;
+    const link = `https://powersol1-4-mjc2.vercel.app?ref=${referralCode}`;
     await navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

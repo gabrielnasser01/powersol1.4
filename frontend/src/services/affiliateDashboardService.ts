@@ -98,6 +98,25 @@ class AffiliateDashboardService {
     }
   }
 
+  async getReferralCode(walletAddress: string): Promise<string | null> {
+    try {
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('wallet_address', walletAddress)
+        .maybeSingle();
+      if (!user) return null;
+      const { data: aff } = await supabase
+        .from('affiliates')
+        .select('referral_code')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return aff?.referral_code || null;
+    } catch {
+      return null;
+    }
+  }
+
   async getDashboardStats(walletAddress: string): Promise<DashboardStats | null> {
     try {
       const { data, error } = await supabase.rpc('get_affiliate_dashboard_stats', {

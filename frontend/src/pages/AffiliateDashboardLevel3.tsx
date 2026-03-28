@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, ExternalLink, Users, DollarSign, MousePointer, CreditCard, Wallet, BarChart3, LineChart, ArrowLeft } from 'lucide-react';
 import { userStorage } from '../store/persist';
 import { useNavigate } from 'react-router-dom';
+import { affiliateDashboardService } from '../services/affiliateDashboardService';
 
 interface AffiliateStats {
   totalClicks: number;
@@ -37,11 +38,19 @@ export function AffiliateDashboardLevel3() {
   });
 
   const user = userStorage.get();
-  const affiliateLink = user.publicKey ? `https://powersol1-4-mjc2.vercel.app?ref=${user.publicKey}` : '';
+  const [realReferralCode, setRealReferralCode] = useState('');
+  const affiliateLink = realReferralCode ? `https://powersol1-4-mjc2.vercel.app?ref=${realReferralCode}` : '';
   const userLevel = 3;
   const commissionRate = 20;
 
-  // Generate daily data for the last 7 days
+  useEffect(() => {
+    if (user.publicKey) {
+      affiliateDashboardService.getReferralCode(user.publicKey).then(code => {
+        if (code) setRealReferralCode(code);
+      });
+    }
+  }, [user.publicKey]);
+
   useEffect(() => {
     const generateDailyData = () => {
       const data = [];

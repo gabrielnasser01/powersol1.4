@@ -46,7 +46,8 @@ export function AffiliateDashboard() {
   });
 
   const user = userStorage.get();
-  const affiliateLink = user.publicKey ? `https://powersol1-4-mjc2.vercel.app?ref=${user.publicKey}` : '';
+  const [realReferralCode, setRealReferralCode] = useState('');
+  const affiliateLink = realReferralCode ? `https://powersol1-4-mjc2.vercel.app?ref=${realReferralCode}` : '';
 
   useEffect(() => {
     const fetchAffiliateData = async () => {
@@ -55,9 +56,14 @@ export function AffiliateDashboard() {
       try {
         setLoading(true);
 
-        const statsData = await affiliateDashboardService.getDashboardStats(user.publicKey);
-        const referralsData = await affiliateDashboardService.getTopReferrals(user.publicKey, 100);
-        const weeklyData = await affiliateDashboardService.getWeeklyHistory(user.publicKey, 7);
+        const [statsData, referralsData, weeklyData, code] = await Promise.all([
+          affiliateDashboardService.getDashboardStats(user.publicKey),
+          affiliateDashboardService.getTopReferrals(user.publicKey, 100),
+          affiliateDashboardService.getWeeklyHistory(user.publicKey, 7),
+          affiliateDashboardService.getReferralCode(user.publicKey),
+        ]);
+
+        if (code) setRealReferralCode(code);
 
         if (!statsData) {
           setStats({
@@ -67,7 +73,7 @@ export function AffiliateDashboard() {
             weeklyEarnings: 0,
             totalEarnings: 0,
             conversionRate: 0,
-            referralCode: user.publicKey,
+            referralCode: code || '',
             currentTier: 1,
             commissionRate: 5,
             dailyData: []
@@ -93,7 +99,7 @@ export function AffiliateDashboard() {
           weeklyEarnings: weeklyEarnedSOL,
           totalEarnings: totalEarnedSOL,
           conversionRate: statsData.totalReferrals > 0 ? (statsData.totalReferrals / (statsData.totalReferrals + 100)) * 100 : 0,
-          referralCode: user.publicKey,
+          referralCode: code || '',
           currentTier: statsData.tier,
           commissionRate: statsData.commissionRate * 100,
           dailyData: dailyData

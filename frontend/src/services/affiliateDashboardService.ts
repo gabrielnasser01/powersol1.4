@@ -77,6 +77,22 @@ export interface ApplicationStatus {
 }
 
 class AffiliateDashboardService {
+  async getReferralCode(walletAddress: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('affiliates')
+        .select('referral_code')
+        .eq('wallet_address', walletAddress)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data?.referral_code || null;
+    } catch (error) {
+      console.error('Error fetching referral code:', error);
+      return null;
+    }
+  }
+
   async checkApplicationStatus(walletAddress: string): Promise<ApplicationStatus> {
     try {
       const { data, error } = await supabase

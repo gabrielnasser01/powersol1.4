@@ -100,18 +100,15 @@ class AffiliateDashboardService {
 
   async getReferralCode(walletAddress: string): Promise<string | null> {
     try {
-      const { data: user } = await supabase
-        .from('users')
-        .select('id')
-        .eq('wallet_address', walletAddress)
-        .maybeSingle();
-      if (!user) return null;
-      const { data: aff } = await supabase
-        .from('affiliates')
-        .select('referral_code')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      return aff?.referral_code || null;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/affiliates/stats?wallet=${encodeURIComponent(walletAddress)}`,
+        { headers: { Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' } }
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.affiliate?.referral_code || null;
     } catch {
       return null;
     }

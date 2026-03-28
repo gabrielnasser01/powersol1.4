@@ -98,22 +98,6 @@ class AffiliateDashboardService {
     }
   }
 
-  async getReferralCode(walletAddress: string): Promise<string | null> {
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const res = await fetch(
-        `${supabaseUrl}/functions/v1/affiliates/stats?wallet=${encodeURIComponent(walletAddress)}`,
-        { headers: { Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' } }
-      );
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data?.affiliate?.referral_code || null;
-    } catch {
-      return null;
-    }
-  }
-
   async getDashboardStats(walletAddress: string): Promise<DashboardStats | null> {
     try {
       const { data, error } = await supabase.rpc('get_affiliate_dashboard_stats', {

@@ -138,6 +138,16 @@ export function Affiliates() {
   const checkApplicationStatus = useCallback(async () => {
     if (!walletAddress) return;
     const status = await affiliateDashboardService.checkApplicationStatus(walletAddress);
+
+    if (!status.hasApplied || status.status !== 'approved') {
+      const code = await affiliateDashboardService.getReferralCode(walletAddress);
+      if (code) {
+        setApplicationStatus({ hasApplied: true, status: 'approved', appliedAt: null });
+        setReferralCode(code);
+        return;
+      }
+    }
+
     setApplicationStatus(status);
   }, [walletAddress]);
 

@@ -1015,6 +1015,43 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: true, application_id, decision });
     }
 
+    if (action === "update-referral-code") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { affiliate_id, new_code } = body;
+      if (!affiliate_id || !new_code) {
+        return errorResponse("Missing affiliate_id or new_code", 400);
+      }
+
+      const trimmed = new_code.trim();
+      if (trimmed.length < 3 || trimmed.length > 20) {
+        return errorResponse("Code must be 3-20 characters", 400);
+      }
+      if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+        return errorResponse("Code can only contain letters, numbers, hyphens and underscores", 400);
+      }
+
+      const { data: existing } = await supabase
+        .from("affiliates")
+        .select("id")
+        .eq("referral_code", trimmed)
+        .neq("id", affiliate_id)
+        .maybeSingle();
+
+      if (existing) {
+        return errorResponse("This referral code is already taken", 409);
+      }
+
+      const { error: updateError } = await supabase
+        .from("affiliates")
+        .update({ referral_code: trimmed, updated_at: new Date().toISOString() })
+        .eq("id", affiliate_id);
+
+      if (updateError) return errorResponse(updateError.message, 500);
+
+      return jsonResponse({ success: true, affiliate_id, new_code: trimmed });
+    }
+
     return errorResponse("Unknown action", 400);
   } catch (err) {
     return errorResponse(

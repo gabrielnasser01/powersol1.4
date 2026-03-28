@@ -6,6 +6,7 @@ import {
   Eye, EyeOff, Zap, Activity, CheckCircle, ShieldCheck,
   TrendingUp, UserX, Ticket, Timer, FileText, Check,
   XCircle, ChevronRight, Loader, Mail, Globe, MessageSquare,
+  Pencil,
 } from 'lucide-react';
 import { adminService, AffiliateRanking, AffiliateApplication, SybilAlert } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
@@ -1287,6 +1288,42 @@ export function AdminAffiliates() {
     ));
   };
 
+  const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [editCodeValue, setEditCodeValue] = useState('');
+  const [editCodeLoading, setEditCodeLoading] = useState(false);
+  const [editCodeError, setEditCodeError] = useState('');
+
+  const handleEditCode = (aff: AffiliateRanking) => {
+    setEditingCode(aff.affiliate_id);
+    setEditCodeValue(aff.referral_code);
+    setEditCodeError('');
+  };
+
+  const handleSaveCode = async (affiliateId: string) => {
+    const trimmed = editCodeValue.trim();
+    if (!trimmed || trimmed.length < 3) {
+      setEditCodeError('Min 3 chars');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+      setEditCodeError('Letters, numbers, - _ only');
+      return;
+    }
+    setEditCodeLoading(true);
+    setEditCodeError('');
+    try {
+      await adminService.updateReferralCode(affiliateId, trimmed);
+      setAffiliates(prev => prev.map(a =>
+        a.affiliate_id === affiliateId ? { ...a, referral_code: trimmed } : a
+      ));
+      setEditingCode(null);
+    } catch (err: any) {
+      setEditCodeError(err.message || 'Failed');
+    } finally {
+      setEditCodeLoading(false);
+    }
+  };
+
   const releasedUnclaimed = unclaimedRewards.filter((r: any) => r.is_released);
   const pendingRelease = unclaimedRewards.filter((r: any) => !r.is_released);
   const totalReleasedLamports = releasedUnclaimed.reduce((s: number, r: any) => s + Number(r.pending_lamports || 0), 0);
@@ -1708,7 +1745,52 @@ export function AdminAffiliates() {
                                 <p className="text-zinc-300 font-mono text-sm">
                                   {aff.wallet_address.slice(0, 6)}...{aff.wallet_address.slice(-4)}
                                 </p>
-                                <p className="text-zinc-600 font-mono text-xs">{aff.referral_code}</p>
+                                {editingCode === aff.affiliate_id ? (
+                                  <div className="flex flex-col gap-1 mt-0.5">
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="text"
+                                        value={editCodeValue}
+                                        onChange={e => setEditCodeValue(e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') handleSaveCode(aff.affiliate_id);
+                                          if (e.key === 'Escape') setEditingCode(null);
+                                        }}
+                                        className="bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-200 font-mono text-xs w-28 focus:border-cyan-500 focus:outline-none"
+                                        autoFocus
+                                        disabled={editCodeLoading}
+                                      />
+                                      <button
+                                        onClick={() => handleSaveCode(aff.affiliate_id)}
+                                        disabled={editCodeLoading}
+                                        className="text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-40"
+                                      >
+                                        {editCodeLoading ? <Loader className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingCode(null)}
+                                        disabled={editCodeLoading}
+                                        className="text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-40"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                    {editCodeError && (
+                                      <span className="text-red-400 font-mono" style={{ fontSize: '9px' }}>{editCodeError}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 group/code">
+                                    <p className="text-zinc-600 font-mono text-xs">{aff.referral_code}</p>
+                                    <button
+                                      onClick={() => handleEditCode(aff)}
+                                      className="text-zinc-700 hover:text-cyan-400 transition-colors opacity-0 group-hover/code:opacity-100"
+                                      title="Edit referral code"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>

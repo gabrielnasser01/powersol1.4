@@ -261,6 +261,10 @@ class AdminService {
     return adminFetch({ action: 'applications', status }, getWallet());
   }
 
+  async updateReferralCode(affiliateId: string, newCode: string): Promise<{ success: boolean; new_code: string }> {
+    return adminFetch({ action: 'update-referral-code' }, getWallet(), 'POST', { affiliate_id: affiliateId, new_code: newCode });
+  }
+
   async reviewApplication(applicationId: string, decision: 'approved' | 'rejected', adminNotes?: string): Promise<{ success: boolean }> {
     return adminFetch({ action: 'review-application' }, getWallet(), 'POST', {
       application_id: applicationId,

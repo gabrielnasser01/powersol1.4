@@ -1,6 +1,6 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { LOTTERY_WALLETS } from './walletBalanceService';
-import { TREASURY_WALLET, AFFILIATES_POOL_WALLET } from './anchorService';
+import { TREASURY_WALLET, AFFILIATES_POOL_WALLET, anchorService } from './anchorService';
 import { supabase } from '../lib/supabase';
 
 const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
@@ -15,10 +15,9 @@ const DISTRIBUTION = {
 
 const COMMISSION_RATES: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 30 };
 
-function getLotteryWalletForType(lotteryType?: string): string {
+function getPrizeVaultForType(lotteryType?: string): PublicKey {
   const type = lotteryType || 'tri-daily';
-  const normalizedType = type.toLowerCase().replace(/_/g, '-') as keyof typeof LOTTERY_WALLETS;
-  return LOTTERY_WALLETS[normalizedType] || LOTTERY_WALLETS['tri-daily'];
+  return anchorService.getPrizeVaultAddress(type);
 }
 
 export interface WalletAdapter {
@@ -68,8 +67,7 @@ class SolanaService {
     lotteryType?: string
   ): Promise<Transaction> {
     const buyer = new PublicKey(buyerPublicKey);
-    const lotteryWallet = getLotteryWalletForType(lotteryType);
-    const prizePoolWallet = new PublicKey(lotteryWallet);
+    const prizePoolWallet = getPrizeVaultForType(lotteryType);
     const totalLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
     const prizePoolAmount = Math.floor((totalLamports * DISTRIBUTION.PRIZE_POOL) / 100);
@@ -134,7 +132,7 @@ class SolanaService {
     recipientWallet?: string
   ): Promise<Transaction> {
     const donor = new PublicKey(donorPublicKey);
-    const recipient = new PublicKey(recipientWallet || LOTTERY_WALLETS['tri-daily']);
+    const recipient = recipientWallet ? new PublicKey(recipientWallet) : getPrizeVaultForType('tri-daily');
     const lamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
     const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();

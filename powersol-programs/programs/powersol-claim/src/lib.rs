@@ -12,6 +12,27 @@ declare_id!("DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK");
 pub mod powersol_claim {
     use super::*;
 
+    pub fn init_prize_vault(ctx: Context<InitPrizeVault>, lottery_type: u8) -> Result<()> {
+        instructions::init_prize_vault(ctx, lottery_type)
+    }
+
+    pub fn register_winner(
+        ctx: Context<RegisterWinner>,
+        lottery_round: u64,
+        tier: u8,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::register_winner(ctx, lottery_round, tier, amount)
+    }
+
+    pub fn claim_lottery_prize(ctx: Context<ClaimLotteryPrize>) -> Result<()> {
+        instructions::claim_lottery_prize(ctx)
+    }
+
+    pub fn advance_round(ctx: Context<AdvanceRound>) -> Result<()> {
+        instructions::advance_round(ctx)
+    }
+
     pub fn initialize_prize_pool(ctx: Context<InitializePrizePool>, lottery_type: u8) -> Result<()> {
         instructions::initialize_prize_pool(ctx, lottery_type)
     }
@@ -42,15 +63,6 @@ pub mod powersol_claim {
 
     pub fn set_vrf_completed(ctx: Context<SetVrfCompleted>, completed: bool) -> Result<()> {
         instructions::set_vrf_completed(ctx, completed)
-    }
-
-    pub fn claim_lottery_prize(
-        ctx: Context<ClaimLotteryPrize>,
-        amount: u64,
-        tier: u8,
-        lottery_round: u64,
-    ) -> Result<()> {
-        instructions::claim_lottery_prize(ctx, amount, tier, lottery_round)
     }
 
     pub fn claim_affiliate_rewards(

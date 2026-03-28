@@ -40,4 +40,7 @@ pub enum ClaimError {
 
     #[msg("Insufficient pending rewards")]
     InsufficientPendingRewards,
+
+    #[msg("Winner already registered for this round and tier")]
+    WinnerAlreadyRegistered,
 }

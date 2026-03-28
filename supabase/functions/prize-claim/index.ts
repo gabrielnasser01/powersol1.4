@@ -6,6 +6,7 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  TransactionInstruction,
   sendAndConfirmTransaction,
 } from "npm:@solana/web3.js@1.98.4";
 
@@ -19,20 +20,16 @@ const corsHeaders = {
 const SOLANA_RPC_URL =
   Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
 
-const LOTTERY_WALLET_SECRETS: Record<string, string> = {
-  "tri-daily": "SOLANA_LOTTERY_TRI_DAILY_PRIVATE",
-  weekly: "SOLANA_LOTTERY_WEEKLY_PRIVATE",
-  jackpot: "SOLANA_LOTTERY_MEGA_PRIVATE",
-  "grand-prize": "SOLANA_LOTTERY_MEGA_PRIVATE",
-  "special-event": "SOLANA_SPECIAL_EVENT_PRIVATE",
-};
+const CLAIM_PROGRAM_ID = new PublicKey(
+  "DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK"
+);
 
-const LOTTERY_WALLET_ADDRESSES: Record<string, string> = {
-  "tri-daily": "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx",
-  weekly: "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
-  jackpot: "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
-  "grand-prize": "nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C",
-  "special-event": "AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk",
+const LOTTERY_TYPE_MAP: Record<string, number> = {
+  "tri-daily": 0,
+  weekly: 0,
+  jackpot: 1,
+  "grand-prize": 2,
+  "special-event": 3,
 };
 
 const ESTIMATED_FEE_LAMPORTS = 5000;
@@ -47,7 +44,6 @@ function getSupabaseClient() {
 function getKeypairFromSecret(secretName: string): Keypair | null {
   const raw = Deno.env.get(secretName);
   if (!raw) return null;
-
   try {
     const cleaned = raw.replace(/'/g, "").trim();
     const arr = JSON.parse(cleaned);
@@ -70,7 +66,71 @@ function successResponse(data: Record<string, unknown>) {
   });
 }
 
-async function handleClaimPrize(prizeId: string, walletAddress: string) {
+function derivePrizeVaultPDA(lotteryTypeNum: number): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("prize_vault"), Buffer.from([lotteryTypeNum])],
+    CLAIM_PROGRAM_ID
+  );
+}
+
+function deriveVaultSolPDA(
+  lotteryTypeNum: number,
+  prizeVaultKey: PublicKey
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("vault_sol"),
+      Buffer.from([lotteryTypeNum]),
+      prizeVaultKey.toBuffer(),
+    ],
+    CLAIM_PROGRAM_ID
+  );
+}
+
+function deriveWinnerRecordPDA(
+  prizeVaultKey: PublicKey,
+  winnerKey: PublicKey,
+  lotteryRound: number,
+  tier: number
+): [PublicKey, number] {
+  const roundBuffer = Buffer.alloc(8);
+  roundBuffer.writeBigUInt64LE(BigInt(lotteryRound));
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("winner"),
+      prizeVaultKey.toBuffer(),
+      winnerKey.toBuffer(),
+      roundBuffer,
+      Buffer.from([tier]),
+    ],
+    CLAIM_PROGRAM_ID
+  );
+}
+
+function buildClaimLotteryPrizeIx(
+  claimer: PublicKey,
+  prizeVaultKey: PublicKey,
+  prizeVaultPda: PublicKey,
+  winnerRecordKey: PublicKey
+): TransactionInstruction {
+  const discriminator = Buffer.from([
+    0x9b, 0x28, 0x27, 0xa5, 0x32, 0x7b, 0xae, 0xf1,
+  ]);
+
+  return new TransactionInstruction({
+    programId: CLAIM_PROGRAM_ID,
+    keys: [
+      { pubkey: claimer, isSigner: true, isWritable: true },
+      { pubkey: prizeVaultKey, isSigner: false, isWritable: true },
+      { pubkey: prizeVaultPda, isSigner: false, isWritable: true },
+      { pubkey: winnerRecordKey, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: discriminator,
+  });
+}
+
+async function handlePrepareClaim(prizeId: string, walletAddress: string) {
   const supabase = getSupabaseClient();
 
   const { data: prize, error: prizeError } = await supabase
@@ -88,11 +148,15 @@ async function handleClaimPrize(prizeId: string, walletAddress: string) {
   }
 
   if (prize.expired) {
-    return errorResponse("Prize has expired. Unclaimed prizes are forfeited and added to the next draw.");
+    return errorResponse(
+      "Prize has expired. Unclaimed prizes are forfeited and added to the next draw."
+    );
   }
 
   if (prize.expires_at && new Date(prize.expires_at) <= new Date()) {
-    return errorResponse("Prize claim deadline has passed. Unclaimed prizes are forfeited and added to the next draw.");
+    return errorResponse(
+      "Prize claim deadline has passed. Unclaimed prizes are forfeited and added to the next draw."
+    );
   }
 
   if (prize.user_wallet !== walletAddress) {
@@ -104,91 +168,122 @@ async function handleClaimPrize(prizeId: string, walletAddress: string) {
   }
 
   const lotteryType = prize.lottery_type as string;
-  const secretName = LOTTERY_WALLET_SECRETS[lotteryType];
-
-  if (!secretName) {
+  const typeNum = LOTTERY_TYPE_MAP[lotteryType];
+  if (typeNum === undefined) {
     return errorResponse(`Unknown lottery type: ${lotteryType}`);
   }
 
-  const senderKeypair = getKeypairFromSecret(secretName);
+  const tierMatch = prize.prize_position?.match(/Tier\s+(\d+)/i);
+  const tier = tierMatch ? parseInt(tierMatch[1]) : 1;
+  const round = prize.round;
 
-  if (!senderKeypair) {
-    const fallbackAddress = LOTTERY_WALLET_ADDRESSES[lotteryType];
-    console.error(
-      `Missing secret ${secretName} for lottery type ${lotteryType}. Expected wallet: ${fallbackAddress}`
-    );
-    return errorResponse(
-      "Prize wallet not configured. Please contact support.",
-      503
-    );
+  const claimerKey = new PublicKey(walletAddress);
+  const [prizeVaultKey] = derivePrizeVaultPDA(typeNum);
+  const [vaultSolKey] = deriveVaultSolPDA(typeNum, prizeVaultKey);
+  const [winnerRecordKey] = deriveWinnerRecordPDA(
+    prizeVaultKey,
+    claimerKey,
+    round,
+    tier
+  );
+
+  const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash();
+
+  const ix = buildClaimLotteryPrizeIx(
+    claimerKey,
+    prizeVaultKey,
+    vaultSolKey,
+    winnerRecordKey
+  );
+
+  const transaction = new Transaction({
+    feePayer: claimerKey,
+    blockhash,
+    lastValidBlockHeight,
+  }).add(ix);
+
+  const serialized = transaction
+    .serialize({ requireAllSignatures: false })
+    .toString("base64");
+
+  return successResponse({
+    transaction: serialized,
+    prize_id: prizeId,
+    amount_lamports: prize.prize_amount_lamports,
+    amount_sol: prize.prize_amount_lamports / 1_000_000_000,
+    lottery_type: lotteryType,
+    round,
+    tier,
+    vault_address: vaultSolKey.toBase58(),
+    winner_record: winnerRecordKey.toBase58(),
+  });
+}
+
+async function handleConfirmClaim(
+  prizeId: string,
+  walletAddress: string,
+  signature: string
+) {
+  const supabase = getSupabaseClient();
+
+  const { data: prize, error: prizeError } = await supabase
+    .from("prizes")
+    .select("*")
+    .eq("id", prizeId)
+    .maybeSingle();
+
+  if (prizeError || !prize) {
+    return errorResponse("Prize not found", 404);
+  }
+
+  if (prize.claimed) {
+    return errorResponse("Prize already claimed");
+  }
+
+  if (prize.user_wallet !== walletAddress) {
+    return errorResponse("This prize belongs to a different wallet", 403);
   }
 
   const connection = new Connection(SOLANA_RPC_URL, "confirmed");
-  const recipientPubkey = new PublicKey(walletAddress);
-  const grossLamports = prize.prize_amount_lamports;
-  const netLamports = grossLamports - ESTIMATED_FEE_LAMPORTS;
-
-  if (netLamports <= 0) {
-    return errorResponse("Prize amount is too small to cover network fees");
-  }
-
-  const senderBalance = await connection.getBalance(senderKeypair.publicKey);
-  if (senderBalance < grossLamports) {
-    console.error(
-      `Insufficient balance in ${lotteryType} wallet. Has: ${senderBalance}, needs: ${grossLamports}`
-    );
-    return errorResponse(
-      "Prize pool wallet has insufficient balance. Please contact support.",
-      503
-    );
-  }
-
-  const transaction = new Transaction().add(
-    SystemProgram.transfer({
-      fromPubkey: senderKeypair.publicKey,
-      toPubkey: recipientPubkey,
-      lamports: netLamports,
-    })
-  );
-
   try {
-    const signature = await sendAndConfirmTransaction(
-      connection,
-      transaction,
-      [senderKeypair],
-      { commitment: "confirmed" }
-    );
-
-    const { error: updateError } = await supabase.rpc("mark_prize_claimed", {
-      p_winner_id: prizeId,
-      p_tx_signature: signature,
+    const txInfo = await connection.getTransaction(signature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
-    if (updateError) {
-      console.error("Failed to mark prize claimed in DB:", updateError);
-      return successResponse({
-        signature,
-        amount_lamports: netLamports,
-        amount_sol: netLamports / 1_000_000_000,
-        fee_lamports: ESTIMATED_FEE_LAMPORTS,
-        explorer_url: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
-        warning:
-          "SOL sent but failed to update database. Contact support with your transaction signature.",
-      });
+    if (!txInfo) {
+      return errorResponse("Transaction not found on-chain. Wait and retry.");
     }
 
+    if (txInfo.meta?.err) {
+      return errorResponse("Transaction failed on-chain");
+    }
+  } catch {
+    return errorResponse("Failed to verify transaction on-chain");
+  }
+
+  const { error: updateError } = await supabase.rpc("mark_prize_claimed", {
+    p_winner_id: prizeId,
+    p_tx_signature: signature,
+  });
+
+  if (updateError) {
+    console.error("Failed to mark prize claimed in DB:", updateError);
     return successResponse({
       signature,
-      amount_lamports: netLamports,
-      amount_sol: netLamports / 1_000_000_000,
-      fee_lamports: ESTIMATED_FEE_LAMPORTS,
-      explorer_url: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
+      warning:
+        "Transaction confirmed but DB update failed. Contact support with your signature.",
     });
-  } catch (txError: unknown) {
-    const msg = txError instanceof Error ? txError.message : "Transaction failed";
-    console.error("Prize claim transaction failed:", msg);
-    return errorResponse(`Transaction failed: ${msg}`, 500);
   }
+
+  return successResponse({
+    signature,
+    amount_lamports: prize.prize_amount_lamports,
+    amount_sol: prize.prize_amount_lamports / 1_000_000_000,
+    explorer_url: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
+  });
 }
 
 async function handleClaimAffiliate(
@@ -212,7 +307,9 @@ async function handleClaimAffiliate(
       is_available: boolean;
       pending_lamports: number;
     }) =>
-      w.week_number === weekNumber && w.is_available && w.pending_lamports > 0
+      w.week_number === weekNumber &&
+      w.is_available &&
+      w.pending_lamports > 0
   );
 
   if (!week) {
@@ -235,7 +332,9 @@ async function handleClaimAffiliate(
   const netLamports = grossLamports - ESTIMATED_FEE_LAMPORTS;
 
   if (netLamports <= 0) {
-    return errorResponse("Reward amount is too small to cover network fees");
+    return errorResponse(
+      "Reward amount is too small to cover network fees"
+    );
   }
 
   const senderBalance = await connection.getBalance(senderKeypair.publicKey);
@@ -272,7 +371,10 @@ async function handleClaimAffiliate(
     );
 
     if (claimError) {
-      console.error("Failed to mark affiliate claim in DB:", claimError);
+      console.error(
+        "Failed to mark affiliate claim in DB:",
+        claimError
+      );
       return successResponse({
         signature,
         amount_lamports: netLamports,
@@ -294,7 +396,8 @@ async function handleClaimAffiliate(
       explorer_url: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
     });
   } catch (txError: unknown) {
-    const msg = txError instanceof Error ? txError.message : "Transaction failed";
+    const msg =
+      txError instanceof Error ? txError.message : "Transaction failed";
     console.error("Affiliate claim transaction failed:", msg);
     return errorResponse(`Transaction failed: ${msg}`, 500);
   }
@@ -327,26 +430,33 @@ Deno.serve(async (req: Request) => {
       if (!prize_id || !wallet_address) {
         return errorResponse("prize_id and wallet_address are required");
       }
-      return await handleClaimPrize(prize_id, wallet_address);
+      return await handlePrepareClaim(prize_id, wallet_address);
     }
 
     if (path === "/confirm") {
-      return successResponse({
-        message: "Direct claim is now used. No separate confirm step needed.",
-      });
+      const { prize_id, wallet_address, signature } = body;
+      if (!prize_id || !wallet_address || !signature) {
+        return errorResponse(
+          "prize_id, wallet_address, and signature are required"
+        );
+      }
+      return await handleConfirmClaim(prize_id, wallet_address, signature);
     }
 
     if (path === "/affiliate/claim" || path === "/affiliate/prepare") {
       const { wallet_address, week_number } = body;
       if (!wallet_address || week_number === undefined) {
-        return errorResponse("wallet_address and week_number are required");
+        return errorResponse(
+          "wallet_address and week_number are required"
+        );
       }
       return await handleClaimAffiliate(wallet_address, week_number);
     }
 
     if (path === "/affiliate/confirm") {
       return successResponse({
-        message: "Direct claim is now used. No separate confirm step needed.",
+        message:
+          "Direct claim is now used. No separate confirm step needed.",
       });
     }
 
@@ -354,9 +464,12 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Internal error";
     console.error("prize-claim error:", message);
-    return new Response(JSON.stringify({ success: false, error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ success: false, error: message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });

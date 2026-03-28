@@ -5,8 +5,17 @@ import { WalletAdapter } from './solanaService';
 const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 
 export const PROGRAM_ID = new PublicKey(import.meta.env.VITE_PROGRAM_ID || 'GqfdkAjpFJMZnzRaLrgeoBCr7exvSfqSib1wSJM49BxW');
+export const CLAIM_PROGRAM_ID = new PublicKey('DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK');
 export const TREASURY_WALLET = new PublicKey(import.meta.env.VITE_TREASURY_WALLET || '55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1');
 export const AFFILIATES_POOL_WALLET = new PublicKey(import.meta.env.VITE_AFFILIATES_POOL_WALLET || '8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf');
+
+export const LOTTERY_TYPE_MAP: Record<string, number> = {
+  'tri-daily': 0,
+  'weekly': 0,
+  'jackpot': 1,
+  'grand-prize': 2,
+  'special-event': 3,
+};
 
 export type LotteryType = 'tri-daily' | 'jackpot' | 'grand-prize' | 'special-event';
 
@@ -30,6 +39,7 @@ const IDL: Idl = {
         { name: "userTickets", isMut: true, isSigner: false },
         { name: "treasury", isMut: true, isSigner: false },
         { name: "affiliatesPool", isMut: true, isSigner: false },
+        { name: "prizeVault", isMut: true, isSigner: false },
         { name: "systemProgram", isMut: false, isSigner: false },
       ],
       args: [
@@ -106,6 +116,40 @@ class AnchorService {
     return PublicKey.findProgramAddressSync(seeds, PROGRAM_ID);
   }
 
+  derivePrizeVaultPDA(lotteryTypeNum: number): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from('prize_vault'), Buffer.from([lotteryTypeNum])],
+      CLAIM_PROGRAM_ID,
+    );
+  }
+
+  deriveVaultSolPDA(lotteryTypeNum: number, prizeVaultKey: PublicKey): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('vault_sol'),
+        Buffer.from([lotteryTypeNum]),
+        prizeVaultKey.toBuffer(),
+      ],
+      CLAIM_PROGRAM_ID,
+    );
+  }
+
+  getPrizeVaultAddress(lotteryType: string): PublicKey {
+    const typeNum = LOTTERY_TYPE_MAP[lotteryType] ?? 0;
+    const [prizeVaultKey] = this.derivePrizeVaultPDA(typeNum);
+    const [vaultSolKey] = this.deriveVaultSolPDA(typeNum, prizeVaultKey);
+    return vaultSolKey;
+  }
+
+  getAllPrizeVaultAddresses(): Record<string, string> {
+    const types = ['tri-daily', 'jackpot', 'grand-prize', 'special-event'] as const;
+    const result: Record<string, string> = {};
+    for (const t of types) {
+      result[t] = this.getPrizeVaultAddress(t).toBase58();
+    }
+    return result;
+  }
+
   async getLotteryAccount(lotteryPDA: PublicKey): Promise<{
     currentTickets: number;
     maxTickets: number;
@@ -141,10 +185,12 @@ class AnchorService {
     buyer: PublicKey,
     lotteryPDA: PublicKey,
     nextTicketNumber: number,
-    affiliateCode: string | null
+    affiliateCode: string | null,
+    lotteryType: string = 'tri-daily'
   ): Promise<TransactionInstruction> {
     const [ticketPDA] = this.deriveTicketPDA(lotteryPDA, nextTicketNumber);
     const [userTicketsPDA] = this.deriveUserTicketsPDA(buyer, lotteryPDA);
+    const prizeVaultPDA = this.getPrizeVaultAddress(lotteryType);
 
     const discriminator = Buffer.from([195, 70, 183, 196, 89, 55, 8, 44]);
 
@@ -169,6 +215,7 @@ class AnchorService {
       { pubkey: userTicketsPDA, isSigner: false, isWritable: true },
       { pubkey: TREASURY_WALLET, isSigner: false, isWritable: true },
       { pubkey: AFFILIATES_POOL_WALLET, isSigner: false, isWritable: true },
+      { pubkey: prizeVaultPDA, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ];
 
@@ -206,7 +253,8 @@ class AnchorService {
       buyer,
       lotteryPDA,
       nextTicketNumber,
-      affiliateCode
+      affiliateCode,
+      lotteryInfo.type
     );
 
     const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();

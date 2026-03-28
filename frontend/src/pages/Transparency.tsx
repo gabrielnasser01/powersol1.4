@@ -482,10 +482,10 @@ export function Transparency() {
 
                     <div className="grid grid-cols-2 gap-2 mt-3">
                       {[
-                        { label: 'Tri-Daily', wallet: LOTTERY_WALLETS['tri-daily'] },
-                        { label: 'Special Event', wallet: LOTTERY_WALLETS['special-event'] },
-                        { label: 'Jackpot', wallet: LOTTERY_WALLETS['jackpot'] },
-                        { label: 'Grand Prize', wallet: LOTTERY_WALLETS['grand-prize'] },
+                        { label: 'Tri-Daily Vault', wallet: LOTTERY_WALLETS['tri-daily'] },
+                        { label: 'Special Vault', wallet: LOTTERY_WALLETS['special-event'] },
+                        { label: 'Jackpot Vault', wallet: LOTTERY_WALLETS['jackpot'] },
+                        { label: 'Grand Vault', wallet: LOTTERY_WALLETS['grand-prize'] },
                       ].map((lottery, idx) => (
                         <motion.a
                           key={idx}

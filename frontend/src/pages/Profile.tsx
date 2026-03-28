@@ -17,7 +17,7 @@ import { countries } from '../utils/countries';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { publicKey: walletPublicKey, connected, disconnect } = useWallet();
+  const { publicKey: walletPublicKey, connected, disconnect, signTransaction } = useWallet();
   const toast = useToast();
   const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
@@ -395,7 +395,7 @@ export function Profile() {
   };
 
   const handleClaimPrize = async (prizeId: string) => {
-    if (!walletPublicKey) {
+    if (!walletPublicKey || !signTransaction) {
       toast.warning('Please connect your wallet first');
       return;
     }
@@ -405,7 +405,8 @@ export function Profile() {
     try {
       const result = await claimService.claimPrize(
         walletPublicKey,
-        prizeId
+        prizeId,
+        signTransaction
       );
 
       if (result.success) {
@@ -1777,7 +1778,7 @@ export function Profile() {
                               whileTap={claimingPrize === prize.id ? {} : { scale: 0.95 }}
                               transition={transition30fps}
                             >
-                              {claimingPrize === prize.id ? 'CLAIMING...' : 'CLAIM REWARD'}
+                              {claimingPrize === prize.id ? 'SIGNING TX...' : 'CLAIM ON-CHAIN'}
                             </motion.button>
                           )}
                         </motion.div>

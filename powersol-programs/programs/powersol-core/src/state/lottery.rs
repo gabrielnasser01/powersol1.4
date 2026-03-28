@@ -13,6 +13,7 @@ pub struct Lottery {
     pub winning_tickets: Vec<u32>,
     pub treasury: Pubkey,
     pub affiliates_pool: Pubkey,
+    pub prize_vault: Pubkey,
     pub prize_pool: u64,
     pub bump: u8,
 }
@@ -36,6 +37,7 @@ impl Lottery {
         8 +
         1 +
         (4 + 100 * 4) +
+        32 +
         32 +
         32 +
         8 +

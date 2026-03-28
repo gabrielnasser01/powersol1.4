@@ -22,6 +22,7 @@ pub fn initialize_tri_daily_lottery(
     lottery.winning_tickets = Vec::new();
     lottery.treasury = ctx.accounts.treasury.key();
     lottery.affiliates_pool = ctx.accounts.affiliates_pool.key();
+    lottery.prize_vault = ctx.accounts.prize_vault.key();
     lottery.prize_pool = 0;
     lottery.bump = ctx.bumps.lottery;
 
@@ -49,6 +50,9 @@ pub struct InitializeTriDailyLottery<'info> {
     /// CHECK: Affiliates pool wallet
     pub affiliates_pool: AccountInfo<'info>,
 
+    /// CHECK: Non-custodial prize vault PDA from powersol_claim
+    pub prize_vault: AccountInfo<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -73,6 +77,7 @@ pub fn initialize_jackpot_lottery(
     lottery.winning_tickets = Vec::new();
     lottery.treasury = ctx.accounts.treasury.key();
     lottery.affiliates_pool = ctx.accounts.affiliates_pool.key();
+    lottery.prize_vault = ctx.accounts.prize_vault.key();
     lottery.prize_pool = 0;
     lottery.bump = ctx.bumps.lottery;
 
@@ -104,6 +109,9 @@ pub struct InitializeJackpotLottery<'info> {
     /// CHECK: Affiliates pool wallet
     pub affiliates_pool: AccountInfo<'info>,
 
+    /// CHECK: Non-custodial prize vault PDA from powersol_claim
+    pub prize_vault: AccountInfo<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -127,6 +135,7 @@ pub fn initialize_grand_prize_lottery(
     lottery.winning_tickets = Vec::new();
     lottery.treasury = ctx.accounts.treasury.key();
     lottery.affiliates_pool = ctx.accounts.affiliates_pool.key();
+    lottery.prize_vault = ctx.accounts.prize_vault.key();
     lottery.prize_pool = 0;
     lottery.bump = ctx.bumps.lottery;
 
@@ -154,6 +163,9 @@ pub struct InitializeGrandPrizeLottery<'info> {
     /// CHECK: Affiliates pool wallet
     pub affiliates_pool: AccountInfo<'info>,
 
+    /// CHECK: Non-custodial prize vault PDA from powersol_claim
+    pub prize_vault: AccountInfo<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -177,6 +189,7 @@ pub fn initialize_xmas_lottery(
     lottery.winning_tickets = Vec::new();
     lottery.treasury = ctx.accounts.treasury.key();
     lottery.affiliates_pool = ctx.accounts.affiliates_pool.key();
+    lottery.prize_vault = ctx.accounts.prize_vault.key();
     lottery.prize_pool = 0;
     lottery.bump = ctx.bumps.lottery;
 
@@ -203,6 +216,9 @@ pub struct InitializeXmasLottery<'info> {
 
     /// CHECK: Affiliates pool wallet
     pub affiliates_pool: AccountInfo<'info>,
+
+    /// CHECK: Non-custodial prize vault PDA from powersol_claim
+    pub prize_vault: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }

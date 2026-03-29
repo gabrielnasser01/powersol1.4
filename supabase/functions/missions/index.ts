@@ -196,19 +196,31 @@ async function markMissionEligible(walletAddress: string, missionKey: string, ad
   const progressData = { ...(additionalData || {}), eligible: true, eligible_at: new Date().toISOString() };
   const nowISO = new Date().toISOString();
 
-  const { error: upsertError } = await supabase
-    .from("user_mission_progress")
-    .upsert({
-      wallet_address: walletAddress,
-      mission_id: mission.id,
-      completed: false,
-      progress: progressData,
-      last_reset: nowISO,
-    }, {
-      onConflict: "wallet_address,mission_id",
-    });
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("user_mission_progress")
+      .update({
+        completed: false,
+        completed_at: null,
+        progress: progressData,
+        last_reset: nowISO,
+      })
+      .eq("id", existing.id);
 
-  if (upsertError) throw upsertError;
+    if (updateError) throw updateError;
+  } else {
+    const { error: insertError } = await supabase
+      .from("user_mission_progress")
+      .insert({
+        wallet_address: walletAddress,
+        mission_id: mission.id,
+        completed: false,
+        progress: progressData,
+        last_reset: nowISO,
+      });
+
+    if (insertError) throw insertError;
+  }
 
   return {
     eligible: true,

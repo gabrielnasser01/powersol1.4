@@ -191,7 +191,7 @@ export function Hero() {
                   textShadow: lite ? 'none' : '0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.6), 0 0 60px rgba(255, 255, 255, 0.4)',
                 }}
               >
-                Welcome to PowerSOL -- Your Lottery on Solana
+                Welcome to PowerSOL -- Provably Fair Draws. Powered by Solana
               </motion.span>
 
               {!lite && (

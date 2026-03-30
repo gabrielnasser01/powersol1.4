@@ -162,11 +162,20 @@ export function DailyMissions() {
 
       const data = await res.json();
 
-      setMissions(prev => prev.map(m =>
-        m.id === mission.id
-          ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: {} } }
-          : m
-      ));
+      if (missionKey === 'weekly_streak') {
+        setLoginStreak(0);
+        setMissions(prev => prev.map(m =>
+          m.id === mission.id
+            ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: { eligible: false } } }
+            : m
+        ));
+      } else {
+        setMissions(prev => prev.map(m =>
+          m.id === mission.id
+            ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: {} } }
+            : m
+        ));
+      }
 
       const points = data.powerPoints || mission.power_points;
       userStatsStorage.addMissionPoints(points);

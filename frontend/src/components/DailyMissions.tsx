@@ -651,7 +651,7 @@ export function DailyMissions() {
                     }
 
                     if (mission.mission_key === 'social_share') {
-                      const shareUrl = 'https://powersol.io';
+                      const shareUrl = 'https://powersol.app';
                       const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
                       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       await markEligibleAPI('social_share');

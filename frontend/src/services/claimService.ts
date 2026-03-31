@@ -1,8 +1,6 @@
-import { Connection, Transaction } from '@solana/web3.js';
 import { supabase } from '../lib/supabase';
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
-const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 
 const PRIZE_CLAIM_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/prize-claim`;
 
@@ -10,8 +8,6 @@ const edgeFunctionHeaders = {
   'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
   'Content-Type': 'application/json',
 };
-
-type SignTransaction = (transaction: Transaction) => Promise<Transaction>;
 
 interface ClaimableAffiliateWeek {
   week_number: number;
@@ -36,30 +32,6 @@ interface NextRelease {
   next_release_timestamp: string;
   current_week: number;
   time_until_release: string;
-}
-
-interface PrepareClaimResponse {
-  success: boolean;
-  error?: string;
-  transaction?: string;
-  prize_id?: string;
-  amount_lamports?: number;
-  amount_sol?: number;
-  lottery_type?: string;
-  round?: number;
-  tier?: number;
-  vault_address?: string;
-  winner_record?: string;
-}
-
-interface ConfirmClaimResponse {
-  success: boolean;
-  error?: string;
-  signature?: string;
-  amount_lamports?: number;
-  amount_sol?: number;
-  explorer_url?: string;
-  warning?: string;
 }
 
 interface ClaimResponse {
@@ -118,54 +90,25 @@ export const claimService = {
 
   async claimPrize(
     walletAddress: string,
-    prizeId: string,
-    signTransaction: SignTransaction
+    prizeId: string
   ): Promise<{ success: boolean; signature?: string; error?: string; explorerUrl?: string }> {
     try {
-      const prepareResponse = await fetch(`${PRIZE_CLAIM_URL}/prepare`, {
+      const response = await fetch(`${PRIZE_CLAIM_URL}/claim`, {
         method: 'POST',
         headers: edgeFunctionHeaders,
         body: JSON.stringify({ prize_id: prizeId, wallet_address: walletAddress }),
       });
 
-      const prepareResult: PrepareClaimResponse = await prepareResponse.json();
+      const result: ClaimResponse = await response.json();
 
-      if (!prepareResult.success || !prepareResult.transaction) {
-        return { success: false, error: prepareResult.error || 'Failed to prepare claim transaction' };
+      if (!result.success) {
+        return { success: false, error: result.error || 'Failed to claim prize' };
       }
-
-      const txBuffer = Buffer.from(prepareResult.transaction, 'base64');
-      const transaction = Transaction.from(txBuffer);
-
-      const signedTransaction = await signTransaction(transaction);
-
-      const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-      const rawTx = signedTransaction.serialize();
-      const signature = await connection.sendRawTransaction(rawTx, {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed',
-      });
-
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-      await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
-
-      const confirmResponse = await fetch(`${PRIZE_CLAIM_URL}/confirm`, {
-        method: 'POST',
-        headers: edgeFunctionHeaders,
-        body: JSON.stringify({
-          prize_id: prizeId,
-          wallet_address: walletAddress,
-          signature,
-        }),
-      });
-
-      const confirmResult: ConfirmClaimResponse = await confirmResponse.json();
 
       return {
         success: true,
-        signature,
-        explorerUrl: confirmResult.explorer_url ||
-          `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
+        signature: result.signature,
+        explorerUrl: result.explorer_url,
       };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Claim failed';
@@ -235,15 +178,14 @@ export const claimService = {
   },
 
   async claimAllPrizes(
-    walletAddress: string,
-    signTransaction: SignTransaction
+    walletAddress: string
   ): Promise<{ success: boolean; claimed: number; signatures: string[]; errors: string[] }> {
     const prizes = await this.getUnclaimedPrizes(walletAddress);
     const signatures: string[] = [];
     const errors: string[] = [];
 
     for (const prize of prizes) {
-      const result = await this.claimPrize(walletAddress, prize.prize_id, signTransaction);
+      const result = await this.claimPrize(walletAddress, prize.prize_id);
       if (result.success && result.signature) {
         signatures.push(result.signature);
       } else if (result.error) {

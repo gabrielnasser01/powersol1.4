@@ -210,7 +210,7 @@ export function Privacy() {
                   6. CONTACT US
                 </h3>
                 <p>
-                  For privacy-related questions or to exercise your data rights, contact us at support@powersol.app or through our official channels.
+                  For privacy-related questions or to exercise your data rights, contact us at privacy@powersol.io or through our official channels.
                 </p>
               </section>
             </div>

@@ -2,82 +2,27 @@ use anchor_lang::prelude::*;
 use crate::state::*;
 use crate::errors::ClaimError;
 
-pub fn init_prize_vault(ctx: Context<InitPrizeVault>, lottery_type: u8) -> Result<()> {
-    let vault = &mut ctx.accounts.prize_vault;
-    vault.authority = ctx.accounts.authority.key();
-    vault.lottery_type = lottery_type;
-    vault.total_deposited = 0;
-    vault.total_claimed = 0;
-    vault.current_round = 0;
-    vault.bump = ctx.bumps.prize_vault;
-    Ok(())
-}
-
-pub fn register_winner(
-    ctx: Context<RegisterWinner>,
-    lottery_round: u64,
-    tier: u8,
+pub fn claim_lottery_prize(
+    ctx: Context<ClaimLotteryPrize>,
     amount: u64,
+    tier: u8,
+    lottery_round: u64,
 ) -> Result<()> {
-    let winner_record = &mut ctx.accounts.winner_record;
-    let prize_vault = &mut ctx.accounts.prize_vault;
+    let prize_claim = &mut ctx.accounts.prize_claim;
+    let prize_pool = &mut ctx.accounts.prize_pool;
     let clock = Clock::get()?;
 
     require!(tier >= 1 && tier <= 5, ClaimError::InvalidTier);
     require!(amount > 0, ClaimError::InvalidAmount);
-
-    winner_record.winner = ctx.accounts.winner.key();
-    winner_record.prize_vault = prize_vault.key();
-    winner_record.lottery_round = lottery_round;
-    winner_record.tier = tier;
-    winner_record.amount = amount;
-    winner_record.claimed = false;
-    winner_record.registered_at = clock.unix_timestamp;
-    winner_record.claimed_at = 0;
-    winner_record.claim_signature = [0u8; 64];
-    winner_record.bump = ctx.bumps.winner_record;
-
-    emit!(WinnerRegisteredEvent {
-        winner: ctx.accounts.winner.key(),
-        lottery_type: prize_vault.lottery_type,
-        lottery_round,
-        tier,
-        amount,
-        timestamp: clock.unix_timestamp,
-    });
-
-    Ok(())
-}
-
-pub fn claim_lottery_prize(ctx: Context<ClaimLotteryPrize>) -> Result<()> {
-    let winner_record = &mut ctx.accounts.winner_record;
-    let prize_vault = &mut ctx.accounts.prize_vault;
-    let clock = Clock::get()?;
-
-    require!(!winner_record.claimed, ClaimError::PrizeAlreadyClaimed);
+    require!(prize_pool.vrf_completed, ClaimError::VrfNotCompleted);
     require!(
-        winner_record.winner == ctx.accounts.claimer.key(),
-        ClaimError::NotTicketOwner
+        prize_pool.total_deposited >= prize_pool.total_claimed + amount,
+        ClaimError::InsufficientFunds
     );
 
-    let amount = winner_record.amount;
-
-    let vault_balance = ctx.accounts.prize_vault_pda.lamports();
-    require!(vault_balance >= amount, ClaimError::InsufficientFunds);
-
-    let lottery_type = prize_vault.lottery_type;
-    let vault_key = prize_vault.key();
-    let seeds = &[
-        b"vault_sol" as &[u8],
-        &[lottery_type],
-        vault_key.as_ref(),
-        &[ctx.bumps.prize_vault_pda],
-    ];
-    let signer_seeds = &[&seeds[..]];
-
-    **ctx.accounts.prize_vault_pda.try_borrow_mut_lamports()? = ctx
+    **ctx.accounts.prize_pool_vault.try_borrow_mut_lamports()? = ctx
         .accounts
-        .prize_vault_pda
+        .prize_pool_vault
         .lamports()
         .checked_sub(amount)
         .ok_or(ClaimError::ArithmeticOverflow)?;
@@ -89,32 +34,29 @@ pub fn claim_lottery_prize(ctx: Context<ClaimLotteryPrize>) -> Result<()> {
         .checked_add(amount)
         .ok_or(ClaimError::ArithmeticOverflow)?;
 
-    prize_vault.total_claimed = prize_vault
+    prize_pool.total_claimed = prize_pool
         .total_claimed
         .checked_add(amount)
         .ok_or(ClaimError::ArithmeticOverflow)?;
 
-    winner_record.claimed = true;
-    winner_record.claimed_at = clock.unix_timestamp;
+    prize_claim.claimer = ctx.accounts.claimer.key();
+    prize_claim.lottery_pool = prize_pool.key();
+    prize_claim.lottery_round = lottery_round;
+    prize_claim.tier = tier;
+    prize_claim.amount = amount;
+    prize_claim.vrf_verified = true;
+    prize_claim.claimed_at = clock.unix_timestamp;
+    prize_claim.bump = ctx.bumps.prize_claim;
 
     emit!(PrizeClaimEvent {
         claimer: ctx.accounts.claimer.key(),
-        lottery_type,
-        lottery_round: winner_record.lottery_round,
-        tier: winner_record.tier,
+        lottery_type: prize_pool.lottery_type,
+        lottery_round,
+        tier,
         amount,
         timestamp: clock.unix_timestamp,
     });
 
-    Ok(())
-}
-
-pub fn advance_round(ctx: Context<AdvanceRound>) -> Result<()> {
-    let prize_vault = &mut ctx.accounts.prize_vault;
-    prize_vault.current_round = prize_vault
-        .current_round
-        .checked_add(1)
-        .ok_or(ClaimError::ArithmeticOverflow)?;
     Ok(())
 }
 
@@ -342,115 +284,42 @@ pub fn deposit_to_affiliate_pool(ctx: Context<DepositToAffiliatePool>, amount: u
     Ok(())
 }
 
-// === Account Structs ===
-
 #[derive(Accounts)]
-#[instruction(lottery_type: u8)]
-pub struct InitPrizeVault<'info> {
-    #[account(mut)]
-    pub authority: Signer<'info>,
-
-    #[account(
-        init,
-        payer = authority,
-        space = PrizeVault::MAX_SIZE,
-        seeds = [b"prize_vault", &[lottery_type]],
-        bump
-    )]
-    pub prize_vault: Account<'info, PrizeVault>,
-
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-#[instruction(lottery_round: u64, tier: u8, amount: u64)]
-pub struct RegisterWinner<'info> {
-    #[account(
-        mut,
-        constraint = authority.key() == prize_vault.authority @ ClaimError::Unauthorized
-    )]
-    pub authority: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [b"prize_vault", &[prize_vault.lottery_type]],
-        bump = prize_vault.bump,
-    )]
-    pub prize_vault: Account<'info, PrizeVault>,
-
-    /// CHECK: The winner's wallet address
-    pub winner: AccountInfo<'info>,
-
-    #[account(
-        init,
-        payer = authority,
-        space = WinnerRecord::MAX_SIZE,
-        seeds = [
-            b"winner",
-            prize_vault.key().as_ref(),
-            winner.key().as_ref(),
-            &lottery_round.to_le_bytes(),
-            &[tier],
-        ],
-        bump
-    )]
-    pub winner_record: Account<'info, WinnerRecord>,
-
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
+#[instruction(amount: u64, tier: u8, lottery_round: u64)]
 pub struct ClaimLotteryPrize<'info> {
     #[account(mut)]
     pub claimer: Signer<'info>,
 
     #[account(
         mut,
-        seeds = [b"prize_vault", &[prize_vault.lottery_type]],
-        bump = prize_vault.bump,
+        seeds = [b"prize_pool", &[prize_pool.lottery_type]],
+        bump = prize_pool.bump,
     )]
-    pub prize_vault: Account<'info, PrizeVault>,
+    pub prize_pool: Account<'info, PrizePool>,
 
-    /// CHECK: PDA that holds SOL for this lottery type
+    /// CHECK: PDA vault for prize pool
     #[account(
         mut,
-        seeds = [b"vault_sol", &[prize_vault.lottery_type], prize_vault.key().as_ref()],
+        seeds = [b"prize_vault", prize_pool.key().as_ref()],
         bump,
     )]
-    pub prize_vault_pda: AccountInfo<'info>,
+    pub prize_pool_vault: AccountInfo<'info>,
 
     #[account(
-        mut,
+        init,
+        payer = claimer,
+        space = PrizeClaim::MAX_SIZE,
         seeds = [
-            b"winner",
-            prize_vault.key().as_ref(),
+            b"prize_claim",
             claimer.key().as_ref(),
-            &winner_record.lottery_round.to_le_bytes(),
-            &[winner_record.tier],
+            prize_pool.key().as_ref(),
+            &lottery_round.to_le_bytes(),
         ],
-        bump = winner_record.bump,
-        constraint = winner_record.winner == claimer.key() @ ClaimError::NotTicketOwner,
-        constraint = !winner_record.claimed @ ClaimError::PrizeAlreadyClaimed,
+        bump
     )]
-    pub winner_record: Account<'info, WinnerRecord>,
+    pub prize_claim: Account<'info, PrizeClaim>,
 
     pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct AdvanceRound<'info> {
-    #[account(
-        mut,
-        constraint = authority.key() == prize_vault.authority @ ClaimError::Unauthorized
-    )]
-    pub authority: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [b"prize_vault", &[prize_vault.lottery_type]],
-        bump = prize_vault.bump,
-    )]
-    pub prize_vault: Account<'info, PrizeVault>,
 }
 
 #[derive(Accounts)]
@@ -631,18 +500,6 @@ pub struct DepositToAffiliatePool<'info> {
     pub affiliate_pool_vault: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
-}
-
-// === Events ===
-
-#[event]
-pub struct WinnerRegisteredEvent {
-    pub winner: Pubkey,
-    pub lottery_type: u8,
-    pub lottery_round: u64,
-    pub tier: u8,
-    pub amount: u64,
-    pub timestamp: i64,
 }
 
 #[event]

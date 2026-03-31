@@ -1,38 +1,6 @@
 use anchor_lang::prelude::*;
 
 #[account]
-pub struct PrizeVault {
-    pub authority: Pubkey,
-    pub lottery_type: u8,
-    pub total_deposited: u64,
-    pub total_claimed: u64,
-    pub current_round: u64,
-    pub bump: u8,
-}
-
-impl PrizeVault {
-    pub const MAX_SIZE: usize = 8 + 32 + 1 + 8 + 8 + 8 + 1;
-}
-
-#[account]
-pub struct WinnerRecord {
-    pub winner: Pubkey,
-    pub prize_vault: Pubkey,
-    pub lottery_round: u64,
-    pub tier: u8,
-    pub amount: u64,
-    pub claimed: bool,
-    pub registered_at: i64,
-    pub claimed_at: i64,
-    pub claim_signature: [u8; 64],
-    pub bump: u8,
-}
-
-impl WinnerRecord {
-    pub const MAX_SIZE: usize = 8 + 32 + 32 + 8 + 1 + 8 + 1 + 8 + 8 + 64 + 1;
-}
-
-#[account]
 pub struct PrizeClaim {
     pub claimer: Pubkey,
     pub lottery_pool: Pubkey,
@@ -149,14 +117,4 @@ pub fn is_after_wednesday_release(timestamp: i64) -> bool {
     let epoch_start: i64 = 345600;
     let week_progress = (timestamp - epoch_start) % AffiliatePool::SECONDS_PER_WEEK;
     week_progress >= AffiliatePool::WEDNESDAY_OFFSET
-}
-
-pub fn lottery_type_to_u8(lottery_type: &str) -> u8 {
-    match lottery_type {
-        "tri-daily" => 0,
-        "jackpot" => 1,
-        "grand-prize" => 2,
-        "special-event" => 3,
-        _ => 0,
-    }
 }

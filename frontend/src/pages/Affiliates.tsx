@@ -138,16 +138,6 @@ export function Affiliates() {
   const checkApplicationStatus = useCallback(async () => {
     if (!walletAddress) return;
     const status = await affiliateDashboardService.checkApplicationStatus(walletAddress);
-
-    if (!status.hasApplied || status.status !== 'approved') {
-      const code = await affiliateDashboardService.getReferralCode(walletAddress);
-      if (code) {
-        setApplicationStatus({ hasApplied: true, status: 'approved', appliedAt: null });
-        setReferralCode(code);
-        return;
-      }
-    }
-
     setApplicationStatus(status);
   }, [walletAddress]);
 
@@ -432,7 +422,7 @@ export function Affiliates() {
               ) : (
                 <Lock className="w-5 h-5" />
               )}
-              <span>{copied ? 'COPIED!' : 'COPY AFFILIATE LINK'}</span>
+              <span>{copied ? 'COPIED!' : 'COPY_AFFILIATE_LINK'}</span>
               {!canAccessDashboard && (
                 <span className="text-xs ml-2 opacity-70">{getDashboardButtonText()}</span>
               )}

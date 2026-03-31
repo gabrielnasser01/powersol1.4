@@ -162,20 +162,11 @@ export function DailyMissions() {
 
       const data = await res.json();
 
-      if (missionKey === 'weekly_streak') {
-        setLoginStreak(0);
-        setMissions(prev => prev.map(m =>
-          m.id === mission.id
-            ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: { eligible: false } } }
-            : m
-        ));
-      } else {
-        setMissions(prev => prev.map(m =>
-          m.id === mission.id
-            ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: {} } }
-            : m
-        ));
-      }
+      setMissions(prev => prev.map(m =>
+        m.id === mission.id
+          ? { ...m, user_progress: { completed: true, completed_at: new Date().toISOString(), progress: {} } }
+          : m
+      ));
 
       const points = data.powerPoints || mission.power_points;
       userStatsStorage.addMissionPoints(points);
@@ -660,7 +651,7 @@ export function DailyMissions() {
                     }
 
                     if (mission.mission_key === 'social_share') {
-                      const shareUrl = 'https://powersol.app';
+                      const shareUrl = 'https://powersol.io';
                       const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
                       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       await markEligibleAPI('social_share');

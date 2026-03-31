@@ -47,7 +47,7 @@ pub fn purchase_ticket(
             ctx.accounts.system_program.to_account_info(),
             system_program::Transfer {
                 from: ctx.accounts.buyer.to_account_info(),
-                to: ctx.accounts.prize_vault.to_account_info(),
+                to: ctx.accounts.lottery.to_account_info(),
             },
         ),
         prize_pool_amount,
@@ -143,13 +143,6 @@ pub struct PurchaseTicket<'info> {
         bump
     )]
     pub user_tickets: Account<'info, UserTickets>,
-
-    /// CHECK: Non-custodial prize vault PDA controlled by powersol_claim program
-    #[account(
-        mut,
-        constraint = prize_vault.key() == lottery.prize_vault @ LotteryError::PrizeVaultMismatch
-    )]
-    pub prize_vault: AccountInfo<'info>,
 
     #[account(
         mut,

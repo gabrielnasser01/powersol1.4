@@ -18,7 +18,7 @@ function App() {
           publicKey: '7xKj9mPqR8vN3wL5tY2uE6sA1bC4dF8hG9iJ0kM3nO5pQ7rS9tU',
           connectedAt: Date.now(),
           name: 'Demo User',
-          email: 'demo@powersol.app',
+          email: 'demo@powersol.io',
           country: 'US',
           notifications: true,
         });

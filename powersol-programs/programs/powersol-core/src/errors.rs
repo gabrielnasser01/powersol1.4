@@ -44,9 +44,6 @@ pub enum LotteryError {
     #[msg("Affiliates pool mismatch")]
     AffiliatesPoolMismatch,
 
-    #[msg("Prize vault mismatch")]
-    PrizeVaultMismatch,
-
     #[msg("Invalid prize distribution")]
     InvalidPrizeDistribution,
 }

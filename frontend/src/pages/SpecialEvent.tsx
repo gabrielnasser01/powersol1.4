@@ -285,19 +285,11 @@ export function SpecialEvent() {
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Terminal corner decorations - Desktop */}
-        <div className="absolute top-24 left-6 text-xs font-mono text-sky-300/40 hidden sm:block">
+        <div className="absolute top-24 left-6 text-xs font-mono text-sky-300/40">
           [SYSTEM_ACTIVE]
         </div>
         <div className="absolute top-24 right-6 text-xs font-mono text-sky-300/60 hidden sm:block">
           [EASTER_MODULE]
-        </div>
-
-        {/* Mobile terminal indicators */}
-        <div className="block sm:hidden text-center pt-4 pb-2">
-          <div className="flex justify-center space-x-4 text-xs font-mono text-sky-300/80">
-            <span>[SYSTEM_ACTIVE]</span>
-            <span>[EASTER_MODULE]</span>
-          </div>
         </div>
         
         {/* Banners Section */}

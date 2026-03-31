@@ -244,11 +244,11 @@ export function DashboardSupport() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-purple-500">-</span>
-                  <span>Always verify you're on the official powersol.app domain</span>
+                  <span>Always verify you're on the official powersol.io domain</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-purple-500">-</span>
-                  <span>Report suspicious activity to support@powersol.app</span>
+                  <span>Report suspicious activity to security@powersol.io</span>
                 </li>
               </ul>
             </div>

@@ -2,13 +2,11 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { TrendingUp, ChevronDown } from 'lucide-react';
 import type { WalletActivity } from '../services/adminService';
 
-import { LOTTERY_WALLETS } from '../services/walletBalanceService';
-
 const TREASURY_WALLETS = [
-  { address: LOTTERY_WALLETS['tri-daily'], label: 'Tri-Daily Vault', color: '#3ecbff' },
-  { address: LOTTERY_WALLETS['special-event'], label: 'Special Event Vault', color: '#f59e0b' },
-  { address: LOTTERY_WALLETS['grand-prize'], label: 'Grand Prize Vault', color: '#ef4444' },
-  { address: LOTTERY_WALLETS['jackpot'], label: 'Jackpot Vault', color: '#a855f7' },
+  { address: '4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx', label: 'Tri-Daily', color: '#3ecbff' },
+  { address: 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk', label: 'Special Event', color: '#f59e0b' },
+  { address: 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C', label: 'Grand Prize', color: '#ef4444' },
+  { address: 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133', label: 'Jackpot', color: '#a855f7' },
   { address: '2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU', label: 'Delta', color: '#f97316' },
   { address: '8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf', label: 'Affiliates Pool', color: '#ec4899' },
   { address: '55zv671N9QUBv9UCke6BTu1mM21dRKhvWcZDxiYLSXm1', label: 'Dev Treasury', color: '#10b981' },

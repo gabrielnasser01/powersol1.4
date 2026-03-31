@@ -129,15 +129,10 @@ async function getUserProgress(walletAddress: string) {
 
   return missions.map((mission: Record<string, unknown>) => {
     const progress = progressMap.get(mission.id as string) as Record<string, unknown> | undefined;
-    const missionKey = mission.mission_key as string;
 
     if (progress && progress.completed === true) {
       const missionType = mission.mission_type as string;
       const claimedAt = new Date((progress.completed_at || progress.last_reset) as string);
-
-      if (missionKey === "weekly_streak") {
-        return { ...mission, user_progress: progress };
-      }
 
       if (missionType === "daily" && !isWithinCurrentDay(claimedAt, now)) {
         return {
@@ -181,25 +176,7 @@ async function markMissionEligible(walletAddress: string, missionKey: string, ad
 
   if (existing?.completed) {
     if (safeMissionKey === "weekly_streak") {
-      const pd = { ...(additionalData || {}), eligible: true, eligible_at: new Date().toISOString() };
-      const { error: updateError } = await supabase
-        .from("user_mission_progress")
-        .update({
-          completed: false,
-          completed_at: null,
-          progress: pd,
-          last_reset: new Date().toISOString(),
-        })
-        .eq("id", existing.id);
-
-      if (updateError) throw updateError;
-
-      return {
-        eligible: true,
-        mission: mission.name,
-        missionKey: safeMissionKey,
-        powerPoints: mission.power_points,
-      };
+      // no time gate - streak resets to 0 on claim, so reaching 7 again is the only guard
     } else if (mission.mission_type === "social" || mission.mission_type === "activity") {
       return { alreadyCompleted: true, missionKey: safeMissionKey };
     } else {
@@ -219,31 +196,19 @@ async function markMissionEligible(walletAddress: string, missionKey: string, ad
   const progressData = { ...(additionalData || {}), eligible: true, eligible_at: new Date().toISOString() };
   const nowISO = new Date().toISOString();
 
-  if (existing) {
-    const { error: updateError } = await supabase
-      .from("user_mission_progress")
-      .update({
-        completed: false,
-        completed_at: null,
-        progress: progressData,
-        last_reset: nowISO,
-      })
-      .eq("id", existing.id);
+  const { error: upsertError } = await supabase
+    .from("user_mission_progress")
+    .upsert({
+      wallet_address: walletAddress,
+      mission_id: mission.id,
+      completed: false,
+      progress: progressData,
+      last_reset: nowISO,
+    }, {
+      onConflict: "wallet_address,mission_id",
+    });
 
-    if (updateError) throw updateError;
-  } else {
-    const { error: insertError } = await supabase
-      .from("user_mission_progress")
-      .insert({
-        wallet_address: walletAddress,
-        mission_id: mission.id,
-        completed: false,
-        progress: progressData,
-        last_reset: nowISO,
-      });
-
-    if (insertError) throw insertError;
-  }
+  if (upsertError) throw upsertError;
 
   return {
     eligible: true,
@@ -282,12 +247,10 @@ async function claimMission(walletAddress: string, missionKey: string) {
     .eq("mission_id", mission.id)
     .maybeSingle();
 
-  if (safeMissionKey === "weekly_streak") {
-    if (!existing || !existing.progress?.eligible) {
-      throw new Error("Streak not yet complete - keep logging in daily!");
-    }
-  } else if (existing?.completed) {
-    if (mission.mission_type === "social" || mission.mission_type === "activity") {
+  if (existing?.completed) {
+    if (safeMissionKey === "weekly_streak") {
+      // no time gate - eligible flag is the only guard
+    } else if (mission.mission_type === "social" || mission.mission_type === "activity") {
       throw new Error("Mission already claimed");
     } else {
       const now = new Date();
@@ -300,7 +263,9 @@ async function claimMission(walletAddress: string, missionKey: string) {
         throw new Error("Mission already claimed this week");
       }
     }
-  } else if (!existing?.progress?.eligible) {
+  }
+
+  if (!existing?.progress?.eligible) {
     throw new Error("Mission not yet eligible");
   }
 

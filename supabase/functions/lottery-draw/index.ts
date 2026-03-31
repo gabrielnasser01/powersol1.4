@@ -6,93 +6,29 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
-  TransactionInstruction,
   sendAndConfirmTransaction,
 } from "npm:@solana/web3.js@1.98.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SOLANA_RPC_URL =
-  Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
-const AFFILIATES_POOL_PUBLIC =
-  "8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf";
-const DELTA_WALLET_PUBLIC =
-  "2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU";
-const CLAIM_PROGRAM_ID = new PublicKey(
-  "DX1rjpefmrBR8hASnExE3qCBpjpFEkUY4JEoTLmuU2JK"
-);
+const SOLANA_RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
+const AFFILIATES_POOL_PUBLIC = "8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf";
+const DELTA_WALLET_PUBLIC = "2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU";
 
-const LOTTERY_TYPE_MAP: Record<string, number> = {
-  "tri-daily": 0,
-  weekly: 0,
-  jackpot: 1,
-  "grand-prize": 2,
-  "special-event": 3,
+const LOTTERY_WALLETS: Record<string, string> = {
+  "tri-daily": "4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx",
+  "weekly": "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
+  "jackpot": "EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133",
+  "grand-prize": "nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C",
+  "special-event": "AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk",
 };
 
-function getAuthorityKeypair(): Keypair | null {
+async function getWalletBalanceLamports(walletAddress: string): Promise<bigint> {
   try {
-    const privateKeyString = Deno.env.get("SOLANA_AUTHORITY_PRIVATE");
-    if (!privateKeyString) return null;
-    const privateKeyArray = JSON.parse(privateKeyString);
-    return Keypair.fromSecretKey(new Uint8Array(privateKeyArray));
-  } catch {
-    return null;
-  }
-}
-
-function derivePrizeVaultPDA(lotteryTypeNum: number): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("prize_vault"), Buffer.from([lotteryTypeNum])],
-    CLAIM_PROGRAM_ID
-  );
-}
-
-function deriveVaultSolPDA(
-  lotteryTypeNum: number,
-  prizeVaultKey: PublicKey
-): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("vault_sol"),
-      Buffer.from([lotteryTypeNum]),
-      prizeVaultKey.toBuffer(),
-    ],
-    CLAIM_PROGRAM_ID
-  );
-}
-
-function deriveWinnerRecordPDA(
-  prizeVaultKey: PublicKey,
-  winnerKey: PublicKey,
-  lotteryRound: number,
-  tier: number
-): [PublicKey, number] {
-  const roundBuffer = Buffer.alloc(8);
-  roundBuffer.writeBigUInt64LE(BigInt(lotteryRound));
-  return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("winner"),
-      prizeVaultKey.toBuffer(),
-      winnerKey.toBuffer(),
-      roundBuffer,
-      Buffer.from([tier]),
-    ],
-    CLAIM_PROGRAM_ID
-  );
-}
-
-async function getVaultBalanceLamports(lotteryType: string): Promise<bigint> {
-  try {
-    const typeNum = LOTTERY_TYPE_MAP[lotteryType] ?? 0;
-    const [prizeVaultKey] = derivePrizeVaultPDA(typeNum);
-    const [vaultSolKey] = deriveVaultSolPDA(typeNum, prizeVaultKey);
-
     const response = await fetch(SOLANA_RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -100,125 +36,15 @@ async function getVaultBalanceLamports(lotteryType: string): Promise<bigint> {
         jsonrpc: "2.0",
         id: 1,
         method: "getBalance",
-        params: [vaultSolKey.toBase58()],
+        params: [walletAddress],
       }),
     });
     const data = await response.json();
     return BigInt(data.result?.value || 0);
   } catch (error) {
-    console.error(`Failed to fetch vault balance for ${lotteryType}:`, error);
+    console.error(`Failed to fetch wallet balance for ${walletAddress}:`, error);
     return BigInt(0);
   }
-}
-
-function buildRegisterWinnerIx(
-  authority: PublicKey,
-  prizeVaultKey: PublicKey,
-  winnerKey: PublicKey,
-  winnerRecordKey: PublicKey,
-  lotteryRound: number,
-  tier: number,
-  amount: bigint
-): TransactionInstruction {
-  const roundBuffer = Buffer.alloc(8);
-  roundBuffer.writeBigUInt64LE(BigInt(lotteryRound));
-  const tierBuffer = Buffer.from([tier]);
-  const amountBuffer = Buffer.alloc(8);
-  amountBuffer.writeBigUInt64LE(amount);
-
-  const discriminator = Buffer.from([
-    0x30, 0xc2, 0x4e, 0x3e, 0x05, 0x36, 0x4f, 0x84,
-  ]);
-
-  const data = Buffer.concat([
-    discriminator,
-    roundBuffer,
-    tierBuffer,
-    amountBuffer,
-  ]);
-
-  return new TransactionInstruction({
-    programId: CLAIM_PROGRAM_ID,
-    keys: [
-      { pubkey: authority, isSigner: true, isWritable: true },
-      { pubkey: prizeVaultKey, isSigner: false, isWritable: true },
-      { pubkey: winnerKey, isSigner: false, isWritable: false },
-      { pubkey: winnerRecordKey, isSigner: false, isWritable: true },
-      {
-        pubkey: SystemProgram.programId,
-        isSigner: false,
-        isWritable: false,
-      },
-    ],
-    data,
-  });
-}
-
-async function registerWinnersOnChain(
-  winners: {
-    wallet_address: string;
-    tier: number;
-    prize_lamports: string;
-  }[],
-  lotteryType: string,
-  lotteryRound: number
-): Promise<{ success: boolean; signatures: string[]; errors: string[] }> {
-  const authority = getAuthorityKeypair();
-  if (!authority) {
-    return { success: false, signatures: [], errors: ["Authority keypair not available"] };
-  }
-
-  const typeNum = LOTTERY_TYPE_MAP[lotteryType] ?? 0;
-  const [prizeVaultKey] = derivePrizeVaultPDA(typeNum);
-  const connection = new Connection(SOLANA_RPC_URL, "confirmed");
-  const signatures: string[] = [];
-  const errors: string[] = [];
-
-  const BATCH_SIZE = 4;
-  for (let i = 0; i < winners.length; i += BATCH_SIZE) {
-    const batch = winners.slice(i, i + BATCH_SIZE);
-    const transaction = new Transaction();
-
-    for (const winner of batch) {
-      const winnerKey = new PublicKey(winner.wallet_address);
-      const [winnerRecordKey] = deriveWinnerRecordPDA(
-        prizeVaultKey,
-        winnerKey,
-        lotteryRound,
-        winner.tier
-      );
-
-      const ix = buildRegisterWinnerIx(
-        authority.publicKey,
-        prizeVaultKey,
-        winnerKey,
-        winnerRecordKey,
-        lotteryRound,
-        winner.tier,
-        BigInt(winner.prize_lamports)
-      );
-      transaction.add(ix);
-    }
-
-    try {
-      const sig = await sendAndConfirmTransaction(
-        connection,
-        transaction,
-        [authority],
-        { commitment: "confirmed" }
-      );
-      signatures.push(sig);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown";
-      errors.push(`Batch ${Math.floor(i / BATCH_SIZE)}: ${msg}`);
-    }
-  }
-
-  return {
-    success: errors.length === 0,
-    signatures,
-    errors,
-  };
 }
 
 interface LotteryConfig {
@@ -252,7 +78,7 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
     ticketPriceLamports: 100000000,
     maxTickets: 1000,
   },
-  weekly: {
+  "weekly": {
     type: "weekly",
     winnersSelectionType: "PERCENTAGE",
     totalWinnersPercentage: 5,
@@ -266,7 +92,7 @@ const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
     ticketPriceLamports: 150000000,
     maxTickets: 2000,
   },
-  jackpot: {
+  "jackpot": {
     type: "jackpot",
     winnersSelectionType: "FIXED",
     totalWinnersFixed: 100,
@@ -320,9 +146,7 @@ async function generateHash(input: string): Promise<string> {
   const data = encoder.encode(input);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return (
-    "0x" + hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
-  );
+  return "0x" + hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -334,17 +158,9 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-function calculateTotalWinners(
-  config: LotteryConfig,
-  totalTickets: number
-): number {
+function calculateTotalWinners(config: LotteryConfig, totalTickets: number): number {
   if (config.winnersSelectionType === "PERCENTAGE") {
-    return Math.max(
-      1,
-      Math.floor(
-        (totalTickets * (config.totalWinnersPercentage || 0)) / 100
-      )
-    );
+    return Math.max(1, Math.floor((totalTickets * (config.totalWinnersPercentage || 0)) / 100));
   }
   return Math.min(totalTickets, config.totalWinnersFixed || 0);
 }
@@ -352,18 +168,8 @@ function calculateTotalWinners(
 function calculateWinnersPerTier(
   config: LotteryConfig,
   totalWinners: number
-): {
-  tierNumber: number;
-  winnersCount: number;
-  poolPercentage: number;
-  description: string;
-}[] {
-  const results: {
-    tierNumber: number;
-    winnersCount: number;
-    poolPercentage: number;
-    description: string;
-  }[] = [];
+): { tierNumber: number; winnersCount: number; poolPercentage: number; description: string }[] {
+  const results: { tierNumber: number; winnersCount: number; poolPercentage: number; description: string }[] = [];
   let assignedWinners = 0;
 
   for (let i = 0; i < config.winnerTiers.length; i++) {
@@ -371,9 +177,7 @@ function calculateWinnersPerTier(
     let winnersCount: number;
 
     if (config.winnersSelectionType === "PERCENTAGE") {
-      winnersCount = Math.floor(
-        (totalWinners * (tier.winnersPercentage || 0)) / 100
-      );
+      winnersCount = Math.floor((totalWinners * (tier.winnersPercentage || 0)) / 100);
     } else {
       winnersCount = tier.winnersCount || 0;
     }
@@ -447,11 +251,7 @@ async function sweepExpiredPrizes(supabase: any, lotteryType: string) {
   }
 }
 
-async function getNextDrawTimestampForType(
-  supabase: any,
-  lotteryType: string,
-  currentLotteryId: number
-): Promise<string | null> {
+async function getNextDrawTimestampForType(supabase: any, lotteryType: string, currentLotteryId: number): Promise<string | null> {
   const { data } = await supabase
     .from("blockchain_lotteries")
     .select("draw_timestamp")
@@ -484,10 +284,7 @@ async function executeDraw(supabase: any, lottery: any) {
     };
   }
 
-  const expiredSweep = await sweepExpiredPrizes(
-    supabase,
-    lottery.lottery_type
-  );
+  const expiredSweep = await sweepExpiredPrizes(supabase, lottery.lottery_type);
 
   const { data: purchases, error: purchasesError } = await supabase
     .from("ticket_purchases")
@@ -514,11 +311,7 @@ async function executeDraw(supabase: any, lottery: any) {
       .update({ is_drawn: true, winning_ticket: null })
       .eq("id", lottery.id);
 
-    return {
-      lottery_id: lottery.lottery_id,
-      status: "no_tickets",
-      winners: [],
-    };
+    return { lottery_id: lottery.lottery_id, status: "no_tickets", winners: [] };
   }
 
   let allTickets: ExpandedTicket[] = [];
@@ -532,8 +325,7 @@ async function executeDraw(supabase: any, lottery: any) {
         .maybeSingle();
 
       allTickets.push({
-        wallet_address:
-          userData?.wallet_address || `unknown_${bt.user_id}`,
+        wallet_address: userData?.wallet_address || `unknown_${bt.user_id}`,
         ticket_number: bt.ticket_number,
         purchase_id: `blockchain_${bt.id}`,
       });
@@ -552,8 +344,10 @@ async function executeDraw(supabase: any, lottery: any) {
   }
 
   const totalTickets = allTickets.length;
-
-  const prizePool = await getVaultBalanceLamports(lottery.lottery_type);
+  const walletAddress = LOTTERY_WALLETS[lottery.lottery_type];
+  const prizePool = walletAddress
+    ? await getWalletBalanceLamports(walletAddress)
+    : BigInt(0);
 
   const totalWinners = calculateTotalWinners(config, totalTickets);
   const tiersWithWinners = calculateWinnersPerTier(config, totalWinners);
@@ -563,19 +357,10 @@ async function executeDraw(supabase: any, lottery: any) {
   let ticketIndex = 0;
 
   for (const tier of tiersWithWinners) {
-    const tierPool =
-      (prizePool * BigInt(Math.floor(tier.poolPercentage * 100))) /
-      BigInt(10000);
-    const prizePerWinner =
-      tier.winnersCount > 0
-        ? tierPool / BigInt(tier.winnersCount)
-        : BigInt(0);
+    const tierPool = (prizePool * BigInt(Math.floor(tier.poolPercentage * 100))) / BigInt(10000);
+    const prizePerWinner = tier.winnersCount > 0 ? tierPool / BigInt(tier.winnersCount) : BigInt(0);
 
-    for (
-      let i = 0;
-      i < tier.winnersCount && ticketIndex < shuffledTickets.length;
-      i++
-    ) {
+    for (let i = 0; i < tier.winnersCount && ticketIndex < shuffledTickets.length; i++) {
       const winningTicket = shuffledTickets[ticketIndex];
       ticketIndex++;
 
@@ -598,10 +383,10 @@ async function executeDraw(supabase: any, lottery: any) {
     `${lottery.lottery_id}:${lottery.lottery_type}:${drawNonce}:${totalTickets}:${prizePool.toString()}`
   );
   const seedHash = await generateHash(
-    `${commitHash}:${drawTimestamp}:${winners.map((w: any) => w.ticket_number).join(",")}`
+    `${commitHash}:${drawTimestamp}:${winners.map((w) => w.ticket_number).join(",")}`
   );
 
-  const winnersJson = winners.map((w: any, idx: number) => ({
+  const winnersJson = winners.map((w, idx) => ({
     position: idx + 1,
     wallet: w.wallet_address,
     prize_lamports: Number(w.prize_lamports),
@@ -613,10 +398,8 @@ async function executeDraw(supabase: any, lottery: any) {
     .insert({
       round,
       draw_account: `draw_${lottery.lottery_id}_${drawNonce}`,
-      winning_number:
-        winners.length > 0 ? winners[0].ticket_number : 0,
-      winner_wallet:
-        winners.length > 0 ? winners[0].wallet_address : null,
+      winning_number: winners.length > 0 ? winners[0].ticket_number : 0,
+      winner_wallet: winners.length > 0 ? winners[0].wallet_address : null,
       prize_lamports: Number(prizePool),
       transaction_signature: `auto_draw_${drawNonce}`,
       draw_timestamp: drawTimestamp,
@@ -649,7 +432,6 @@ async function executeDraw(supabase: any, lottery: any) {
         draw_date: drawTimestamp,
         claimed: false,
         expired: false,
-        claim_method: "on_chain",
       })
       .select("id")
       .maybeSingle();
@@ -661,41 +443,11 @@ async function executeDraw(supabase: any, lottery: any) {
     }
   }
 
-  let onChainResult = { success: true, signatures: [] as string[], errors: [] as string[] };
-  if (winners.length > 0) {
-    onChainResult = await registerWinnersOnChain(
-      winners.map((w: any) => ({
-        wallet_address: w.wallet_address,
-        tier: w.tier,
-        prize_lamports: w.prize_lamports,
-      })),
-      lottery.lottery_type,
-      round
-    );
-
-    if (onChainResult.signatures.length > 0) {
-      await supabase
-        .from("solana_draws")
-        .update({
-          vrf_register_signatures: onChainResult.signatures,
-        })
-        .eq("id", drawRecord?.id);
-    }
-
-    if (onChainResult.errors.length > 0) {
-      console.error(
-        "On-chain winner registration errors:",
-        onChainResult.errors
-      );
-    }
-  }
-
   await supabase
     .from("blockchain_lotteries")
     .update({
       is_drawn: true,
-      winning_ticket:
-        winners.length > 0 ? winners[0].ticket_number : null,
+      winning_ticket: winners.length > 0 ? winners[0].ticket_number : null,
       prize_pool: Number(prizePool),
     })
     .eq("id", lottery.id);
@@ -723,27 +475,19 @@ async function executeDraw(supabase: any, lottery: any) {
   }
 
   if (winners.length > 0) {
-    const uniqueWinnerWallets = [
-      ...new Set(winners.map((w: any) => w.wallet_address)),
-    ];
+    const uniqueWinnerWallets = [...new Set(winners.map((w) => w.wallet_address))];
     const baseUrl = Deno.env.get("SUPABASE_URL");
     for (const wallet of uniqueWinnerWallets) {
       try {
-        await fetch(
-          `${baseUrl}/functions/v1/missions/first-win?wallet_address=${encodeURIComponent(wallet)}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            },
-          }
-        );
+        await fetch(`${baseUrl}/functions/v1/missions/first-win?wallet_address=${encodeURIComponent(wallet)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+        });
       } catch (err) {
-        console.error(
-          `Failed to trigger first-win mission for ${wallet}:`,
-          err
-        );
+        console.error(`Failed to trigger first-win mission for ${wallet}:`, err);
       }
     }
   }
@@ -757,8 +501,7 @@ async function executeDraw(supabase: any, lottery: any) {
     prize_pool: prizePool.toString(),
     prize_ids: prizeIds,
     expired_sweep: expiredSweep,
-    on_chain_registration: onChainResult,
-    winners: winners.map((w: any) => ({
+    winners: winners.map((w) => ({
       tier: w.tier,
       ticket_number: w.ticket_number,
       wallet: w.wallet_address,
@@ -771,10 +514,7 @@ function getLastDayOfMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month + 1, 0)).getDate();
 }
 
-function calculateNextDrawTimestamp(
-  lotteryType: string,
-  currentDrawTimestamp: number
-): number | null {
+function calculateNextDrawTimestamp(lotteryType: string, currentDrawTimestamp: number): number | null {
   const currentDate = new Date(currentDrawTimestamp * 1000);
 
   switch (lotteryType) {
@@ -802,9 +542,7 @@ function calculateNextDrawTimestamp(
       }
 
       const lastDay = getLastDayOfMonth(nextYear, nextMonth);
-      const nextDate = new Date(
-        Date.UTC(nextYear, nextMonth, lastDay, 23, 59, 59)
-      );
+      const nextDate = new Date(Date.UTC(nextYear, nextMonth, lastDay, 23, 59, 59));
       return Math.floor(nextDate.getTime() / 1000);
     }
 
@@ -828,10 +566,7 @@ async function createNextLottery(supabase: any, lottery: any) {
     return null;
   }
 
-  const nextDrawTimestamp = calculateNextDrawTimestamp(
-    lottery.lottery_type,
-    lottery.draw_timestamp
-  );
+  const nextDrawTimestamp = calculateNextDrawTimestamp(lottery.lottery_type, lottery.draw_timestamp);
 
   if (!nextDrawTimestamp) {
     return null;
@@ -906,18 +641,14 @@ async function transferFromAffiliatesPoolToDelta(
 
   const keypair = getAffiliatesPoolKeypair();
   if (!keypair) {
-    return {
-      success: false,
-      error: "Affiliates pool keypair not available",
-    };
+    return { success: false, error: "Affiliates pool keypair not available" };
   }
 
   try {
     const connection = new Connection(SOLANA_RPC_URL, "confirmed");
 
     const balance = await connection.getBalance(keypair.publicKey);
-    const rentExempt =
-      await connection.getMinimumBalanceForRentExemption(0);
+    const rentExempt = await connection.getMinimumBalanceForRentExemption(0);
     const fee = 5000;
     const maxTransferable = balance - rentExempt - fee;
 
@@ -939,54 +670,32 @@ async function transferFromAffiliatesPoolToDelta(
       })
     );
 
-    const signature = await sendAndConfirmTransaction(
-      connection,
-      transaction,
-      [keypair],
-      {
-        commitment: "confirmed",
-      }
-    );
+    const signature = await sendAndConfirmTransaction(connection, transaction, [keypair], {
+      commitment: "confirmed",
+    });
 
-    console.log(
-      `Sweep on-chain transfer: ${lamports} lamports -> delta wallet. Sig: ${signature}`
-    );
+    console.log(`Sweep on-chain transfer: ${lamports} lamports -> delta wallet. Sig: ${signature}`);
     return { success: true, signature };
   } catch (err) {
     console.error("On-chain sweep transfer failed:", err);
-    return {
-      success: false,
-      error:
-        err instanceof Error ? err.message : "Unknown transfer error",
-    };
+    return { success: false, error: err instanceof Error ? err.message : "Unknown transfer error" };
   }
 }
 
-async function sweepUnclaimedAffiliateRewards(
-  supabase: ReturnType<typeof getSupabaseClient>
-) {
+async function sweepUnclaimedAffiliateRewards(supabase: ReturnType<typeof getSupabaseClient>) {
   try {
-    const { data, error } = await supabase.rpc(
-      "sweep_unclaimed_affiliate_rewards_to_delta",
-      {
-        p_deadline_weeks_ago: 1,
-      }
-    );
+    const { data, error } = await supabase.rpc("sweep_unclaimed_affiliate_rewards_to_delta", {
+      p_deadline_weeks_ago: 1,
+    });
 
     if (error) {
       console.error("Sweep unclaimed rewards error:", error);
       return { swept: false, error: error.message };
     }
 
-    const result = data?.[0] || {
-      swept_count: 0,
-      total_swept_lamports: 0,
-    };
+    const result = data?.[0] || { swept_count: 0, total_swept_lamports: 0 };
 
-    let onchainTransfer = {
-      success: true,
-      signature: undefined as string | undefined,
-    };
+    let onchainTransfer = { success: true, signature: undefined as string | undefined };
     if (result.total_swept_lamports > 0) {
       onchainTransfer = await transferFromAffiliatesPoolToDelta(
         Number(result.total_swept_lamports)
@@ -1009,10 +718,7 @@ async function sweepUnclaimedAffiliateRewards(
     };
   } catch (err) {
     console.error("Sweep unclaimed rewards exception:", err);
-    return {
-      swept: false,
-      error: err instanceof Error ? err.message : "Unknown",
-    };
+    return { swept: false, error: err instanceof Error ? err.message : "Unknown" };
   }
 }
 
@@ -1031,11 +737,7 @@ async function processDraws() {
   if (error) throw error;
 
   if (!lotteriesReady || lotteriesReady.length === 0) {
-    return {
-      message: "No lotteries ready for draw",
-      processed: 0,
-      sweep: sweepResult,
-    };
+    return { message: "No lotteries ready for draw", processed: 0, sweep: sweepResult };
   }
 
   const results: any[] = [];
@@ -1056,19 +758,14 @@ async function processDraws() {
           });
 
           if (drawResult.prize_ids && drawResult.prize_ids.length > 0) {
-            const expiresAt = new Date(
-              nextLottery.draw_timestamp * 1000
-            ).toISOString();
+            const expiresAt = new Date(nextLottery.draw_timestamp * 1000).toISOString();
             const { error: expiresError } = await supabase
               .from("prizes")
               .update({ expires_at: expiresAt })
               .in("id", drawResult.prize_ids);
 
             if (expiresError) {
-              console.error(
-                "Failed to set expires_at on prizes:",
-                expiresError
-              );
+              console.error("Failed to set expires_at on prizes:", expiresError);
             }
           }
         }
@@ -1102,9 +799,7 @@ async function getDrawStatus() {
 
   const { data: recent } = await supabase
     .from("blockchain_lotteries")
-    .select(
-      "lottery_id, lottery_type, draw_timestamp, winning_ticket, prize_pool"
-    )
+    .select("lottery_id, lottery_type, draw_timestamp, winning_ticket, prize_pool")
     .eq("is_drawn", true)
     .order("draw_timestamp", { ascending: false })
     .limit(10);
@@ -1128,14 +823,11 @@ Deno.serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const pathMatch = url.pathname.match(/\/lottery-draw(\/.*)?$/);
-    const path = pathMatch ? pathMatch[1] || "" : "";
+    const path = pathMatch ? (pathMatch[1] || "") : "";
 
     let result: any;
 
-    if (
-      req.method === "POST" &&
-      (path === "/execute" || path === "" || path === "/")
-    ) {
+    if (req.method === "POST" && (path === "/execute" || path === "" || path === "/")) {
       result = await processDraws();
     } else if (req.method === "GET" && path === "/status") {
       result = await getDrawStatus();
@@ -1147,8 +839,7 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "Unknown error";
     const status = message === "Not found" ? 404 : 500;
 
     return new Response(JSON.stringify({ error: message }), {

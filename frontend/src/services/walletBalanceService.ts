@@ -1,11 +1,15 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { anchorService } from './anchorService';
 
 const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 
-export const LOTTERY_WALLETS = anchorService.getAllPrizeVaultAddresses();
+export const LOTTERY_WALLETS = {
+  'tri-daily': '4mwjVADtywLK9yRjiiuAynuJS3xJBK2Mdz9u6t1nmZjx',
+  'jackpot': 'EXdNbkayPpUCGFd3Mk1HKHn1wTkYxD2zGLm29cKQi133',
+  'grand-prize': 'nTMcPkR8eYJFFy4Gcdk6wZcRphj5VFxK4CpviA2Qi9C',
+  'special-event': 'AJw2Lfe59VNetaEE1YzvKajWCVXifvMp2DGBBZBCRmTk',
+} as const;
 
-export type LotteryType = 'tri-daily' | 'jackpot' | 'grand-prize' | 'special-event';
+export type LotteryType = keyof typeof LOTTERY_WALLETS;
 
 interface WalletBalance {
   address: string;

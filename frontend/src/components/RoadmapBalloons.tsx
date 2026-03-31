@@ -8,7 +8,7 @@ const roadmapItems = [
     id: 1,
     icon: Calendar,
     title: 'Phase 1',
-    description: 'Lottery System, Affiliates and Missions',
+    description: 'Draws System, Affiliates and Missions',
     status: 'active',
     color: theme.colors.neonBlue,
   },

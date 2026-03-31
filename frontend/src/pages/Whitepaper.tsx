@@ -248,7 +248,7 @@ const roadmapPhases = [
     phase: 'Phase 2',
     title: 'Growth and Rewards',
     color: theme.colors.neonCyan,
-    description: 'Launch of airdrop system and badges, UX/UI improvements, 2 traditional lottery models, community partnerships, NFT special pack. On-chain VRF.',
+    description: 'Launch of airdrop system and badges, UX/UI improvements, 2 traditional draw models, community partnerships, NFT special pack. On-chain VRF.',
   },
   {
     phase: 'Phase 3',

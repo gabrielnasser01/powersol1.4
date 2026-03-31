@@ -248,7 +248,7 @@ export function DashboardSupport() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-purple-500">-</span>
-                  <span>Report suspicious activity to security@powersol.io</span>
+                  <span>Report suspicious activity to support@powersol.app</span>
                 </li>
               </ul>
             </div>

@@ -244,7 +244,7 @@ export function DashboardSupport() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-purple-500">-</span>
-                  <span>Always verify you're on the official powersol.io domain</span>
+                  <span>Always verify you're on the official powersol.app domain</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-purple-500">-</span>

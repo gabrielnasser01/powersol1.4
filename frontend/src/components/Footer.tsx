@@ -86,7 +86,7 @@ export function Footer() {
             </Link>
             
             <p className="text-zinc-400 leading-relaxed">
-              The lottery protocol on Solana. Fair, transparent, and instant.
+              The decentralized protocol on Solana. Provably Fair Draws, Transparent, Secure and Instant.
             </p>
             
             <div className="flex space-x-4">

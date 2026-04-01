@@ -1052,6 +1052,399 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: true, affiliate_id, new_code: trimmed });
     }
 
+    if (action === "compliance-stats") {
+      const [
+        { count: totalWarnings },
+        { count: activeWarnings },
+        { count: totalReports },
+        { count: openReports },
+        { count: totalOfacChecks },
+        { count: ofacFlagged },
+        { count: ageVerified },
+        { count: totalUsers },
+      ] = await Promise.all([
+        supabase.from("compliance_warnings").select("*", { count: "exact", head: true }),
+        supabase.from("compliance_warnings").select("*", { count: "exact", head: true }).eq("resolved", false),
+        supabase.from("compliance_reports").select("*", { count: "exact", head: true }),
+        supabase.from("compliance_reports").select("*", { count: "exact", head: true }).in("status", ["open", "investigating"]),
+        supabase.from("ofac_checks").select("*", { count: "exact", head: true }),
+        supabase.from("ofac_checks").select("*", { count: "exact", head: true }).eq("is_flagged", true),
+        supabase.from("users").select("*", { count: "exact", head: true }).eq("age_verified", true),
+        supabase.from("users").select("*", { count: "exact", head: true }),
+      ]);
+
+      const { data: recentWarnings } = await supabase
+        .from("compliance_warnings")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const { data: recentReports } = await supabase
+        .from("compliance_reports")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const { data: flaggedUsers } = await supabase
+        .from("users")
+        .select("wallet_address, display_name, compliance_status, is_banned, ofac_flagged, age_verified, created_at")
+        .neq("compliance_status", "clear")
+        .order("created_at", { ascending: false });
+
+      return jsonResponse({
+        totalWarnings: totalWarnings || 0,
+        activeWarnings: activeWarnings || 0,
+        totalReports: totalReports || 0,
+        openReports: openReports || 0,
+        totalOfacChecks: totalOfacChecks || 0,
+        ofacFlagged: ofacFlagged || 0,
+        ageVerified: ageVerified || 0,
+        totalUsers: totalUsers || 0,
+        recentWarnings: recentWarnings || [],
+        recentReports: recentReports || [],
+        flaggedUsers: flaggedUsers || [],
+      });
+    }
+
+    if (action === "ofac-check") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { wallet_address } = body;
+      if (!wallet_address) return errorResponse("Missing wallet_address", 400);
+
+      const KNOWN_SANCTIONED: string[] = [
+        "t1Kvs5gjEoMbfMnHJPnKJ4L3EFRsExDhDqsHRCxfN4d",
+        "3CBfnKDqDmKMbDmZCRxLNdnkSjwVKwXqJHTYHs2p3TXi",
+        "GvpCiTgq9dmCeGenBsVnETc6GULBNSpjMU3G9GdTEVXh",
+        "2CfAXRvnLDLaKJdQvvMfMmRPcPnGLNbcp4CWuyh6JUGL",
+        "5yEczGmfPHSiRQqiTjALOMai9xQShUfEdJGwHupmBiio",
+      ];
+
+      const isFlagged = KNOWN_SANCTIONED.some(
+        (s) => s.toLowerCase() === wallet_address.toLowerCase()
+      );
+
+      const matchDetails = isFlagged
+        ? { source: "OFAC SDN List", match_type: "exact_wallet", matched_entry: wallet_address }
+        : null;
+
+      const { error: insertError } = await supabase.from("ofac_checks").insert({
+        wallet_address,
+        check_type: "manual",
+        is_flagged: isFlagged,
+        match_details: matchDetails,
+        checked_by: adminWallet,
+        data_source: "ofac_sdn",
+      });
+
+      if (insertError) return errorResponse(insertError.message, 500);
+
+      await supabase
+        .from("users")
+        .update({
+          ofac_checked: true,
+          ofac_flagged: isFlagged,
+          ...(isFlagged ? { compliance_status: "flagged" } : {}),
+        })
+        .eq("wallet_address", wallet_address);
+
+      if (isFlagged) {
+        await supabase.from("compliance_warnings").insert({
+          wallet_address,
+          warning_type: "ofac_match",
+          severity: "critical",
+          description: `Wallet matched OFAC sanctioned address list. Immediate review required.`,
+          issued_by: adminWallet,
+        });
+      }
+
+      return jsonResponse({
+        wallet_address,
+        is_flagged: isFlagged,
+        match_details: matchDetails,
+        checked_at: new Date().toISOString(),
+      });
+    }
+
+    if (action === "ofac-check-history") {
+      const wallet = url.searchParams.get("target_wallet");
+      let query = supabase
+        .from("ofac_checks")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (wallet) {
+        query = query.eq("wallet_address", wallet);
+      }
+
+      const { data } = await query.limit(100);
+      return jsonResponse(data || []);
+    }
+
+    if (action === "issue-warning") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { wallet_address, warning_type, severity, description } = body;
+
+      if (!wallet_address || !warning_type || !severity || !description) {
+        return errorResponse("Missing required fields", 400);
+      }
+      if (!["low", "medium", "high", "critical"].includes(severity)) {
+        return errorResponse("Invalid severity", 400);
+      }
+
+      const { error: insertError } = await supabase.from("compliance_warnings").insert({
+        wallet_address,
+        warning_type,
+        severity,
+        description,
+        issued_by: adminWallet,
+      });
+
+      if (insertError) return errorResponse(insertError.message, 500);
+
+      if (severity === "high" || severity === "critical") {
+        await supabase
+          .from("users")
+          .update({ compliance_status: severity === "critical" ? "flagged" : "warning" })
+          .eq("wallet_address", wallet_address);
+      }
+
+      return jsonResponse({ success: true });
+    }
+
+    if (action === "resolve-warning") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { warning_id } = body;
+      if (!warning_id) return errorResponse("Missing warning_id", 400);
+
+      const { error: updateError } = await supabase
+        .from("compliance_warnings")
+        .update({
+          resolved: true,
+          resolved_at: new Date().toISOString(),
+          resolved_by: adminWallet,
+        })
+        .eq("id", warning_id);
+
+      if (updateError) return errorResponse(updateError.message, 500);
+      return jsonResponse({ success: true });
+    }
+
+    if (action === "compliance-warnings") {
+      const wallet = url.searchParams.get("target_wallet");
+      const showResolved = url.searchParams.get("show_resolved") === "true";
+
+      let query = supabase
+        .from("compliance_warnings")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (wallet) query = query.eq("wallet_address", wallet);
+      if (!showResolved) query = query.eq("resolved", false);
+
+      const { data } = await query.limit(200);
+      return jsonResponse(data || []);
+    }
+
+    if (action === "create-report") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { wallet_address, report_type, title, details, priority, evidence } = body;
+
+      if (!wallet_address || !report_type || !title || !details) {
+        return errorResponse("Missing required fields", 400);
+      }
+
+      const { error: insertError } = await supabase.from("compliance_reports").insert({
+        wallet_address,
+        report_type,
+        title,
+        details,
+        priority: priority || "medium",
+        evidence: evidence || null,
+        created_by: adminWallet,
+        status: "open",
+      });
+
+      if (insertError) return errorResponse(insertError.message, 500);
+
+      await supabase
+        .from("users")
+        .update({ compliance_status: "under_review" })
+        .eq("wallet_address", wallet_address);
+
+      return jsonResponse({ success: true });
+    }
+
+    if (action === "update-report") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { report_id, status, resolution_notes, assigned_to } = body;
+      if (!report_id) return errorResponse("Missing report_id", 400);
+
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (status) updates.status = status;
+      if (resolution_notes) updates.resolution_notes = resolution_notes;
+      if (assigned_to !== undefined) updates.assigned_to = assigned_to;
+      if (status === "resolved" || status === "dismissed") {
+        updates.resolved_at = new Date().toISOString();
+      }
+
+      const { error: updateError } = await supabase
+        .from("compliance_reports")
+        .update(updates)
+        .eq("id", report_id);
+
+      if (updateError) return errorResponse(updateError.message, 500);
+      return jsonResponse({ success: true });
+    }
+
+    if (action === "compliance-reports") {
+      const wallet = url.searchParams.get("target_wallet");
+      const statusFilter = url.searchParams.get("status") || "all";
+
+      let query = supabase
+        .from("compliance_reports")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (wallet) query = query.eq("wallet_address", wallet);
+      if (statusFilter !== "all") query = query.eq("status", statusFilter);
+
+      const { data } = await query.limit(200);
+      return jsonResponse(data || []);
+    }
+
+    if (action === "age-verifications") {
+      const wallet = url.searchParams.get("target_wallet");
+
+      let query = supabase
+        .from("age_verifications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (wallet) query = query.eq("wallet_address", wallet);
+
+      const { data } = await query.limit(200);
+      return jsonResponse(data || []);
+    }
+
+    if (action === "record-age-verification") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { wallet_address, signature, message_signed } = body;
+
+      if (!wallet_address || !signature || !message_signed) {
+        return errorResponse("Missing required fields", 400);
+      }
+
+      const { error: insertError } = await supabase.from("age_verifications").insert({
+        wallet_address,
+        signature,
+        message_signed,
+        verified_at: new Date().toISOString(),
+      });
+
+      if (insertError) return errorResponse(insertError.message, 500);
+
+      await supabase
+        .from("users")
+        .update({ age_verified: true })
+        .eq("wallet_address", wallet_address);
+
+      return jsonResponse({ success: true });
+    }
+
+    if (action === "update-compliance-status") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { wallet_address, compliance_status } = body;
+
+      if (!wallet_address || !compliance_status) {
+        return errorResponse("Missing required fields", 400);
+      }
+      if (!["clear", "warning", "flagged", "banned", "under_review"].includes(compliance_status)) {
+        return errorResponse("Invalid compliance_status", 400);
+      }
+
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ compliance_status })
+        .eq("wallet_address", wallet_address);
+
+      if (updateError) return errorResponse(updateError.message, 500);
+
+      if (compliance_status === "banned") {
+        await supabase
+          .from("users")
+          .update({
+            is_banned: true,
+            banned_at: new Date().toISOString(),
+            banned_reason: "Compliance violation - banned via compliance center",
+          })
+          .eq("wallet_address", wallet_address);
+
+        await supabase.from("admin_ban_log").insert({
+          admin_wallet: adminWallet,
+          target_wallet: wallet_address,
+          action: "ban",
+          reason: "Compliance violation - banned via compliance center",
+        });
+      }
+
+      return jsonResponse({ success: true });
+    }
+
+    if (action === "wallet-compliance-summary") {
+      const wallet = url.searchParams.get("target_wallet");
+      if (!wallet) return errorResponse("Missing target_wallet", 400);
+
+      const [
+        { data: user },
+        { data: warnings },
+        { data: reports },
+        { data: ofacChecks },
+        { data: ageVerification },
+      ] = await Promise.all([
+        supabase
+          .from("users")
+          .select("wallet_address, display_name, compliance_status, is_banned, ofac_checked, ofac_flagged, age_verified, created_at")
+          .eq("wallet_address", wallet)
+          .maybeSingle(),
+        supabase
+          .from("compliance_warnings")
+          .select("*")
+          .eq("wallet_address", wallet)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("compliance_reports")
+          .select("*")
+          .eq("wallet_address", wallet)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("ofac_checks")
+          .select("*")
+          .eq("wallet_address", wallet)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("age_verifications")
+          .select("*")
+          .eq("wallet_address", wallet)
+          .order("created_at", { ascending: false })
+          .limit(1),
+      ]);
+
+      return jsonResponse({
+        user: user || null,
+        warnings: warnings || [],
+        reports: reports || [],
+        ofac_checks: ofacChecks || [],
+        age_verification: (ageVerification && ageVerification[0]) || null,
+      });
+    }
+
     return errorResponse("Unknown action", 400);
   } catch (err) {
     return errorResponse(

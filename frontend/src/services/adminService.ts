@@ -188,6 +188,92 @@ export interface WhaleHistoryData {
   total_snapshots: number;
 }
 
+export interface ComplianceStats {
+  totalWarnings: number;
+  activeWarnings: number;
+  totalReports: number;
+  openReports: number;
+  totalOfacChecks: number;
+  ofacFlagged: number;
+  ageVerified: number;
+  totalUsers: number;
+  recentWarnings: ComplianceWarning[];
+  recentReports: ComplianceReport[];
+  flaggedUsers: FlaggedUser[];
+}
+
+export interface FlaggedUser {
+  wallet_address: string;
+  display_name: string | null;
+  compliance_status: string;
+  is_banned: boolean;
+  ofac_flagged: boolean;
+  age_verified: boolean;
+  created_at: string;
+}
+
+export interface ComplianceWarning {
+  id: string;
+  wallet_address: string;
+  warning_type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  description: string;
+  issued_by: string;
+  acknowledged: boolean;
+  acknowledged_at: string | null;
+  resolved: boolean;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  created_at: string;
+}
+
+export interface ComplianceReport {
+  id: string;
+  wallet_address: string;
+  report_type: string;
+  title: string;
+  details: string;
+  evidence: any;
+  status: 'open' | 'investigating' | 'resolved' | 'dismissed';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  created_by: string;
+  assigned_to: string | null;
+  resolution_notes: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OfacCheck {
+  id: string;
+  wallet_address: string;
+  check_type: string;
+  is_flagged: boolean;
+  match_details: any;
+  checked_by: string | null;
+  data_source: string;
+  created_at: string;
+}
+
+export interface AgeVerification {
+  id: string;
+  wallet_address: string;
+  signature: string;
+  message_signed: string;
+  verified_at: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
+export interface WalletComplianceSummary {
+  user: FlaggedUser | null;
+  warnings: ComplianceWarning[];
+  reports: ComplianceReport[];
+  ofac_checks: OfacCheck[];
+  age_verification: AgeVerification | null;
+}
+
 class AdminService {
   async getPlatformStats() {
     return adminFetch({ action: 'stats' }, getWallet());
@@ -271,6 +357,78 @@ class AdminService {
       decision,
       admin_notes: adminNotes,
     });
+  }
+
+  async getComplianceStats(): Promise<ComplianceStats> {
+    return adminFetch({ action: 'compliance-stats' }, getWallet());
+  }
+
+  async runOfacCheck(walletAddress: string): Promise<{ wallet_address: string; is_flagged: boolean; match_details: any; checked_at: string }> {
+    return adminFetch({ action: 'ofac-check' }, getWallet(), 'POST', { wallet_address: walletAddress });
+  }
+
+  async getOfacCheckHistory(walletAddress?: string): Promise<OfacCheck[]> {
+    const params: Record<string, string> = { action: 'ofac-check-history' };
+    if (walletAddress) params.target_wallet = walletAddress;
+    return adminFetch(params, getWallet());
+  }
+
+  async issueWarning(walletAddress: string, warningType: string, severity: string, description: string): Promise<{ success: boolean }> {
+    return adminFetch({ action: 'issue-warning' }, getWallet(), 'POST', {
+      wallet_address: walletAddress,
+      warning_type: warningType,
+      severity,
+      description,
+    });
+  }
+
+  async resolveWarning(warningId: string): Promise<{ success: boolean }> {
+    return adminFetch({ action: 'resolve-warning' }, getWallet(), 'POST', { warning_id: warningId });
+  }
+
+  async getComplianceWarnings(walletAddress?: string, showResolved = false): Promise<ComplianceWarning[]> {
+    const params: Record<string, string> = { action: 'compliance-warnings', show_resolved: String(showResolved) };
+    if (walletAddress) params.target_wallet = walletAddress;
+    return adminFetch(params, getWallet());
+  }
+
+  async createReport(data: { wallet_address: string; report_type: string; title: string; details: string; priority?: string; evidence?: any }): Promise<{ success: boolean }> {
+    return adminFetch({ action: 'create-report' }, getWallet(), 'POST', data);
+  }
+
+  async updateReport(reportId: string, updates: { status?: string; resolution_notes?: string; assigned_to?: string }): Promise<{ success: boolean }> {
+    return adminFetch({ action: 'update-report' }, getWallet(), 'POST', { report_id: reportId, ...updates });
+  }
+
+  async getComplianceReports(walletAddress?: string, status = 'all'): Promise<ComplianceReport[]> {
+    const params: Record<string, string> = { action: 'compliance-reports', status };
+    if (walletAddress) params.target_wallet = walletAddress;
+    return adminFetch(params, getWallet());
+  }
+
+  async getAgeVerifications(walletAddress?: string): Promise<AgeVerification[]> {
+    const params: Record<string, string> = { action: 'age-verifications' };
+    if (walletAddress) params.target_wallet = walletAddress;
+    return adminFetch(params, getWallet());
+  }
+
+  async recordAgeVerification(walletAddress: string, signature: string, messageSigned: string): Promise<{ success: boolean }> {
+    return adminFetch({ action: 'record-age-verification' }, getWallet(), 'POST', {
+      wallet_address: walletAddress,
+      signature,
+      message_signed: messageSigned,
+    });
+  }
+
+  async updateComplianceStatus(walletAddress: string, status: string): Promise<{ success: boolean }> {
+    return adminFetch({ action: 'update-compliance-status' }, getWallet(), 'POST', {
+      wallet_address: walletAddress,
+      compliance_status: status,
+    });
+  }
+
+  async getWalletComplianceSummary(walletAddress: string): Promise<WalletComplianceSummary> {
+    return adminFetch({ action: 'wallet-compliance-summary', target_wallet: walletAddress }, getWallet());
   }
 }
 

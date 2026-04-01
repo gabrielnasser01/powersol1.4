@@ -333,9 +333,26 @@ function WhaleDetailModal({ whale, onClose }: { whale: WhaleUser; onClose: () =>
             <h3 className="text-white font-mono text-sm font-bold">Whale Analysis</h3>
             <WhaleScoreBadge score={whale.whale_score} />
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  await adminService.createWhaleWarning(
+                    whale.wallet_address,
+                    whale.whale_score,
+                    `Whale manipulation: ${whale.overall_concentration}% concentration, ${whale.global_ticket_share}% global share, ${whale.win_rate}% win rate. Score: ${whale.whale_score}/100.`
+                  );
+                } catch {}
+              }}
+              className="px-2.5 py-1.5 rounded-lg font-mono text-xs border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
+            >
+              <AlertTriangle className="w-3 h-3 inline mr-1" />
+              Flag Compliance
+            </button>
+            <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 mb-4">
@@ -1084,6 +1101,7 @@ export function AdminUsers() {
                         </span>
                       </th>
                       <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Last Login</th>
+                      <th className="text-center py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Warnings</th>
                       <th className="text-center py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Status</th>
                       <th className="text-center py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Actions</th>
                     </tr>
@@ -1133,6 +1151,29 @@ export function AdminUsers() {
                         </td>
                         <td className="py-3 px-4 text-right text-zinc-500 font-mono text-xs">
                           {user.last_login_date || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {user.warning_count > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 rounded-full border"
+                              style={{
+                                color: user.max_warning_severity === 'critical' ? '#ef4444' :
+                                       user.max_warning_severity === 'high' ? '#f97316' :
+                                       user.max_warning_severity === 'medium' ? '#f59e0b' : '#a1a1aa',
+                                borderColor: user.max_warning_severity === 'critical' ? 'rgba(239,68,68,0.3)' :
+                                             user.max_warning_severity === 'high' ? 'rgba(249,115,22,0.3)' :
+                                             user.max_warning_severity === 'medium' ? 'rgba(245,158,11,0.3)' : 'rgba(161,161,170,0.3)',
+                                background: user.max_warning_severity === 'critical' ? 'rgba(239,68,68,0.1)' :
+                                            user.max_warning_severity === 'high' ? 'rgba(249,115,22,0.1)' :
+                                            user.max_warning_severity === 'medium' ? 'rgba(245,158,11,0.1)' : 'rgba(161,161,170,0.1)',
+                              }}
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                              {user.warning_count}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-700 font-mono text-xs">-</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           {user.is_banned ? (

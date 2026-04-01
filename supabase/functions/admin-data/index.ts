@@ -137,15 +137,32 @@ Deno.serve(async (req: Request) => {
           (prizeMap[p.user_wallet] || 0) + Number(p.prize_amount_lamports || 0);
       });
 
-      const { data: missionProgress } = await supabase
-        .from("user_mission_progress")
-        .select("wallet_address, completed");
+      const [{ data: missionProgress }, { data: activeWarnings }] = await Promise.all([
+        supabase
+          .from("user_mission_progress")
+          .select("wallet_address, completed"),
+        supabase
+          .from("compliance_warnings")
+          .select("wallet_address, severity")
+          .eq("resolved", false),
+      ]);
 
       const missionMap: Record<string, number> = {};
       (missionProgress || []).forEach((m: any) => {
         const key = m.wallet_address || "";
         if (m.completed) {
           missionMap[key] = (missionMap[key] || 0) + 1;
+        }
+      });
+
+      const warningMap: Record<string, { count: number; max_severity: string }> = {};
+      const severityOrder: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+      (activeWarnings || []).forEach((w: any) => {
+        const key = w.wallet_address || "";
+        if (!warningMap[key]) warningMap[key] = { count: 0, max_severity: "low" };
+        warningMap[key].count += 1;
+        if ((severityOrder[w.severity] || 0) > (severityOrder[warningMap[key].max_severity] || 0)) {
+          warningMap[key].max_severity = w.severity;
         }
       });
 
@@ -160,10 +177,13 @@ Deno.serve(async (req: Request) => {
         banned_at: u.banned_at,
         banned_reason: u.banned_reason,
         created_at: u.created_at,
+        compliance_status: u.compliance_status || "clear",
         total_tickets: ticketMap[u.wallet_address]?.count || 0,
         total_spent_sol: ticketMap[u.wallet_address]?.sol || 0,
         total_won_lamports: prizeMap[u.wallet_address] || 0,
         missions_completed: missionMap[u.wallet_address] || 0,
+        warning_count: warningMap[u.wallet_address]?.count || 0,
+        max_warning_severity: warningMap[u.wallet_address]?.max_severity || null,
       }));
 
       return jsonResponse(result);
@@ -1112,17 +1132,14 @@ Deno.serve(async (req: Request) => {
       const { wallet_address } = body;
       if (!wallet_address) return errorResponse("Missing wallet_address", 400);
 
-      const KNOWN_SANCTIONED: string[] = [
-        "t1Kvs5gjEoMbfMnHJPnKJ4L3EFRsExDhDqsHRCxfN4d",
-        "3CBfnKDqDmKMbDmZCRxLNdnkSjwVKwXqJHTYHs2p3TXi",
-        "GvpCiTgq9dmCeGenBsVnETc6GULBNSpjMU3G9GdTEVXh",
-        "2CfAXRvnLDLaKJdQvvMfMmRPcPnGLNbcp4CWuyh6JUGL",
-        "5yEczGmfPHSiRQqiTjALOMai9xQShUfEdJGwHupmBiio",
-      ];
+      const { data: sanctionedMatch } = await supabase
+        .from("ofac_sanctioned_addresses")
+        .select("id")
+        .eq("wallet_address", wallet_address)
+        .eq("is_active", true)
+        .maybeSingle();
 
-      const isFlagged = KNOWN_SANCTIONED.some(
-        (s) => s.toLowerCase() === wallet_address.toLowerCase()
-      );
+      const isFlagged = !!sanctionedMatch;
 
       const matchDetails = isFlagged
         ? { source: "OFAC SDN List", match_type: "exact_wallet", matched_entry: wallet_address }
@@ -1443,6 +1460,94 @@ Deno.serve(async (req: Request) => {
         ofac_checks: ofacChecks || [],
         age_verification: (ageVerification && ageVerification[0]) || null,
       });
+    }
+
+    if (action === "create-sybil-warning") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { wallet_address, risk_score, details } = body;
+      if (!wallet_address) return errorResponse("Missing wallet_address", 400);
+
+      const severity = risk_score >= 70 ? "critical" : risk_score >= 40 ? "high" : risk_score >= 20 ? "medium" : "low";
+
+      const { data: existing } = await supabase
+        .from("compliance_warnings")
+        .select("id")
+        .eq("wallet_address", wallet_address)
+        .eq("warning_type", "sybil_attack")
+        .eq("resolved", false)
+        .maybeSingle();
+
+      if (existing) {
+        return jsonResponse({ success: true, already_exists: true, warning_id: existing.id });
+      }
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("compliance_warnings")
+        .insert({
+          wallet_address,
+          warning_type: "sybil_attack",
+          severity,
+          description: details || `Sybil attack detected. Risk score: ${risk_score}/100. Flagged via affiliate analysis.`,
+          issued_by: adminWallet,
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (insertError) return errorResponse(insertError.message, 500);
+
+      if (severity === "critical" || severity === "high") {
+        await supabase
+          .from("users")
+          .update({ compliance_status: severity === "critical" ? "flagged" : "warning" })
+          .eq("wallet_address", wallet_address);
+      }
+
+      return jsonResponse({ success: true, warning_id: inserted?.id, severity });
+    }
+
+    if (action === "create-whale-warning") {
+      if (req.method !== "POST") return errorResponse("Method not allowed", 405);
+      const body = await req.json();
+      const { wallet_address, whale_score, details } = body;
+      if (!wallet_address) return errorResponse("Missing wallet_address", 400);
+
+      const severity = whale_score >= 70 ? "critical" : whale_score >= 40 ? "high" : whale_score >= 20 ? "medium" : "low";
+
+      const { data: existing } = await supabase
+        .from("compliance_warnings")
+        .select("id")
+        .eq("wallet_address", wallet_address)
+        .eq("warning_type", "whale_manipulation")
+        .eq("resolved", false)
+        .maybeSingle();
+
+      if (existing) {
+        return jsonResponse({ success: true, already_exists: true, warning_id: existing.id });
+      }
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("compliance_warnings")
+        .insert({
+          wallet_address,
+          warning_type: "whale_manipulation",
+          severity,
+          description: details || `Whale manipulation risk detected. Whale score: ${whale_score}/100. Flagged via ticket concentration analysis.`,
+          issued_by: adminWallet,
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (insertError) return errorResponse(insertError.message, 500);
+
+      if (severity === "critical" || severity === "high") {
+        await supabase
+          .from("users")
+          .update({ compliance_status: severity === "critical" ? "flagged" : "warning" })
+          .eq("wallet_address", wallet_address);
+      }
+
+      return jsonResponse({ success: true, warning_id: inserted?.id, severity });
     }
 
     return errorResponse("Unknown action", 400);

@@ -546,6 +546,22 @@ function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () =
               >
                 RISK {alert.risk_score}/100
               </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await adminService.createSybilWarning(
+                      alert.wallet_address,
+                      alert.risk_score,
+                      `Sybil attack: ${alert.total_referrals} referrals, ${alert.single_ticket_rate}% single-ticket rate, ${alert.rapid_signups.length} rapid signups. Risk: ${alert.risk_score}/100.`
+                    );
+                    if (res.already_exists) alert.wallet_address;
+                  } catch {}
+                }}
+                className="px-2.5 py-1.5 rounded-lg font-mono text-xs border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
+              >
+                <AlertTriangle className="w-3 h-3 inline mr-1" />
+                Flag Compliance
+              </button>
               <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>

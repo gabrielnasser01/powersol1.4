@@ -56,10 +56,13 @@ export interface UserRanking {
   banned_at: string | null;
   banned_reason: string | null;
   created_at: string;
+  compliance_status: string;
   total_tickets: number;
   total_spent_sol: number;
   total_won_lamports: number;
   missions_completed: number;
+  warning_count: number;
+  max_warning_severity: string | null;
 }
 
 export interface AffiliateRanking {
@@ -429,6 +432,22 @@ class AdminService {
 
   async getWalletComplianceSummary(walletAddress: string): Promise<WalletComplianceSummary> {
     return adminFetch({ action: 'wallet-compliance-summary', target_wallet: walletAddress }, getWallet());
+  }
+
+  async createSybilWarning(walletAddress: string, riskScore: number, details?: string): Promise<{ success: boolean; warning_id?: string; severity?: string; already_exists?: boolean }> {
+    return adminFetch({ action: 'create-sybil-warning' }, getWallet(), 'POST', {
+      wallet_address: walletAddress,
+      risk_score: riskScore,
+      details,
+    });
+  }
+
+  async createWhaleWarning(walletAddress: string, whaleScore: number, details?: string): Promise<{ success: boolean; warning_id?: string; severity?: string; already_exists?: boolean }> {
+    return adminFetch({ action: 'create-whale-warning' }, getWallet(), 'POST', {
+      wallet_address: walletAddress,
+      whale_score: whaleScore,
+      details,
+    });
   }
 }
 

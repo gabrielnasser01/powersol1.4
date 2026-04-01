@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Trophy, Users, Coins, Shield, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Trophy, Users, Coins, Shield } from 'lucide-react';
 import { useWallet } from '../../contexts/WalletContext';
 
 interface AdminLayoutProps {
@@ -13,7 +13,6 @@ const navItems = [
   { path: '/adm/powerpoints', label: 'PowerPoints', icon: Trophy },
   { path: '/adm/affiliates', label: 'Affiliates', icon: Users },
   { path: '/adm/users', label: 'Users & Tickets', icon: Coins },
-  { path: '/adm/compliance', label: 'Compliance', icon: ShieldCheck },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {

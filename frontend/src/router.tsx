@@ -19,7 +19,7 @@ import { AffiliateDashboard } from './pages/AffiliateDashboard';
 import { AffiliateDashboardLevel3 } from './pages/AffiliateDashboardLevel3';
 import { DashboardHome, DashboardAnalytics, DashboardSupport } from './pages/dashboard';
 import { Whitepaper } from './pages/Whitepaper';
-import { AdminOverview, AdminPowerPoints, AdminAffiliates, AdminUsers, AdminCompliance } from './pages/admin';
+import { AdminOverview, AdminPowerPoints, AdminAffiliates, AdminUsers } from './pages/admin';
 
 export function AppRouter() {
   return (
@@ -54,7 +54,6 @@ export function AppRouter() {
           <Route path="/adm/powerpoints" element={<AdminPowerPoints />} />
           <Route path="/adm/affiliates" element={<AdminAffiliates />} />
           <Route path="/adm/users" element={<AdminUsers />} />
-          <Route path="/adm/compliance" element={<AdminCompliance />} />
         </Routes>
         <Footer />
         <BackToTop />

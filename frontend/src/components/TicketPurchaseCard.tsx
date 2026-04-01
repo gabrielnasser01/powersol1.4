@@ -11,7 +11,6 @@ import { anchorService, LotteryInfo } from '../services/anchorService';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../services/api';
 import { getActiveAffiliateCode, initAffiliateTracking } from '../utils/affiliateTracking';
-import { complianceService } from '../services/complianceService';
 
 export function TicketPurchaseCard() {
   const { publicKey, connected, balance, getWalletAdapter, refreshBalance } = useWallet();
@@ -116,17 +115,6 @@ export function TicketPurchaseCard() {
 
     setIsLoading(true);
     setError('');
-
-    try {
-      const compliance = await complianceService.canInteract(publicKey);
-      if (!compliance.allowed) {
-        setError(compliance.reason || 'Compliance check failed. Please complete verification first.');
-        setIsLoading(false);
-        return;
-      }
-    } catch {
-      // allow through if compliance service unavailable
-    }
 
     const currentAffiliateCode = getActiveAffiliateCode();
     let signature: string = '';

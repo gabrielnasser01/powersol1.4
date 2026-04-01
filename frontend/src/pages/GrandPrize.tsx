@@ -14,7 +14,6 @@ import { useWallet } from '../contexts/WalletContext';
 import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../services/api';
-import { complianceService } from '../services/complianceService';
 
 export function GrandPrize() {
   const navigate = useNavigate();
@@ -153,17 +152,6 @@ export function GrandPrize() {
 
     setIsLoading(true);
     setError('');
-
-    try {
-      const compliance = await complianceService.canInteract(publicKey);
-      if (!compliance.allowed) {
-        setError(compliance.reason || 'Compliance check failed. Please complete verification first.');
-        setIsLoading(false);
-        return;
-      }
-    } catch {
-      // allow through if compliance service unavailable
-    }
 
     try {
       const wallet = getWalletAdapter();

@@ -3,11 +3,29 @@ import { AppRouter } from './router';
 import { initializeStorage } from './store/persist';
 import { useSpotifyOptimizations } from './hooks/useSpotifyOptimizations';
 import { preloadCriticalResources } from './utils/performance';
-import { WalletProvider } from './contexts/WalletContext';
+import { WalletProvider, useWallet } from './contexts/WalletContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { initAffiliateTracking } from './utils/affiliateTracking';
 import { solPriceService } from './services/solPriceService';
 import { notificationService } from './services/notificationService';
+import { useAgeVerification } from './hooks/useAgeVerification';
+import { AgeVerificationModal } from './components/AgeVerificationModal';
+
+function AgeVerificationGate({ children }: { children: React.ReactNode }) {
+  const { publicKey, connected } = useWallet();
+  const { showModal, recordVerification, setShowModal } = useAgeVerification(connected ? publicKey : null);
+
+  return (
+    <>
+      {children}
+      <AgeVerificationModal
+        open={showModal}
+        onVerified={() => setShowModal(false)}
+        recordVerification={recordVerification}
+      />
+    </>
+  );
+}
 
 function App() {
   useSpotifyOptimizations();
@@ -28,7 +46,9 @@ function App() {
   return (
     <WalletProvider>
       <ToastProvider>
-        <AppRouter />
+        <AgeVerificationGate>
+          <AppRouter />
+        </AgeVerificationGate>
       </ToastProvider>
     </WalletProvider>
   );

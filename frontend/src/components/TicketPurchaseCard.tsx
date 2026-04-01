@@ -11,9 +11,12 @@ import { anchorService, LotteryInfo } from '../services/anchorService';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../services/api';
 import { getActiveAffiliateCode, initAffiliateTracking } from '../utils/affiliateTracking';
+import { useAgeVerification } from '../hooks/useAgeVerification';
+import { AgeVerificationModal } from './AgeVerificationModal';
 
 export function TicketPurchaseCard() {
   const { publicKey, connected, balance, getWalletAdapter, refreshBalance } = useWallet();
+  const { isVerified, showModal: showAgeModal, setShowModal: setShowAgeModal, recordVerification } = useAgeVerification(connected ? publicKey : null);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -107,6 +110,11 @@ export function TicketPurchaseCard() {
 
   const handlePurchase = async () => {
     if (!connected || !publicKey) return;
+
+    if (!isVerified) {
+      setShowAgeModal(true);
+      return;
+    }
 
     if (balance < totalSol) {
       setError(`Insufficient SOL balance. You need ${totalSol.toFixed(2)} SOL but only have ${balance.toFixed(4)} SOL.`);
@@ -539,6 +547,12 @@ export function TicketPurchaseCard() {
           Connect your wallet to purchase tickets
         </p>
       )}
+
+      <AgeVerificationModal
+        open={showAgeModal}
+        onVerified={() => setShowAgeModal(false)}
+        recordVerification={recordVerification}
+      />
     </motion.div>
   );
 }

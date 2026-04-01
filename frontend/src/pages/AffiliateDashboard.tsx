@@ -4,6 +4,9 @@ import { Copy, Check, ExternalLink, Users, DollarSign, MousePointer, CreditCard,
 import { userStorage } from '../store/persist';
 import { useNavigate } from 'react-router-dom';
 import { affiliateDashboardService, WeeklyHistory } from '../services/affiliateDashboardService';
+import { useWallet } from '../contexts/WalletContext';
+import { useAgeVerification } from '../hooks/useAgeVerification';
+import { AgeVerificationModal } from '../components/AgeVerificationModal';
 
 interface AffiliateStats {
   totalClicks: number;
@@ -26,6 +29,8 @@ interface AffiliateStats {
 
 export function AffiliateDashboard() {
   const navigate = useNavigate();
+  const { publicKey, connected } = useWallet();
+  const { isVerified, showModal: showAgeModal, setShowModal: setShowAgeModal, recordVerification } = useAgeVerification(connected ? publicKey : null);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showClicks, setShowClicks] = useState(true);
@@ -654,6 +659,31 @@ export function AffiliateDashboard() {
           )}
         </AnimatePresence>
       </div>
+
+      {connected && !isVerified && (
+        <div className="fixed inset-0 z-[9998] bg-black/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center p-8">
+            <p className="text-zinc-400 font-mono text-sm mb-4">Age verification required to access the Affiliate Dashboard.</p>
+            <button
+              onClick={() => setShowAgeModal(true)}
+              className="px-6 py-3 rounded-xl font-mono font-bold text-sm"
+              style={{
+                background: 'linear-gradient(135deg, #ef4444, #f97316)',
+                color: '#000',
+                boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)',
+              }}
+            >
+              VERIFY AGE
+            </button>
+          </div>
+        </div>
+      )}
+
+      <AgeVerificationModal
+        open={showAgeModal}
+        onVerified={() => setShowAgeModal(false)}
+        recordVerification={recordVerification}
+      />
     </div>
   );
 }

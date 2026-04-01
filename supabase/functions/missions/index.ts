@@ -114,10 +114,17 @@ async function getUserProgress(walletAddress: string) {
   const supabase = getServiceClient();
   const missions = await getAllMissions();
 
-  const { data: progressData, error } = await supabase
-    .from("user_mission_progress")
-    .select("*")
-    .eq("wallet_address", walletAddress);
+  const [{ data: progressData, error }, { data: userData }] = await Promise.all([
+    supabase
+      .from("user_mission_progress")
+      .select("*")
+      .eq("wallet_address", walletAddress),
+    supabase
+      .from("users")
+      .select("login_streak, last_login_date")
+      .eq("wallet_address", walletAddress)
+      .maybeSingle(),
+  ]);
 
   if (error) throw error;
 
@@ -126,9 +133,45 @@ async function getUserProgress(walletAddress: string) {
   );
 
   const now = new Date();
+  const realStreak = userData?.login_streak || 0;
+  const lastLoginDate = userData?.last_login_date ? new Date(userData.last_login_date + "T00:00:00Z") : null;
+  const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const yesterdayUTC = new Date(todayUTC);
+  yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+
+  const streakIsAlive = lastLoginDate && (
+    lastLoginDate.getTime() === todayUTC.getTime() ||
+    lastLoginDate.getTime() === yesterdayUTC.getTime()
+  );
 
   return missions.map((mission: Record<string, unknown>) => {
     const progress = progressMap.get(mission.id as string) as Record<string, unknown> | undefined;
+    const missionKey = mission.mission_key as string;
+
+    if (missionKey === "weekly_streak") {
+      if (!progress) {
+        return { ...mission, user_progress: null };
+      }
+
+      if (progress.completed === true) {
+        return {
+          ...mission,
+          user_progress: { ...progress, completed: true },
+        };
+      }
+
+      if (!streakIsAlive || realStreak < (progress.progress as Record<string, unknown>)?.eligible_streak_count) {
+        const prog = progress.progress as Record<string, unknown> || {};
+        if (prog.eligible) {
+          return {
+            ...mission,
+            user_progress: { ...progress, progress: { ...prog, eligible: false } },
+          };
+        }
+      }
+
+      return { ...mission, user_progress: progress };
+    }
 
     if (progress && progress.completed === true) {
       const missionType = mission.mission_type as string;
@@ -442,11 +485,20 @@ async function completeLogin(walletAddress: string) {
     .maybeSingle();
 
   const streak = userData?.login_streak || 0;
+  let streakAutoClaimed = false;
+
   if (streak >= 7) {
     await tryMarkEligible(walletAddress, "weekly_streak");
+
+    try {
+      await claimMission(walletAddress, "weekly_streak");
+      streakAutoClaimed = true;
+    } catch {
+      streakAutoClaimed = false;
+    }
   }
 
-  return { ...loginResult, loginStreak: streak };
+  return { ...loginResult, loginStreak: streakAutoClaimed ? 0 : streak, streakAutoClaimed };
 }
 
 async function recordVisit(walletAddress: string) {

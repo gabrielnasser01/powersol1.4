@@ -95,7 +95,7 @@ export function DailyMissions() {
       setLoading(true);
 
       if (user.publicKey && isConnected) {
-        const [progressRes, { data: userData }] = await Promise.all([
+        const [progressRes, { data: userData }, loginRes] = await Promise.all([
           fetch(`${missionsApiUrl}/my-progress?wallet_address=${user.publicKey}`, {
             headers: apiHeaders,
           }),
@@ -104,13 +104,41 @@ export function DailyMissions() {
             .select('login_streak')
             .eq('wallet_address', user.publicKey)
             .maybeSingle(),
+          fetch(`${missionsApiUrl}/login?wallet_address=${user.publicKey}`, {
+            method: 'POST',
+            headers: apiHeaders,
+          }).catch(() => null),
         ]);
 
-        setLoginStreak(userData?.login_streak || 0);
+        let currentStreak = userData?.login_streak || 0;
+
+        if (loginRes?.ok) {
+          try {
+            const loginData = await loginRes.json();
+            currentStreak = loginData.loginStreak ?? currentStreak;
+            if (loginData.streakAutoClaimed) {
+              currentStreak = 0;
+              toast.info('Streak Master completed! +150 POWER auto-claimed!');
+              userStatsStorage.addMissionPoints(150);
+              window.dispatchEvent(new CustomEvent('missionPointsChange'));
+            }
+          } catch {}
+        }
+
+        setLoginStreak(currentStreak);
 
         if (progressRes.ok) {
           const missionsWithProgress = await progressRes.json();
           setMissions(missionsWithProgress);
+
+          if (loginRes?.ok) {
+            const refreshRes = await fetch(`${missionsApiUrl}/my-progress?wallet_address=${user.publicKey}`, {
+              headers: apiHeaders,
+            });
+            if (refreshRes.ok) {
+              setMissions(await refreshRes.json());
+            }
+          }
         }
       } else {
         const { data: missionsData } = await supabase
@@ -634,6 +662,22 @@ export function DailyMissions() {
                     if (mission.mission_key === 'daily_login') {
                       await markEligibleAPI('daily_login');
                       handleClaimMission('daily_login');
+
+                      try {
+                        const loginRes = await fetch(`${missionsApiUrl}/login?wallet_address=${user.publicKey}`, {
+                          method: 'POST',
+                          headers: apiHeaders,
+                        });
+                        if (loginRes.ok) {
+                          const loginData = await loginRes.json();
+                          setLoginStreak(loginData.loginStreak || 0);
+                          if (loginData.streakAutoClaimed) {
+                            toast.info('Streak Master completed! +150 POWER auto-claimed!');
+                            await loadMissions();
+                          }
+                        }
+                      } catch {}
+
                       return;
                     }
 

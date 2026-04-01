@@ -22,7 +22,7 @@ const SOLANA_RPC_URL =
 const LOTTERY_WALLET_SECRETS: Record<string, string> = {
   "tri-daily": "SOLANA_LOTTERY_TRI_DAILY_PRIVATE",
   weekly: "SOLANA_LOTTERY_WEEKLY_PRIVATE",
-  jackpot: "SOLANA_LOTTERY_MEGA_PRIVATE",
+  jackpot: "SOLANA_LOTTERY_WEEKLY_PRIVATE",
   "grand-prize": "SOLANA_LOTTERY_MEGA_PRIVATE",
   "special-event": "SOLANA_SPECIAL_EVENT_PRIVATE",
 };

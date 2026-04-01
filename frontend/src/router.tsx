@@ -9,7 +9,7 @@ import { Affiliates } from './pages/Affiliates';
 import { Profile } from './pages/Profile';
 import { Transparency } from './pages/Transparency';
 import { FAQ } from './pages/FAQ';
-import { Terms } from './pages/Terms';
+import { Terms } from './pages/terms';
 import { Jackpot } from './pages/Jackpot';
 import { SpecialEvent } from './pages/SpecialEvent';
 import { GrandPrize } from './pages/GrandPrize';

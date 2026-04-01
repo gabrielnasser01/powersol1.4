@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   Users, Ticket, DollarSign, Trophy, TrendingUp, Flame,
   Calendar, ChevronDown, AlertTriangle, ArrowUpRight, ArrowDownRight,
-  BarChart3,
+  BarChart3, Download, Loader,
 } from 'lucide-react';
 import { adminService, RevenueData, WalletActivity } from '../../services/adminService';
 import { AdminLayout } from './AdminLayout';
@@ -11,6 +11,7 @@ import { AdminGuard } from './AdminGuard';
 import { TreasuryGrowthChart } from '../../components/TreasuryGrowthChart';
 import { solPriceService } from '../../services/solPriceService';
 import { useAdminAutoRefresh } from '../../hooks/useAdminAutoRefresh';
+import { pdfReportService } from '../../services/pdfReportService';
 
 function StatCard({ label, value, subValue, icon: Icon, color, trend }: {
   label: string;
@@ -264,6 +265,7 @@ export function AdminOverview() {
   const [solPrice, setSolPrice] = useState(solPriceService.getPrice());
 
   const [monthlyRevenue, setMonthlyRevenue] = useState<RevenueData[]>([]);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const periodRef = React.useRef(period);
   periodRef.current = period;
 
@@ -298,6 +300,17 @@ export function AdminOverview() {
     adminService.getRevenueData(period).then(setRevenue);
   }, [period]);
 
+  const handleDownloadReport = async () => {
+    setGeneratingPdf(true);
+    try {
+      await pdfReportService.generateReport();
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const monthlyVolume: MonthlyVolume[] = useMemo(() => {
@@ -324,14 +337,33 @@ export function AdminOverview() {
           </div>
         ) : (
           <div className="space-y-8">
-            <div className="flex items-center justify-end gap-2 mb--4">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="text-zinc-600 font-mono text-xs">
-                LIVE {lastRefresh.toLocaleTimeString()}
-              </span>
+            <div className="flex items-center justify-between mb--4">
+              <button
+                onClick={handleDownloadReport}
+                disabled={generatingPdf}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-mono text-sm border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
+              >
+                {generatingPdf ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Download Monthly Report
+                  </>
+                )}
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span className="text-zinc-600 font-mono text-xs">
+                  LIVE {lastRefresh.toLocaleTimeString()}
+                </span>
+              </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard

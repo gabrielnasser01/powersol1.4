@@ -9,6 +9,7 @@ const corsHeaders = {
 
 const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const VALID_PLATFORMS = new Set(["discord", "youtube", "tiktok", "twitter"]);
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://powersol1-4-mjc2.vercel.app";
 
 function isValidWallet(addr: string): boolean {
   return typeof addr === "string" && SOLANA_ADDR_RE.test(addr.trim());
@@ -147,7 +148,7 @@ Deno.serve(async (req: Request) => {
         origin = stateData.origin || "";
       } catch {}
 
-      if (!origin) return errorResponse("Invalid callback state", 400);
+      if (!origin) origin = FRONTEND_URL;
 
       if (!code || !stateParam) {
         return callbackRedirect(origin, "error", "Missing code or state");
@@ -239,7 +240,7 @@ Deno.serve(async (req: Request) => {
         origin = stateData.origin || "";
       } catch {}
 
-      if (!origin) return errorResponse("Invalid callback state", 400);
+      if (!origin) origin = FRONTEND_URL;
 
       if (!code || !stateParam) {
         return callbackRedirect(origin, "error", "Missing code or state");
@@ -334,7 +335,7 @@ Deno.serve(async (req: Request) => {
         origin = stateData.origin || "";
       } catch {}
 
-      if (!origin) return errorResponse("Invalid callback state", 400);
+      if (!origin) origin = FRONTEND_URL;
 
       if (!code || !stateParam) {
         return callbackRedirect(origin, "error", "Missing code or state");
@@ -447,7 +448,7 @@ Deno.serve(async (req: Request) => {
         origin = stateData.o || "";
       } catch {}
 
-      if (!origin) return errorResponse("Invalid callback state", 400);
+      if (!origin) origin = FRONTEND_URL;
 
       if (errorParam) {
         const desc = url.searchParams.get("error_description") || errorParam;

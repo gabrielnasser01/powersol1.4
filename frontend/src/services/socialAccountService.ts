@@ -30,7 +30,7 @@ function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', 
   return new Promise((resolve) => {
     try { localStorage.removeItem('powersol-social-link'); } catch {}
 
-    const oauthUrl = `${API_BASE}/oauth/${platform}?wallet_address=${walletAddress}`;
+    const oauthUrl = `${API_BASE}/oauth/${platform}?wallet_address=${walletAddress}&origin=${encodeURIComponent(window.location.origin)}`;
     const width = 500;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;

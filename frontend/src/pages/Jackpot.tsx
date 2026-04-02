@@ -677,7 +677,7 @@ export function Jackpot() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 min-h-screen"
+              className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
               style={{ background: 'rgba(0, 0, 0, 0.9)' }}
               onClick={() => setShowDepositModal(false)}
             >
@@ -685,7 +685,7 @@ export function Jackpot() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="max-w-lg w-full p-8 rounded-2xl border relative overflow-hidden"
+                className="max-w-md w-full p-5 sm:p-8 rounded-2xl border relative overflow-y-auto max-h-[90vh] sm:max-h-[85vh]"
                 style={{
                   background: 'linear-gradient(135deg, rgba(0, 153, 255, 0.1), rgba(0, 204, 255, 0.08))',
                   borderColor: '#0099ff',
@@ -704,20 +704,20 @@ export function Jackpot() {
                 </button>
 
                 {/* Header */}
-                <div className="text-center mb-8">
-                  <div 
-                    className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+                <div className="text-center mb-5 sm:mb-8">
+                  <div
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl mx-auto mb-3 sm:mb-4 flex items-center justify-center"
                     style={{
                       background: 'linear-gradient(135deg, rgba(0, 153, 255, 0.3), rgba(0, 204, 255, 0.2))',
                       border: '2px solid #0099ff',
                       boxShadow: '0 0 30px rgba(0, 153, 255, 0.4)',
                     }}
                   >
-                    <Trophy className="w-8 h-8" style={{ color: '#0099ff' }} />
+                    <Trophy className="w-7 h-7 sm:w-8 sm:h-8" style={{ color: '#0099ff' }} />
                   </div>
-                  
-                  <h3 
-                    className="text-2xl font-bold mb-2"
+
+                  <h3
+                    className="text-xl sm:text-2xl font-bold mb-2"
                     style={{ 
                       color: '#ffffff',
                       fontFamily: 'Orbitron, monospace',
@@ -731,11 +731,11 @@ export function Jackpot() {
                 </div>
 
                 {/* Amount Selector */}
-                <div className="mb-8">
+                <div className="mb-5 sm:mb-8">
                   <label className="block text-sm font-medium mb-3 text-center" style={{ color: '#ffffff' }}>
                     Number of Entries (0.2 SOL each)
                   </label>
-                  <div className="flex items-center justify-center space-x-6">
+                  <div className="flex items-center justify-center space-x-4 sm:space-x-6">
                     <motion.button
                       onClick={() => handleQuantityChange(-1)}
                       disabled={depositAmount <= 1}
@@ -782,7 +782,7 @@ export function Jackpot() {
                 </div>
 
                 {/* Total Cost */}
-                <div className="mb-4 p-4 rounded-xl text-center" style={{
+                <div className="mb-3 sm:mb-4 p-3 sm:p-4 rounded-xl text-center" style={{
                   background: 'rgba(0, 153, 255, 0.1)',
                   border: '1px solid rgba(0, 153, 255, 0.3)'
                 }}>
@@ -798,7 +798,7 @@ export function Jackpot() {
                 </div>
 
                 {connected && balance > 0 && (
-                  <div className="mb-4 p-2 rounded-lg text-center" style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid rgba(0, 255, 136, 0.3)' }}>
+                  <div className="mb-3 sm:mb-4 p-2 rounded-lg text-center" style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid rgba(0, 255, 136, 0.3)' }}>
                     <p className="text-xs font-mono text-green-400">
                       Balance: {balance.toFixed(4)} SOL
                     </p>

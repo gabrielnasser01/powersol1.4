@@ -138,9 +138,7 @@ Deno.serve(async (req: Request) => {
       const stateParam = url.searchParams.get("state");
 
       if (!code || !stateParam) {
-        return new Response(buildCallbackHtml("error", "Missing code or state"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Missing code or state"));
       }
 
       let wallet: string;
@@ -148,9 +146,7 @@ Deno.serve(async (req: Request) => {
         const stateData = JSON.parse(atob(stateParam));
         wallet = stateData.wallet;
       } catch {
-        return new Response(buildCallbackHtml("error", "Invalid state"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Invalid state"));
       }
 
       const clientId = Deno.env.get("DISCORD_CLIENT_ID");
@@ -170,9 +166,7 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!tokenRes.ok) {
-        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Failed to exchange token"));
       }
 
       const tokenData = await tokenRes.json();
@@ -182,9 +176,7 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!userRes.ok) {
-        return new Response(buildCallbackHtml("error", "Failed to get Discord user info"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Failed to get Discord user info"));
       }
 
       const discordUser = await userRes.json();
@@ -201,10 +193,7 @@ Deno.serve(async (req: Request) => {
         p_platform_avatar_url: avatarUrl,
       });
 
-      return new Response(
-        buildCallbackHtml("success", `Discord account linked: ${discordUser.username}`),
-        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
-      );
+      return htmlResponse(buildCallbackHtml("success", `Discord account linked: ${discordUser.username}`));
     }
 
     if (req.method === "GET" && path === "/oauth/youtube") {
@@ -233,9 +222,7 @@ Deno.serve(async (req: Request) => {
       const stateParam = url.searchParams.get("state");
 
       if (!code || !stateParam) {
-        return new Response(buildCallbackHtml("error", "Missing code or state"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Missing code or state"));
       }
 
       let wallet: string;
@@ -243,9 +230,7 @@ Deno.serve(async (req: Request) => {
         const stateData = JSON.parse(atob(stateParam));
         wallet = stateData.wallet;
       } catch {
-        return new Response(buildCallbackHtml("error", "Invalid state"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Invalid state"));
       }
 
       const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
@@ -265,9 +250,7 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!tokenRes.ok) {
-        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Failed to exchange token"));
       }
 
       const tokenData = await tokenRes.json();
@@ -278,18 +261,14 @@ Deno.serve(async (req: Request) => {
       );
 
       if (!channelRes.ok) {
-        return new Response(buildCallbackHtml("error", "Failed to get YouTube channel info"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Failed to get YouTube channel info"));
       }
 
       const channelData = await channelRes.json();
       const channel = channelData.items?.[0];
 
       if (!channel) {
-        return new Response(buildCallbackHtml("error", "No YouTube channel found"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "No YouTube channel found"));
       }
 
       const supabase = getServiceClient();
@@ -301,10 +280,7 @@ Deno.serve(async (req: Request) => {
         p_platform_avatar_url: channel.snippet.thumbnails?.default?.url || "",
       });
 
-      return new Response(
-        buildCallbackHtml("success", `YouTube channel linked: ${channel.snippet.title}`),
-        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
-      );
+      return htmlResponse(buildCallbackHtml("success", `YouTube channel linked: ${channel.snippet.title}`));
     }
 
     if (req.method === "GET" && path === "/oauth/tiktok") {
@@ -333,9 +309,7 @@ Deno.serve(async (req: Request) => {
       const stateParam = url.searchParams.get("state");
 
       if (!code || !stateParam) {
-        return new Response(buildCallbackHtml("error", "Missing code or state"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Missing code or state"));
       }
 
       let wallet: string;
@@ -343,9 +317,7 @@ Deno.serve(async (req: Request) => {
         const stateData = JSON.parse(atob(stateParam));
         wallet = stateData.wallet;
       } catch {
-        return new Response(buildCallbackHtml("error", "Invalid state"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Invalid state"));
       }
 
       const clientKey = Deno.env.get("TIKTOK_CLIENT_KEY");
@@ -365,9 +337,7 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!tokenRes.ok) {
-        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Failed to exchange token"));
       }
 
       const tokenData = await tokenRes.json();
@@ -378,9 +348,7 @@ Deno.serve(async (req: Request) => {
       );
 
       if (!userRes.ok) {
-        return new Response(buildCallbackHtml("error", "Failed to get TikTok user info"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Failed to get TikTok user info"));
       }
 
       const userData = await userRes.json();
@@ -395,10 +363,7 @@ Deno.serve(async (req: Request) => {
         p_platform_avatar_url: tiktokUser?.avatar_url || "",
       });
 
-      return new Response(
-        buildCallbackHtml("success", `TikTok account linked: ${tiktokUser?.display_name || "TikTok User"}`),
-        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
-      );
+      return htmlResponse(buildCallbackHtml("success", `TikTok account linked: ${tiktokUser?.display_name || "TikTok User"}`));
     }
 
     if (req.method === "GET" && path === "/oauth/twitter") {
@@ -448,15 +413,11 @@ Deno.serve(async (req: Request) => {
 
       if (errorParam) {
         const desc = url.searchParams.get("error_description") || errorParam;
-        return new Response(buildCallbackHtml("error", `Twitter denied: ${desc}`), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", `Twitter denied: ${desc}`));
       }
 
       if (!code || !stateParam) {
-        return new Response(buildCallbackHtml("error", "Missing code or state from Twitter"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Missing code or state from Twitter"));
       }
 
       let wallet: string;
@@ -467,9 +428,7 @@ Deno.serve(async (req: Request) => {
         codeVerifier = stateData.v;
         if (!wallet || !codeVerifier) throw new Error("missing fields");
       } catch {
-        return new Response(buildCallbackHtml("error", "Invalid state parameter"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Invalid state parameter"));
       }
 
       const clientId = Deno.env.get("TWITTER_CLIENT_ID");
@@ -498,16 +457,12 @@ Deno.serve(async (req: Request) => {
       try {
         tokenData = JSON.parse(tokenText);
       } catch {
-        return new Response(buildCallbackHtml("error", "Invalid token response from Twitter"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Invalid token response from Twitter"));
       }
 
       if (!tokenRes.ok) {
         const errDetail = (tokenData as Record<string, string>).error_description || (tokenData as Record<string, string>).error || "Token exchange failed";
-        return new Response(buildCallbackHtml("error", `Twitter token error: ${errDetail}`), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", `Twitter token error: ${errDetail}`));
       }
 
       const userRes = await fetch("https://api.twitter.com/2/users/me?user.fields=profile_image_url", {
@@ -516,18 +471,14 @@ Deno.serve(async (req: Request) => {
 
       if (!userRes.ok) {
         const userErrText = await userRes.text();
-        return new Response(buildCallbackHtml("error", `Failed to get X user info (${userRes.status}): ${userErrText.slice(0, 100)}`), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", `Failed to get X user info (${userRes.status}): ${userErrText.slice(0, 100)}`));
       }
 
       const xUserData = await userRes.json();
       const xUser = xUserData.data;
 
       if (!xUser?.id) {
-        return new Response(buildCallbackHtml("error", "Twitter returned no user data"), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", "Twitter returned no user data"));
       }
 
       const supabase = getServiceClient();
@@ -540,15 +491,10 @@ Deno.serve(async (req: Request) => {
       });
 
       if (linkError) {
-        return new Response(buildCallbackHtml("error", `Failed to save link: ${linkError.message}`), {
-          headers: { ...corsHeaders, "Content-Type": "text/html" },
-        });
+        return htmlResponse(buildCallbackHtml("error", `Failed to save link: ${linkError.message}`));
       }
 
-      return new Response(
-        buildCallbackHtml("success", `X account linked: @${xUser.username}`),
-        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
-      );
+      return htmlResponse(buildCallbackHtml("success", `X account linked: @${xUser.username}`));
     }
 
     return errorResponse("Not found", 404);
@@ -557,6 +503,16 @@ Deno.serve(async (req: Request) => {
     return errorResponse(message, 500);
   }
 });
+
+function htmlResponse(html: string): Response {
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
+}
 
 function buildCallbackHtml(status: "success" | "error", message: string): string {
   const color = status === "success" ? "#00ff88" : "#ff4444";

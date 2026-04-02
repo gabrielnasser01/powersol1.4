@@ -312,7 +312,7 @@ Deno.serve(async (req: Request) => {
       const origin = url.searchParams.get("origin") || "";
       const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-accounts/oauth/tiktok/callback`;
       const state = btoa(JSON.stringify({ wallet: wallet.trim(), origin }));
-      const scope = "user.info.basic";
+      const scope = "user.info.profile";
 
       const authUrl = `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&response_type=code&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
 

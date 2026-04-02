@@ -89,18 +89,20 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[99999] flex items-center justify-center p-4 min-h-screen"
+        className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 min-h-screen"
         style={{ background: 'rgba(0, 0, 0, 0.92)' }}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="max-w-md w-full rounded-2xl border relative overflow-hidden mx-auto"
+          className="max-w-md w-full rounded-2xl border relative overflow-hidden mx-auto max-h-[92vh] overflow-y-auto"
           style={{
             background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(20, 10, 10, 0.95) 100%)',
             borderColor: 'rgba(239, 68, 68, 0.4)',
             boxShadow: '0 0 60px rgba(239, 68, 68, 0.2), inset 0 0 80px rgba(0, 0, 0, 0.9)',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(239, 68, 68, 0.3) transparent',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -119,21 +121,21 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
             }}
           />
 
-          <div className="relative z-10 p-6">
-            <div className="text-center mb-6">
+          <div className="relative z-10 p-4 sm:p-6">
+            <div className="text-center mb-4 sm:mb-5">
               <div
-                className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl mx-auto mb-3 flex items-center justify-center"
                 style={{
                   background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(249, 115, 22, 0.15))',
                   border: '2px solid rgba(239, 68, 68, 0.4)',
                   boxShadow: '0 0 30px rgba(239, 68, 68, 0.3)',
                 }}
               >
-                <ShieldCheck className="w-8 h-8 text-red-400" />
+                <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-red-400" />
               </div>
 
               <h2
-                className="text-xl font-bold mb-2 font-mono"
+                className="text-lg sm:text-xl font-bold mb-1 font-mono"
                 style={{
                   color: '#ffffff',
                   textShadow: '0 0 10px rgba(239, 68, 68, 0.4)',
@@ -141,31 +143,31 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
               >
                 AGE VERIFICATION
               </h2>
-              <p className="text-zinc-400 font-mono text-xs">
+              <p className="text-zinc-400 font-mono text-[10px] sm:text-xs">
                 Required to access PowerSOL features
               </p>
             </div>
 
             <div
-              className="p-4 rounded-xl mb-4"
+              className="p-3 sm:p-4 rounded-xl mb-3 sm:mb-4"
               style={{
                 background: 'rgba(239, 68, 68, 0.06)',
                 border: '1px solid rgba(239, 68, 68, 0.2)',
               }}
             >
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <p className="text-zinc-300 text-sm leading-relaxed">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   You must be <span className="text-white font-bold">18 years or older</span> to use PowerSOL.
                   You must read and accept our Terms of Service before proceeding.
                 </p>
               </div>
             </div>
 
-            <div className="mb-4">
+            <div className="mb-3 sm:mb-4">
               <button
                 onClick={() => setShowTerms(!showTerms)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-mono transition-all duration-200"
+                className="w-full flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-mono transition-all duration-200"
                 style={{
                   background: showTerms ? 'rgba(62, 203, 255, 0.08)' : 'rgba(255, 255, 255, 0.04)',
                   border: `1px solid ${showTerms ? 'rgba(62, 203, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
@@ -193,20 +195,20 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
                     <div
                       ref={termsScrollRef}
                       onScroll={handleTermsScroll}
-                      className="mt-2 rounded-xl p-4 overflow-y-auto relative"
+                      className="mt-2 rounded-xl p-3 sm:p-4 overflow-y-auto relative"
                       style={{
-                        maxHeight: '200px',
+                        maxHeight: 'min(160px, 30vh)',
                         background: 'rgba(0, 0, 0, 0.6)',
                         border: '1px solid rgba(255, 255, 255, 0.06)',
                       }}
                     >
                       {termsSections.map((section) => (
-                        <div key={section.id} className="mb-4 last:mb-0">
-                          <h4 className="text-xs font-bold text-zinc-300 mb-2 font-mono">
+                        <div key={section.id} className="mb-3 last:mb-0">
+                          <h4 className="text-[10px] sm:text-xs font-bold text-zinc-300 mb-1.5 font-mono">
                             {section.title}
                           </h4>
                           {section.content.map((p, i) => (
-                            <p key={i} className="text-[11px] text-zinc-500 leading-relaxed mb-1.5 last:mb-0">
+                            <p key={i} className="text-[10px] sm:text-[11px] text-zinc-500 leading-relaxed mb-1 last:mb-0">
                               {p}
                             </p>
                           ))}
@@ -225,12 +227,12 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
             </div>
 
             <label
-              className="flex items-start gap-3 mb-4 cursor-pointer group px-1"
+              className="flex items-start gap-2.5 sm:gap-3 mb-3 sm:mb-4 cursor-pointer group px-1"
               style={{ opacity: scrolledToBottom ? 1 : 0.4, pointerEvents: scrolledToBottom ? 'auto' : 'none' }}
             >
               <div
                 onClick={() => scrolledToBottom && setTermsRead(!termsRead)}
-                className="mt-0.5 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center transition-all duration-200"
+                className="mt-0.5 w-[18px] h-[18px] sm:w-5 sm:h-5 rounded flex-shrink-0 flex items-center justify-center transition-all duration-200"
                 style={{
                   background: termsRead ? 'linear-gradient(135deg, #ef4444, #f97316)' : 'rgba(255, 255, 255, 0.06)',
                   border: termsRead ? 'none' : '1.5px solid rgba(255, 255, 255, 0.2)',
@@ -240,7 +242,7 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
                 {termsRead && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
               </div>
               <span
-                className="text-xs leading-relaxed transition-colors"
+                className="text-[11px] sm:text-xs leading-relaxed transition-colors"
                 style={{ color: termsRead ? '#d4d4d8' : '#71717a' }}
                 onClick={() => scrolledToBottom && setTermsRead(!termsRead)}
               >
@@ -250,13 +252,13 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
             </label>
 
             <div
-              className="p-3 rounded-lg mb-5 font-mono text-xs text-zinc-400 leading-relaxed"
+              className="p-2.5 sm:p-3 rounded-lg mb-3 sm:mb-4 font-mono text-[10px] sm:text-xs text-zinc-400 leading-relaxed"
               style={{
                 background: 'rgba(0, 0, 0, 0.5)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
               }}
             >
-              <p className="text-zinc-600 text-[10px] mb-1">MESSAGE TO SIGN:</p>
+              <p className="text-zinc-600 text-[9px] sm:text-[10px] mb-1">MESSAGE TO SIGN:</p>
               "{AGE_VERIFICATION_MESSAGE}"
             </div>
 
@@ -272,7 +274,7 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
             <motion.button
               onClick={handleSign}
               disabled={signing || !termsRead}
-              className="w-full py-4 rounded-xl font-bold text-base transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-mono"
+              className="w-full py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-mono"
               style={{
                 background: signing || !termsRead
                   ? 'rgba(255, 255, 255, 0.1)'
@@ -287,18 +289,18 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
             >
               {signing ? (
                 <>
-                  <Loader className="w-5 h-5 animate-spin" />
+                  <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                   SIGNING...
                 </>
               ) : (
                 <>
-                  <ShieldCheck className="w-5 h-5" />
+                  <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                   SIGN & VERIFY AGE
                 </>
               )}
             </motion.button>
 
-            <p className="text-center text-zinc-600 font-mono text-[10px] mt-4">
+            <p className="text-center text-zinc-600 font-mono text-[9px] sm:text-[10px] mt-3 sm:mt-4">
               One-time signature. Your wallet will prompt you to sign a message (no transaction, no fees).
             </p>
           </div>

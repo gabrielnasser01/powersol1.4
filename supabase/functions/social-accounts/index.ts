@@ -528,28 +528,33 @@ Deno.serve(async (req: Request) => {
 function buildCallbackHtml(status: "success" | "error", message: string): string {
   const color = status === "success" ? "#00ff88" : "#ff4444";
   const icon = status === "success" ? "&#10003;" : "&#10007;";
+  const safeMsg = message.replace(/'/g, "\\'").replace(/"/g, "&quot;");
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PowerSOL - Social Account ${status === "success" ? "Linked" : "Error"}</title>
+  <title>PowerSOL</title>
   <style>
-    body { background: #0a0a0a; color: #fff; font-family: monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .card { background: rgba(0,0,0,0.9); border: 2px solid ${color}; border-radius: 16px; padding: 40px; text-align: center; max-width: 400px; box-shadow: 0 0 40px ${color}33; }
-    .icon { font-size: 48px; color: ${color}; margin-bottom: 16px; }
-    .msg { color: ${color}; font-size: 16px; margin-bottom: 24px; }
-    .hint { color: #888; font-size: 12px; }
+    body{background:#0a0a0a;color:#fff;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+    .c{background:rgba(0,0,0,.9);border:2px solid ${color};border-radius:16px;padding:40px;text-align:center;max-width:400px;box-shadow:0 0 40px ${color}33}
+    .i{font-size:48px;color:${color};margin-bottom:16px}
+    .m{color:${color};font-size:16px;margin-bottom:24px}
+    .h{color:#888;font-size:12px}
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="icon">${icon}</div>
-    <div class="msg">${message}</div>
-    <div class="hint">You can close this window and return to PowerSOL.</div>
+  <div class="c">
+    <div class="i">${icon}</div>
+    <div class="m">${safeMsg}</div>
+    <div class="h">Closing automatically...</div>
   </div>
   <script>
-    setTimeout(() => { if (window.opener) { window.opener.postMessage({ type: 'social-link-${status}', message: '${message.replace(/'/g, "\\'")}' }, '*'); window.close(); } }, 2000);
+    (function(){
+      try{if(window.opener){window.opener.postMessage({type:'social-link-${status}',message:'${safeMsg}'},'*');}}catch(e){}
+      setTimeout(function(){window.close();},1500);
+      setTimeout(function(){document.querySelector('.h').textContent='You can close this tab manually.';},3000);
+    })();
   </script>
 </body>
 </html>`;

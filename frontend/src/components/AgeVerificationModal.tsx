@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldCheck, Loader, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Loader, AlertTriangle, FileText, ChevronDown, Check } from 'lucide-react';
 import { useWallet } from '../contexts/WalletContext';
+import { termsSections } from '../pages/terms/termsData';
 
 interface AgeVerificationModalProps {
   open: boolean;
@@ -17,6 +18,17 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
   const { publicKey, signTransaction } = useWallet();
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState('');
+  const [termsRead, setTermsRead] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [scrolledToBottom, setScrolledToBottom] = useState(false);
+  const termsScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleTermsScroll = useCallback(() => {
+    const el = termsScrollRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    if (atBottom) setScrolledToBottom(true);
+  }, []);
 
   const handleSign = async () => {
     if (!publicKey) return;
@@ -135,20 +147,107 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
             </div>
 
             <div
-              className="p-4 rounded-xl mb-5"
+              className="p-4 rounded-xl mb-4"
               style={{
                 background: 'rgba(239, 68, 68, 0.06)',
                 border: '1px solid rgba(239, 68, 68, 0.2)',
               }}
             >
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-zinc-300 text-sm leading-relaxed">
                   You must be <span className="text-white font-bold">18 years or older</span> to use PowerSOL.
-                  By signing, you confirm your age and agree to our Terms of Service.
+                  You must read and accept our Terms of Service before proceeding.
                 </p>
               </div>
             </div>
+
+            <div className="mb-4">
+              <button
+                onClick={() => setShowTerms(!showTerms)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-mono transition-all duration-200"
+                style={{
+                  background: showTerms ? 'rgba(62, 203, 255, 0.08)' : 'rgba(255, 255, 255, 0.04)',
+                  border: `1px solid ${showTerms ? 'rgba(62, 203, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                }}
+              >
+                <span className="flex items-center gap-2 text-zinc-300">
+                  <FileText className="w-4 h-4" style={{ color: showTerms ? '#3ecbff' : '#71717a' }} />
+                  Terms of Service
+                </span>
+                <ChevronDown
+                  className="w-4 h-4 text-zinc-500 transition-transform duration-200"
+                  style={{ transform: showTerms ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                />
+              </button>
+
+              <AnimatePresence>
+                {showTerms && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div
+                      ref={termsScrollRef}
+                      onScroll={handleTermsScroll}
+                      className="mt-2 rounded-xl p-4 overflow-y-auto relative"
+                      style={{
+                        maxHeight: '200px',
+                        background: 'rgba(0, 0, 0, 0.6)',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                      }}
+                    >
+                      {termsSections.map((section) => (
+                        <div key={section.id} className="mb-4 last:mb-0">
+                          <h4 className="text-xs font-bold text-zinc-300 mb-2 font-mono">
+                            {section.title}
+                          </h4>
+                          {section.content.map((p, i) => (
+                            <p key={i} className="text-[11px] text-zinc-500 leading-relaxed mb-1.5 last:mb-0">
+                              {p}
+                            </p>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                    {!scrolledToBottom && (
+                      <div className="flex items-center justify-center gap-1 mt-1.5">
+                        <ChevronDown className="w-3 h-3 text-zinc-600 animate-bounce" />
+                        <span className="text-[10px] text-zinc-600 font-mono">Scroll to read all terms</span>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <label
+              className="flex items-start gap-3 mb-4 cursor-pointer group px-1"
+              style={{ opacity: scrolledToBottom ? 1 : 0.4, pointerEvents: scrolledToBottom ? 'auto' : 'none' }}
+            >
+              <div
+                onClick={() => scrolledToBottom && setTermsRead(!termsRead)}
+                className="mt-0.5 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center transition-all duration-200"
+                style={{
+                  background: termsRead ? 'linear-gradient(135deg, #ef4444, #f97316)' : 'rgba(255, 255, 255, 0.06)',
+                  border: termsRead ? 'none' : '1.5px solid rgba(255, 255, 255, 0.2)',
+                  boxShadow: termsRead ? '0 0 12px rgba(239, 68, 68, 0.4)' : 'none',
+                }}
+              >
+                {termsRead && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
+              </div>
+              <span
+                className="text-xs leading-relaxed transition-colors"
+                style={{ color: termsRead ? '#d4d4d8' : '#71717a' }}
+                onClick={() => scrolledToBottom && setTermsRead(!termsRead)}
+              >
+                I have read and agree to the <span className="text-white font-semibold">Terms of Service</span> and
+                confirm I am at least <span className="text-white font-semibold">18 years old</span>
+              </span>
+            </label>
 
             <div
               className="p-3 rounded-lg mb-5 font-mono text-xs text-zinc-400 leading-relaxed"
@@ -172,19 +271,19 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
 
             <motion.button
               onClick={handleSign}
-              disabled={signing}
-              className="w-full py-4 rounded-xl font-bold text-base transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 font-mono"
+              disabled={signing || !termsRead}
+              className="w-full py-4 rounded-xl font-bold text-base transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-mono"
               style={{
-                background: signing
+                background: signing || !termsRead
                   ? 'rgba(255, 255, 255, 0.1)'
                   : 'linear-gradient(135deg, #ef4444, #f97316)',
-                color: signing ? '#fff' : '#000',
-                boxShadow: signing ? 'none' : '0 0 30px rgba(239, 68, 68, 0.4)',
+                color: signing || !termsRead ? '#71717a' : '#000',
+                boxShadow: signing || !termsRead ? 'none' : '0 0 30px rgba(239, 68, 68, 0.4)',
                 textTransform: 'uppercase',
                 letterSpacing: '1px',
               }}
-              whileHover={!signing ? { scale: 1.02 } : {}}
-              whileTap={!signing ? { scale: 0.98 } : {}}
+              whileHover={!signing && termsRead ? { scale: 1.02 } : {}}
+              whileTap={!signing && termsRead ? { scale: 0.98 } : {}}
             >
               {signing ? (
                 <>

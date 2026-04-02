@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ExternalLink, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { winnersService, Winner } from '../services/winnersService';
 import { theme } from '../theme';
 import { solToUsd } from '../chain/adapter';
@@ -17,6 +18,7 @@ export function WinnersDisplay({
   accentColor = theme.colors.neonPink,
   lotteryType
 }: WinnersDisplayProps) {
+  const navigate = useNavigate();
   const [winners, setWinners] = useState<Winner[]>([]);
   const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState<number[]>([]);
@@ -37,20 +39,8 @@ export function WinnersDisplay({
     setLoading(true);
     try {
       const data = await winnersService.getWinnersByRound(lotteryType, round);
-      let filteredWinners = data;
-
-      switch (lotteryType) {
-        case 'jackpot':
-          filteredWinners = data.slice(0, 100);
-          break;
-        case 'grand-prize':
-          filteredWinners = data.slice(0, 3);
-          break;
-        default:
-          filteredWinners = data;
-          break;
-      }
-      setWinners(filteredWinners);
+      const maxWinners = lotteryType === 'grand-prize' ? 3 : 100;
+      setWinners(data.slice(0, maxWinners));
     } catch (error) {
       console.error('Error loading winners:', error);
     } finally {
@@ -295,6 +285,23 @@ export function WinnersDisplay({
               <p>No recent winners yet. Be the first!</p>
             </div>
           )}
+        </div>
+
+        <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${accentColor}15` }}>
+          <motion.button
+            onClick={() => navigate('/transparency')}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-mono text-xs font-bold transition-all"
+            style={{
+              background: `${accentColor}08`,
+              border: `1px solid ${accentColor}25`,
+              color: accentColor,
+            }}
+            whileHover={{ scale: 1.01, background: `${accentColor}15` }}
+            whileTap={{ scale: 0.99 }}
+          >
+            <BarChart3 className="w-4 h-4" />
+            VIEW FULL TRANSPARENCY REPORT
+          </motion.button>
         </div>
       </div>
     </motion.div>

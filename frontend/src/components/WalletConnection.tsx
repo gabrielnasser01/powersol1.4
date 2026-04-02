@@ -33,9 +33,10 @@ export function WalletConnection() {
         await connect('phantom');
       } else if (walletName === 'Solflare') {
         await connect('solflare');
-      } else if (walletName === 'Ledger') {
-        setError('Ledger requires Phantom or Solflare integration');
+      } else if (walletName === 'WalletConnect') {
+        window.open('https://walletconnect.network/', '_blank');
         setIsConnecting(false);
+        setShowModal(false);
         return;
       }
       setShowModal(false);
@@ -81,10 +82,10 @@ export function WalletConnection() {
       color: theme.colors.neonBlue,
     },
     {
-      name: 'Ledger',
-      description: 'Hardware wallet security',
-      icon: '🔐',
-      color: theme.colors.neonCyan,
+      name: 'WalletConnect',
+      description: 'Scan QR with any wallet',
+      icon: '🔗',
+      color: '#3B99FC',
     },
   ];
 
@@ -300,12 +301,11 @@ export function WalletConnection() {
                             alt="Solflare Wallet"
                             className="w-8 h-8 object-contain"
                           />
-                        ) : wallet.name === 'Ledger' ? (
-                          <img
-                            src="/ledger-logo-short-white.svg"
-                            alt="Ledger Wallet"
-                            className="w-8 h-8 object-contain"
-                          />
+                        ) : wallet.name === 'WalletConnect' ? (
+                          <svg className="w-8 h-8" viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="480" height="480" rx="120" fill="#3B99FC"/>
+                            <path d="M141.78 196.94c54.34-53.2 142.42-53.2 196.76 0l6.54 6.4a6.71 6.71 0 010 9.64l-22.38 21.9a3.53 3.53 0 01-4.92 0l-9-8.82c-37.92-37.13-99.38-37.13-137.3 0l-9.64 9.44a3.53 3.53 0 01-4.92 0l-22.38-21.9a6.71 6.71 0 010-9.64l5.24-5.02zm243.14 45.28l19.92 19.5a6.71 6.71 0 010 9.64l-89.78 87.9a7.06 7.06 0 01-9.84 0l-63.72-62.38a1.76 1.76 0 00-2.46 0l-63.72 62.38a7.06 7.06 0 01-9.84 0l-89.78-87.9a6.71 6.71 0 010-9.64l19.92-19.5a7.06 7.06 0 019.84 0l63.72 62.38c.68.66 1.78.66 2.46 0l63.72-62.38a7.06 7.06 0 019.84 0l63.72 62.38c.68.66 1.78.66 2.46 0l63.72-62.38a7.06 7.06 0 019.84 0z" fill="#fff"/>
+                          </svg>
                         ) : (
                           wallet.icon
                         )}

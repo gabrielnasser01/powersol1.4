@@ -57,6 +57,7 @@ export function AppRouter() {
           <Route path="/adm/users" element={<AdminUsers />} />
           <Route path="/adm/compliance" element={<AdminCompliance />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
+          <Route path="*" element={<Home />} />
         </Routes>
         <Footer />
         <BackToTop />

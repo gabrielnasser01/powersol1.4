@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Loader } from 'lucide-react';
+import { Wallet, Loader, ChevronDown, Scan } from 'lucide-react';
 import { theme } from '../theme';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { useWallet } from '../contexts/WalletContext';
@@ -42,6 +42,7 @@ export function WalletConnection() {
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [showOtherWallets, setShowOtherWallets] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useMagnetic(buttonRef, { strength: 15 });
@@ -86,8 +87,6 @@ export function WalletConnection() {
       setIsConnecting(false);
     }
   };
-
-  const hasOtherWallets = discoveredWallets.length > 0;
 
   return (
     <>
@@ -306,68 +305,123 @@ export function WalletConnection() {
                   </motion.button>
                 ))}
 
-                {hasOtherWallets && (
-                  <>
-                    <div className="flex items-center gap-3 py-1">
-                      <div className="flex-1 h-px bg-green-400/20" />
-                      <span className="text-[10px] font-mono text-green-400/50 uppercase tracking-wider">
-                        Other Wallets
-                      </span>
-                      <div className="flex-1 h-px bg-green-400/20" />
+                <motion.button
+                  onClick={() => setShowOtherWallets(!showOtherWallets)}
+                  className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden"
+                  style={{
+                    background: `
+                      linear-gradient(0deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
+                      linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
+                    `,
+                    backgroundSize: '15px 15px, 15px 15px, 100% 100%',
+                    borderColor: 'rgba(0, 204, 170, 0.25)',
+                    boxShadow: '0 0 15px rgba(0, 204, 170, 0.1)',
+                  }}
+                  whileHover={{
+                    borderColor: '#00ccaa',
+                    boxShadow: '0 0 25px rgba(0, 204, 170, 0.3)',
+                    scale: 1.02,
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <motion.div
+                    className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent, rgba(0, 204, 170, 0.12), transparent)',
+                    }}
+                    animate={{ x: [-100, 100] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                  />
+
+                  <div className="flex items-center space-x-4">
+                    <div className="w-8 h-8 rounded-md flex items-center justify-center relative">
+                      <Scan className="w-5 h-5" style={{ color: '#00ccaa' }} />
                     </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
+                        Other Wallets
+                      </h4>
+                      <p className="text-xs text-zinc-400 font-mono">
+                        {discoveredWallets.length > 0
+                          ? `${discoveredWallets.length} wallet${discoveredWallets.length > 1 ? 's' : ''} detected`
+                          : 'Wallet Standard auto-detect'}
+                      </p>
+                    </div>
+                    <motion.div
+                      animate={{ rotate: showOtherWallets ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ color: '#00ccaa' }}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </motion.div>
+                  </div>
+                </motion.button>
 
-                    {discoveredWallets.map((wallet) => (
-                      <motion.button
-                        key={wallet.id}
-                        onClick={() => handleStandardWalletConnect(wallet.id)}
-                        disabled={isConnecting}
-                        className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
-                        style={{
-                          background: `
-                            linear-gradient(0deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
-                            linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
-                          `,
-                          backgroundSize: '15px 15px, 15px 15px, 100% 100%',
-                          borderColor: 'rgba(0, 204, 170, 0.25)',
-                          boxShadow: '0 0 15px rgba(0, 204, 170, 0.1)',
-                        }}
-                        whileHover={{
-                          borderColor: '#00ccaa',
-                          boxShadow: '0 0 25px rgba(0, 204, 170, 0.3)',
-                          scale: 1.02,
-                        }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <motion.div
-                          className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
+                <AnimatePresence>
+                  {showOtherWallets && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden space-y-2"
+                    >
+                      {discoveredWallets.length > 0 ? (
+                        discoveredWallets.map((wallet) => (
+                          <motion.button
+                            key={wallet.id}
+                            onClick={() => handleStandardWalletConnect(wallet.id)}
+                            disabled={isConnecting}
+                            className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 20, 15, 0.8) 100%)',
+                              borderColor: 'rgba(0, 204, 170, 0.2)',
+                            }}
+                            whileHover={{
+                              borderColor: '#00ccaa',
+                              boxShadow: '0 0 20px rgba(0, 204, 170, 0.25)',
+                              scale: 1.02,
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div className="w-8 h-8 rounded-md flex items-center justify-center relative">
+                                <WalletIcon wallet={wallet} />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
+                                  {wallet.name}
+                                </h4>
+                                <p className="text-xs text-zinc-400 font-mono">
+                                  Wallet Standard
+                                </p>
+                              </div>
+                              <div className="text-zinc-400 group-hover:text-white transition-colors font-mono" style={{ color: '#00ccaa' }}>
+                                {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '\u2192'}
+                              </div>
+                            </div>
+                          </motion.button>
+                        ))
+                      ) : (
+                        <div
+                          className="p-4 rounded-lg border text-center"
                           style={{
-                            background: 'linear-gradient(90deg, transparent, rgba(0, 204, 170, 0.12), transparent)',
+                            background: 'rgba(0, 0, 0, 0.5)',
+                            borderColor: 'rgba(0, 204, 170, 0.15)',
                           }}
-                          animate={{ x: [-100, 100] }}
-                          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                        />
-
-                        <div className="flex items-center space-x-4">
-                          <div className="w-8 h-8 rounded-md flex items-center justify-center relative">
-                            <WalletIcon wallet={wallet} />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
-                              {wallet.name}
-                            </h4>
-                            <p className="text-xs text-zinc-400 font-mono">
-                              Wallet Standard
-                            </p>
-                          </div>
-                          <div className="text-zinc-400 group-hover:text-white transition-colors font-mono" style={{ color: '#00ccaa' }}>
-                            {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '\u2192'}
-                          </div>
+                        >
+                          <p className="text-xs font-mono text-zinc-500 mb-1">
+                            No additional wallets detected
+                          </p>
+                          <p className="text-[10px] font-mono text-zinc-600">
+                            Install any Solana wallet extension (Backpack, Glow, etc.)
+                          </p>
                         </div>
-                      </motion.button>
-                    ))}
-                  </>
-                )}
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <motion.button

@@ -411,22 +411,23 @@ Deno.serve(async (req: Request) => {
       }
 
       const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-accounts/oauth/twitter/callback`;
-      const state = btoa(JSON.stringify({ wallet: wallet.trim() }));
 
-      const codeVerifier = crypto.randomUUID() + crypto.randomUUID();
+      const rawBytes = new Uint8Array(48);
+      crypto.getRandomValues(rawBytes);
+      const codeVerifier = Array.from(rawBytes, (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[b % 62]).join("");
+
       const encoder = new TextEncoder();
-      const data = encoder.encode(codeVerifier);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(codeVerifier));
       const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)))
         .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-      const stateWithVerifier = btoa(JSON.stringify({ wallet: wallet.trim(), cv: codeVerifier }));
+      const stateWithVerifier = btoa(JSON.stringify({ w: wallet.trim(), v: codeVerifier }));
 
       const params = new URLSearchParams({
         response_type: "code",
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: "tweet.read users.read offline.access",
+        scope: "tweet.read users.read",
         state: stateWithVerifier,
         code_challenge: codeChallenge,
         code_challenge_method: "S256",
@@ -443,9 +444,17 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET" && path === "/oauth/twitter/callback") {
       const code = url.searchParams.get("code");
       const stateParam = url.searchParams.get("state");
+      const errorParam = url.searchParams.get("error");
+
+      if (errorParam) {
+        const desc = url.searchParams.get("error_description") || errorParam;
+        return new Response(buildCallbackHtml("error", `Twitter denied: ${desc}`), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
+      }
 
       if (!code || !stateParam) {
-        return new Response(buildCallbackHtml("error", "Missing code or state"), {
+        return new Response(buildCallbackHtml("error", "Missing code or state from Twitter"), {
           headers: { ...corsHeaders, "Content-Type": "text/html" },
         });
       }
@@ -454,10 +463,11 @@ Deno.serve(async (req: Request) => {
       let codeVerifier: string;
       try {
         const stateData = JSON.parse(atob(stateParam));
-        wallet = stateData.wallet;
-        codeVerifier = stateData.cv;
+        wallet = stateData.w;
+        codeVerifier = stateData.v;
+        if (!wallet || !codeVerifier) throw new Error("missing fields");
       } catch {
-        return new Response(buildCallbackHtml("error", "Invalid state"), {
+        return new Response(buildCallbackHtml("error", "Invalid state parameter"), {
           headers: { ...corsHeaders, "Content-Type": "text/html" },
         });
       }
@@ -468,7 +478,7 @@ Deno.serve(async (req: Request) => {
 
       const basicAuth = btoa(`${clientId}:${clientSecret}`);
 
-      const tokenRes = await fetch("https://api.x.com/2/oauth2/token", {
+      const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -478,24 +488,35 @@ Deno.serve(async (req: Request) => {
           grant_type: "authorization_code",
           code,
           redirect_uri: redirectUri,
+          client_id: clientId!,
           code_verifier: codeVerifier,
         }),
       });
 
-      if (!tokenRes.ok) {
-        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
+      const tokenText = await tokenRes.text();
+      let tokenData: Record<string, unknown>;
+      try {
+        tokenData = JSON.parse(tokenText);
+      } catch {
+        return new Response(buildCallbackHtml("error", "Invalid token response from Twitter"), {
           headers: { ...corsHeaders, "Content-Type": "text/html" },
         });
       }
 
-      const tokenData = await tokenRes.json();
+      if (!tokenRes.ok) {
+        const errDetail = (tokenData as Record<string, string>).error_description || (tokenData as Record<string, string>).error || "Token exchange failed";
+        return new Response(buildCallbackHtml("error", `Twitter token error: ${errDetail}`), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
+      }
 
-      const userRes = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url", {
+      const userRes = await fetch("https://api.twitter.com/2/users/me?user.fields=profile_image_url", {
         headers: { Authorization: `Bearer ${tokenData.access_token}` },
       });
 
       if (!userRes.ok) {
-        return new Response(buildCallbackHtml("error", "Failed to get X user info"), {
+        const userErrText = await userRes.text();
+        return new Response(buildCallbackHtml("error", `Failed to get X user info (${userRes.status}): ${userErrText.slice(0, 100)}`), {
           headers: { ...corsHeaders, "Content-Type": "text/html" },
         });
       }
@@ -503,17 +524,29 @@ Deno.serve(async (req: Request) => {
       const xUserData = await userRes.json();
       const xUser = xUserData.data;
 
+      if (!xUser?.id) {
+        return new Response(buildCallbackHtml("error", "Twitter returned no user data"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
+      }
+
       const supabase = getServiceClient();
-      await supabase.rpc("link_social_account", {
+      const { error: linkError } = await supabase.rpc("link_social_account", {
         p_wallet_address: wallet,
         p_platform: "twitter",
-        p_platform_user_id: xUser?.id || "unknown",
-        p_platform_username: xUser?.username ? `@${xUser.username}` : "X User",
-        p_platform_avatar_url: xUser?.profile_image_url || "",
+        p_platform_user_id: xUser.id,
+        p_platform_username: `@${xUser.username}`,
+        p_platform_avatar_url: xUser.profile_image_url || "",
       });
 
+      if (linkError) {
+        return new Response(buildCallbackHtml("error", `Failed to save link: ${linkError.message}`), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
+      }
+
       return new Response(
-        buildCallbackHtml("success", `X account linked: @${xUser?.username || "unknown"}`),
+        buildCallbackHtml("success", `X account linked: @${xUser.username}`),
         { headers: { ...corsHeaders, "Content-Type": "text/html" } }
       );
     }
@@ -528,7 +561,7 @@ Deno.serve(async (req: Request) => {
 function buildCallbackHtml(status: "success" | "error", message: string): string {
   const color = status === "success" ? "#00ff88" : "#ff4444";
   const icon = status === "success" ? "&#10003;" : "&#10007;";
-  const safeMsg = message.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+  const safeMsg = message.replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -539,7 +572,7 @@ function buildCallbackHtml(status: "success" | "error", message: string): string
     body{background:#0a0a0a;color:#fff;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
     .c{background:rgba(0,0,0,.9);border:2px solid ${color};border-radius:16px;padding:40px;text-align:center;max-width:400px;box-shadow:0 0 40px ${color}33}
     .i{font-size:48px;color:${color};margin-bottom:16px}
-    .m{color:${color};font-size:16px;margin-bottom:24px}
+    .m{color:${color};font-size:16px;margin-bottom:24px;word-break:break-word}
     .h{color:#888;font-size:12px}
   </style>
 </head>
@@ -551,9 +584,11 @@ function buildCallbackHtml(status: "success" | "error", message: string): string
   </div>
   <script>
     (function(){
-      try{if(window.opener){window.opener.postMessage({type:'social-link-${status}',message:'${safeMsg}'},'*');}}catch(e){}
-      setTimeout(function(){window.close();},1500);
-      setTimeout(function(){document.querySelector('.h').textContent='You can close this tab manually.';},3000);
+      var msg={type:'social-link-${status}',message:'${safeMsg}'};
+      try{if(window.opener){window.opener.postMessage(msg,'*');}}catch(e){}
+      try{localStorage.setItem('powersol-social-link',JSON.stringify(msg));}catch(e){}
+      setTimeout(function(){window.close();},2000);
+      setTimeout(function(){document.querySelector('.h').textContent='You can close this tab manually.';},4000);
     })();
   </script>
 </body>

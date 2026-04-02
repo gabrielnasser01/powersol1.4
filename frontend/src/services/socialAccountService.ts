@@ -28,6 +28,8 @@ async function getLinkedAccounts(walletAddress: string): Promise<SocialAccount[]
 
 function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', walletAddress: string): Promise<SocialAccount | null> {
   return new Promise((resolve) => {
+    try { localStorage.removeItem('powersol-social-link'); } catch {}
+
     const oauthUrl = `${API_BASE}/oauth/${platform}?wallet_address=${walletAddress}`;
     const width = 500;
     const height = 700;
@@ -40,10 +42,17 @@ function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', 
       `width=${width},height=${height},left=${left},top=${top},popup=yes`
     );
 
+    let resolved = false;
+    const cleanup = () => {
+      if (resolved) return;
+      resolved = true;
+      window.removeEventListener('message', handleMessage);
+      clearInterval(pollTimer);
+    };
+
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'social-link-success' || event.data?.type === 'social-link-error') {
-        window.removeEventListener('message', handleMessage);
-        clearInterval(pollTimer);
+        cleanup();
         resolve(event.data.type === 'social-link-success' ? {} as SocialAccount : null);
       }
     };
@@ -51,16 +60,25 @@ function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', 
     window.addEventListener('message', handleMessage);
 
     const pollTimer = setInterval(() => {
+      try {
+        const stored = localStorage.getItem('powersol-social-link');
+        if (stored) {
+          localStorage.removeItem('powersol-social-link');
+          const msg = JSON.parse(stored);
+          cleanup();
+          resolve(msg.type === 'social-link-success' ? {} as SocialAccount : null);
+          return;
+        }
+      } catch {}
+
       if (popup?.closed) {
-        clearInterval(pollTimer);
-        window.removeEventListener('message', handleMessage);
+        cleanup();
         resolve(null);
       }
     }, 500);
 
     setTimeout(() => {
-      clearInterval(pollTimer);
-      window.removeEventListener('message', handleMessage);
+      cleanup();
       if (popup && !popup.closed) popup.close();
       resolve(null);
     }, 120000);

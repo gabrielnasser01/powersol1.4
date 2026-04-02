@@ -391,6 +391,14 @@ async function checkAndCompleteTicketMilestones(walletAddress: string, lotteryTy
     if (result) completed.push(result);
   }
 
+  const { data: minTicketsPerLottery } = await supabase.rpc("get_user_tickets_per_lottery_by_wallet", {
+    wallet_param: walletAddress,
+  });
+  if ((minTicketsPerLottery || 0) >= 10) {
+    const result = await tryMarkEligible(walletAddress, "activity_10_each_lottery");
+    if (result) completed.push(result);
+  }
+
   const lotteryMissionMap: Record<string, string> = {
     special_event: "weekly_buy_special_event",
     jackpot: "weekly_buy_jackpot",

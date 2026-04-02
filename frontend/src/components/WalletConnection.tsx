@@ -1,15 +1,45 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Zap, Loader } from 'lucide-react';
+import { Wallet, Loader } from 'lucide-react';
 import { theme } from '../theme';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { useWallet } from '../contexts/WalletContext';
+import type { DiscoveredWallet } from '../contexts/WalletContext';
+
+const KNOWN_WALLETS = [
+  {
+    name: 'Phantom',
+    type: 'phantom' as const,
+    description: 'Most popular Solana wallet',
+    icon: 'https://i.imgur.com/g8nBa6n.png',
+    color: theme.colors.neonPurple,
+  },
+  {
+    name: 'Solflare',
+    type: 'solflare' as const,
+    description: 'Web & Mobile compatible',
+    icon: 'https://i.imgur.com/juhrcfm.png',
+    color: theme.colors.neonBlue,
+  },
+];
+
+function WalletIcon({ wallet }: { wallet: DiscoveredWallet }) {
+  if (wallet.icon) {
+    return (
+      <img
+        src={wallet.icon}
+        alt={wallet.name}
+        className="w-8 h-8 object-contain rounded-md"
+      />
+    );
+  }
+  return <Wallet className="w-5 h-5 text-teal-400" />;
+}
 
 export function WalletConnection() {
-  const { publicKey, connected, connecting, balance, connect, disconnect } = useWallet();
+  const { publicKey, connected, connecting, balance, connect, disconnect, discoveredWallets } = useWallet();
   const [showModal, setShowModal] = useState(false);
-  const [manualKey, setManualKey] = useState('');
   const [error, setError] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -25,20 +55,11 @@ export function WalletConnection() {
     }
   };
 
-  const handleWalletConnect = async (walletName: string) => {
+  const handleWalletConnect = async (walletType: 'phantom' | 'solflare') => {
     setError('');
     setIsConnecting(true);
     try {
-      if (walletName === 'Phantom') {
-        await connect('phantom');
-      } else if (walletName === 'Solflare') {
-        await connect('solflare');
-      } else if (walletName === 'WalletConnect') {
-        window.open('https://walletconnect.network/', '_blank');
-        setIsConnecting(false);
-        setShowModal(false);
-        return;
-      }
+      await connect(walletType);
       setShowModal(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to connect';
@@ -52,42 +73,21 @@ export function WalletConnection() {
     }
   };
 
-  const handleSubmitConnection = async () => {
-    if (manualKey.length >= 32) {
-      setError('');
-      setIsConnecting(true);
-      try {
-        await connect('manual', manualKey);
-        setShowModal(false);
-        setManualKey('');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Invalid public key');
-      } finally {
-        setIsConnecting(false);
-      }
+  const handleStandardWalletConnect = async (walletId: string) => {
+    setError('');
+    setIsConnecting(true);
+    try {
+      await connect('standard', walletId);
+      setShowModal(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to connect';
+      setError(msg);
+    } finally {
+      setIsConnecting(false);
     }
   };
 
-  const walletOptions = [
-    {
-      name: 'Phantom',
-      description: 'Most popular Solana wallet',
-      icon: '👻',
-      color: theme.colors.neonPurple,
-    },
-    {
-      name: 'Solflare',
-      description: 'Web & Mobile compatible',
-      icon: '🔥',
-      color: theme.colors.neonBlue,
-    },
-    {
-      name: 'WalletConnect',
-      description: 'Scan QR with any wallet',
-      icon: '🔗',
-      color: '#3B99FC',
-    },
-  ];
+  const hasOtherWallets = discoveredWallets.length > 0;
 
   return (
     <>
@@ -248,10 +248,10 @@ export function WalletConnection() {
               )}
 
               <div className="space-y-3 mb-6">
-                {walletOptions.map((wallet, index) => (
+                {KNOWN_WALLETS.map((wallet, index) => (
                   <motion.button
                     key={index}
-                    onClick={() => handleWalletConnect(wallet.name)}
+                    onClick={() => handleWalletConnect(wallet.type)}
                     disabled={isConnecting}
                     className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
                     style={{
@@ -281,43 +281,11 @@ export function WalletConnection() {
                     />
 
                     <div className="flex items-center space-x-4">
-                      <div
-                        className="w-8 h-8 rounded-md flex items-center justify-center text-sm relative"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          boxShadow: 'none',
-                        }}
-                      >
-                        {wallet.name === 'Phantom' ? (
-                          <img
-                            src="https://i.imgur.com/g8nBa6n.png"
-                            alt="Phantom Wallet"
-                            className="w-8 h-8 object-contain"
-                          />
-                        ) : wallet.name === 'Solflare' ? (
-                          <img
-                            src="https://i.imgur.com/juhrcfm.png"
-                            alt="Solflare Wallet"
-                            className="w-8 h-8 object-contain"
-                          />
-                        ) : wallet.name === 'WalletConnect' ? (
-                          <svg className="w-8 h-8" viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="480" height="480" rx="120" fill="#3B99FC"/>
-                            <path d="M141.78 196.94c54.34-53.2 142.42-53.2 196.76 0l6.54 6.4a6.71 6.71 0 010 9.64l-22.38 21.9a3.53 3.53 0 01-4.92 0l-9-8.82c-37.92-37.13-99.38-37.13-137.3 0l-9.64 9.44a3.53 3.53 0 01-4.92 0l-22.38-21.9a6.71 6.71 0 010-9.64l5.24-5.02zm243.14 45.28l19.92 19.5a6.71 6.71 0 010 9.64l-89.78 87.9a7.06 7.06 0 01-9.84 0l-63.72-62.38a1.76 1.76 0 00-2.46 0l-63.72 62.38a7.06 7.06 0 01-9.84 0l-89.78-87.9a6.71 6.71 0 010-9.64l19.92-19.5a7.06 7.06 0 019.84 0l63.72 62.38c.68.66 1.78.66 2.46 0l63.72-62.38a7.06 7.06 0 019.84 0l63.72 62.38c.68.66 1.78.66 2.46 0l63.72-62.38a7.06 7.06 0 019.84 0z" fill="#fff"/>
-                          </svg>
-                        ) : (
-                          wallet.icon
-                        )}
-
-                        <motion.div
-                          className="absolute inset-0 rounded-lg"
-                          style={{
-                            background: 'transparent',
-                            opacity: 0,
-                          }}
-                          whileHover={{ opacity: 1 }}
-                          transition={{ duration: 0.3 }}
+                      <div className="w-8 h-8 rounded-md flex items-center justify-center text-sm relative">
+                        <img
+                          src={wallet.icon}
+                          alt={wallet.name}
+                          className="w-8 h-8 object-contain"
                         />
                       </div>
                       <div className="flex-1">
@@ -332,73 +300,90 @@ export function WalletConnection() {
                         className="text-zinc-400 group-hover:text-white transition-colors font-mono"
                         style={{ color: wallet.color }}
                       >
-                        {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '→'}
+                        {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '\u2192'}
                       </div>
                     </div>
                   </motion.button>
                 ))}
+
+                {hasOtherWallets && (
+                  <>
+                    <div className="flex items-center gap-3 py-1">
+                      <div className="flex-1 h-px bg-green-400/20" />
+                      <span className="text-[10px] font-mono text-green-400/50 uppercase tracking-wider">
+                        Other Wallets
+                      </span>
+                      <div className="flex-1 h-px bg-green-400/20" />
+                    </div>
+
+                    {discoveredWallets.map((wallet) => (
+                      <motion.button
+                        key={wallet.id}
+                        onClick={() => handleStandardWalletConnect(wallet.id)}
+                        disabled={isConnecting}
+                        className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
+                        style={{
+                          background: `
+                            linear-gradient(0deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
+                            linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
+                          `,
+                          backgroundSize: '15px 15px, 15px 15px, 100% 100%',
+                          borderColor: 'rgba(0, 204, 170, 0.25)',
+                          boxShadow: '0 0 15px rgba(0, 204, 170, 0.1)',
+                        }}
+                        whileHover={{
+                          borderColor: '#00ccaa',
+                          boxShadow: '0 0 25px rgba(0, 204, 170, 0.3)',
+                          scale: 1.02,
+                        }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <motion.div
+                          className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
+                          style={{
+                            background: 'linear-gradient(90deg, transparent, rgba(0, 204, 170, 0.12), transparent)',
+                          }}
+                          animate={{ x: [-100, 100] }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                        />
+
+                        <div className="flex items-center space-x-4">
+                          <div className="w-8 h-8 rounded-md flex items-center justify-center relative">
+                            <WalletIcon wallet={wallet} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
+                              {wallet.name}
+                            </h4>
+                            <p className="text-xs text-zinc-400 font-mono">
+                              Wallet Standard
+                            </p>
+                          </div>
+                          <div className="text-zinc-400 group-hover:text-white transition-colors font-mono" style={{ color: '#00ccaa' }}>
+                            {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '\u2192'}
+                          </div>
+                        </div>
+                      </motion.button>
+                    ))}
+                  </>
+                )}
               </div>
 
-              <div className="mb-6">
-                <label className="block text-xs font-medium mb-2 font-mono" style={{ color: '#ffffff' }}>
-                  MANUAL_INPUT (read-only mode):
-                </label>
-                <input
-                  type="text"
-                  value={manualKey}
-                  onChange={(e) => setManualKey(e.target.value)}
-                  placeholder="PASTE_PUBLIC_KEY_HERE..."
-                  disabled={isConnecting}
-                  className="w-full p-2 rounded-md border bg-transparent text-white placeholder-zinc-500 focus:outline-none focus:ring-2 font-mono text-xs select-text disabled:opacity-50"
-                  style={{
-                    borderColor: 'rgba(0, 255, 136, 0.3)',
-                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                    boxShadow: 'inset 0 0 10px rgba(0, 255, 136, 0.1)',
-                  }}
-                />
-                <p className="text-xs text-zinc-500 mt-1 font-mono">
-                  Manual input cannot sign transactions
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <motion.button
-                  onClick={() => setShowModal(false)}
-                  disabled={isConnecting}
-                  className="flex-1 py-2 rounded-md font-semibold transition-all duration-300 border font-mono text-sm disabled:opacity-50"
-                  style={{
-                    background: 'rgba(0, 0, 0, 0.6)',
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                    color: '#ffffff',
-                  }}
-                  whileHover={{ background: 'rgba(255, 255, 255, 0.1)' }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  CANCEL
-                </motion.button>
-
-                <motion.button
-                  onClick={handleSubmitConnection}
-                  disabled={manualKey.length < 32 || isConnecting}
-                  className="flex-1 py-2 rounded-md font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1 font-mono text-sm"
-                  style={{
-                    background: manualKey.length >= 32 ? 'linear-gradient(135deg, #00ff88, #00ccff)' : 'rgba(255, 255, 255, 0.1)',
-                    color: manualKey.length >= 32 ? '#000' : '#ffffff',
-                    boxShadow: manualKey.length >= 32 ? '0 0 30px rgba(0, 255, 136, 0.5)' : 'none',
-                  }}
-                  whileHover={manualKey.length >= 32 ? { scale: 1.05 } : {}}
-                  whileTap={manualKey.length >= 32 ? { scale: 0.95 } : {}}
-                >
-                  {isConnecting ? (
-                    <Loader className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4" />
-                      <span>EXECUTE</span>
-                    </>
-                  )}
-                </motion.button>
-              </div>
+              <motion.button
+                onClick={() => setShowModal(false)}
+                disabled={isConnecting}
+                className="w-full py-2 rounded-md font-semibold transition-all duration-300 border font-mono text-sm disabled:opacity-50"
+                style={{
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  color: '#ffffff',
+                }}
+                whileHover={{ background: 'rgba(255, 255, 255, 0.1)' }}
+                whileTap={{ scale: 0.98 }}
+              >
+                CANCEL
+              </motion.button>
             </motion.div>
           </motion.div>
         </AnimatePresence>,

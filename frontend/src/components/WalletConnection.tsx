@@ -47,9 +47,9 @@ export function WalletConnection() {
 
   useMagnetic(buttonRef, { strength: 15 });
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (connected) {
-      disconnect();
+      await disconnect();
     } else {
       setShowModal(true);
       setError('');

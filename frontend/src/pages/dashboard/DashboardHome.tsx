@@ -157,7 +157,7 @@ function TierBadge({ tier, label }: { tier: number; label: string }) {
 
 export function DashboardHome() {
   const navigate = useNavigate();
-  const { publicKey: walletAddress, connected } = useWallet();
+  const { publicKey: walletAddress, connected, refreshBalance } = useWallet();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
   const [claimHistory, setClaimHistory] = useState<ClaimHistoryEntry[]>([]);
@@ -206,7 +206,7 @@ export function DashboardHome() {
       if (result.success && result.claimed > 0) {
         const solAmount = claimService.lamportsToSol(result.totalAmount);
         toast.success(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)!`);
-        await loadStats();
+        await Promise.all([loadStats(), refreshBalance()]);
       } else if (result.errors.length > 0) {
         toast.error(`Failed to claim some rewards: ${result.errors.join(', ')}`);
       } else {

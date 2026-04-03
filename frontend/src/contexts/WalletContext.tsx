@@ -298,21 +298,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   };
 
   const disconnect = useCallback(async () => {
-    try {
-      if (provider) {
-        await provider.disconnect();
-      }
-      if (standardWalletRef.current) {
-        const disconnectFeature = (standardWalletRef.current.features as any)['standard:disconnect'];
-        if (disconnectFeature) {
-          await disconnectFeature.disconnect();
-        }
-        standardWalletRef.current = null;
-      }
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-    }
-
     setProvider(null);
     setPublicKey(null);
     setConnected(false);
@@ -331,6 +316,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     ticketsStorage.clear();
     window.dispatchEvent(new CustomEvent('walletStorageChange'));
     window.dispatchEvent(new CustomEvent('missionPointsChange'));
+    window.dispatchEvent(new CustomEvent('walletDisconnected'));
+
+    try {
+      if (provider) {
+        await provider.disconnect();
+      }
+      if (standardWalletRef.current) {
+        const disconnectFeature = (standardWalletRef.current.features as any)['standard:disconnect'];
+        if (disconnectFeature) {
+          await disconnectFeature.disconnect();
+        }
+        standardWalletRef.current = null;
+      }
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+    }
   }, [provider]);
 
   const signTransaction = useCallback(async (transaction: Transaction): Promise<Transaction> => {

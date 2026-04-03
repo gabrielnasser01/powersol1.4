@@ -443,7 +443,7 @@ export function GrandPrize() {
             Annual Grand Prize
           </h1>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-            The ultimate annual lottery event with the biggest prize pool of the year! 3 winners.
+            The ultimate annual draw event with the biggest prize pool of the year! 3 winners.
           </p>
         </motion.div>
 

@@ -49,7 +49,7 @@ export const termsSections: TermsSection[] = [
     id: 'lottery-services',
     title: '5. Lottery Services',
     content: [
-      'PowerSOL offers multiple lottery types, including but not limited to: Tri-Daily Lottery (multiple draws per day), Monthly Jackpot, Grand Prize, and Special Event Lotteries. Each lottery type has its own ticket pricing, prize pool structure, draw schedule, and maximum ticket caps.',
+      'PowerSOL offers multiple lottery types, including but not limited to: Tri-Daily Lottery (every 3 days), Monthly Jackpot, Grand Prize, and Special Event Lotteries. Each lottery type has its own ticket pricing, prize pool structure, draw schedule, and maximum ticket caps.',
       'Ticket prices are denominated in SOL (Solana\'s native cryptocurrency) and may vary by lottery type. Prices are displayed at the time of purchase and are subject to change. By purchasing a ticket, you agree to the displayed price and terms for that specific lottery draw.',
       'All ticket purchases are final and non-refundable once the transaction has been confirmed on the Solana blockchain. The irreversible nature of blockchain transactions means that PowerSOL cannot reverse, cancel, or refund completed ticket purchases under any circumstances.',
       'PowerSOL reserves the right to modify, suspend, or discontinue any lottery type, alter prize structures, adjust ticket pricing, change draw frequencies, or implement maximum ticket limits at any time, with or without notice.',

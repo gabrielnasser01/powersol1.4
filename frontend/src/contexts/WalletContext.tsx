@@ -165,6 +165,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [publicKey]);
 
+  useEffect(() => {
+    if (!publicKey || !connected) return;
+
+    const poll = setInterval(() => {
+      solanaService.getBalance(publicKey).then(setBalance).catch(() => {});
+    }, 15000);
+
+    const handleVisibility = () => {
+      if (!document.hidden && publicKey) {
+        solanaService.getBalance(publicKey).then(setBalance).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(poll);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [publicKey, connected]);
+
   const connectStandardWallet = useCallback(async (walletId: string) => {
     const wallet = discoveredWallets.find(w => w.id === walletId);
     if (!wallet?.standardWallet) {

@@ -276,7 +276,7 @@ export function SpecialEvent() {
             >
               <div className="w-full h-full flex items-center justify-center p-2">
                 <img
-                  src="https://i.imgur.com/A9aXbmX.png"
+                  src="https://i.imgur.com/E9cayTO.png"
                   alt="Special Event"
                   className="w-full h-full object-contain"
                 />

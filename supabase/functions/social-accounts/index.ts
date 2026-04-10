@@ -202,6 +202,7 @@ Deno.serve(async (req: Request) => {
         p_platform_avatar_url: avatarUrl,
       });
 
+      EdgeRuntime.waitUntil(triggerSocialLinkMissionCheck(wallet));
       return callbackRedirect(origin, "success", `Discord account linked: ${discordUser.username}`);
     }
 
@@ -297,6 +298,7 @@ Deno.serve(async (req: Request) => {
         p_platform_avatar_url: channel.snippet.thumbnails?.default?.url || "",
       });
 
+      EdgeRuntime.waitUntil(triggerSocialLinkMissionCheck(wallet));
       return callbackRedirect(origin, "success", `YouTube channel linked: ${channel.snippet.title}`);
     }
 
@@ -529,6 +531,7 @@ Deno.serve(async (req: Request) => {
         return callbackRedirect(origin, "error", linkData.error);
       }
 
+      EdgeRuntime.waitUntil(triggerSocialLinkMissionCheck(wallet));
       return callbackRedirect(origin, "success", `X account linked: @${xUser.username}`);
     }
 
@@ -538,6 +541,35 @@ Deno.serve(async (req: Request) => {
     return errorResponse(message, 500);
   }
 });
+
+async function triggerSocialLinkMissionCheck(walletAddress: string) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const res = await fetch(`${supabaseUrl}/functions/v1/missions/check-social-links?wallet_address=${walletAddress}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      for (const m of (data.eligibleMissions || [])) {
+        if (m?.missionKey) {
+          await fetch(`${supabaseUrl}/functions/v1/missions/claim?wallet_address=${walletAddress}`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${serviceKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ mission_key: m.missionKey }),
+          });
+        }
+      }
+    }
+  } catch {}
+}
 
 function callbackRedirect(origin: string, status: "success" | "error", message: string): Response {
   const params = new URLSearchParams({ status, message });

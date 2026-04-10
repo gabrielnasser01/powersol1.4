@@ -21,6 +21,10 @@ const headers = {
 
 function isInAppBrowser(): boolean {
   const ua = navigator.userAgent || navigator.vendor || '';
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  if (isMobile && /Phantom/i.test(ua)) return true;
+  const w = window as any;
+  if (isMobile && (w.phantom?.solana || w.solana?.isPhantom)) return true;
   return /FBAN|FBAV|Instagram|Line\/|Snapchat|Twitter|MicroMessenger|TikTok|BytedanceWebview|Musical_ly|SamsungBrowser\/.*CrossApp/i.test(ua);
 }
 

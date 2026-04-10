@@ -192,7 +192,7 @@ export function SocialAccountsCard({ walletAddress, isConnected }: SocialAccount
                 IN-APP BROWSER DETECTED
               </p>
               <p className="font-mono text-[10px] sm:text-xs mt-1" style={{ color: '#d4d4d8' }}>
-                Google login does not work in embedded browsers. Open this page in Safari or Chrome to link your accounts.
+                Google blocks login in embedded browsers (Phantom, Instagram, etc). Open this page in Safari or Chrome to link your accounts.
               </p>
             </div>
           </div>

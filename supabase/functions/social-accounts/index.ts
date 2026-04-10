@@ -514,7 +514,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const supabase = getServiceClient();
-      const { error: linkError } = await supabase.rpc("link_social_account", {
+      const { data: linkData, error: linkError } = await supabase.rpc("link_social_account", {
         p_wallet_address: wallet,
         p_platform: "twitter",
         p_platform_user_id: xUser.id,
@@ -524,6 +524,9 @@ Deno.serve(async (req: Request) => {
 
       if (linkError) {
         return callbackRedirect(origin, "error", `Failed to save link: ${linkError.message}`);
+      }
+      if (linkData?.error) {
+        return callbackRedirect(origin, "error", linkData.error);
       }
 
       return callbackRedirect(origin, "success", `X account linked: @${xUser.username}`);

@@ -19,6 +19,11 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
+function isInAppBrowser(): boolean {
+  const ua = navigator.userAgent || navigator.vendor || '';
+  return /FBAN|FBAV|Instagram|Line\/|Snapchat|Twitter|MicroMessenger|TikTok|BytedanceWebview|Musical_ly|SamsungBrowser\/.*CrossApp/i.test(ua);
+}
+
 async function getLinkedAccounts(walletAddress: string): Promise<SocialAccount[]> {
   const res = await fetch(`${API_BASE}?wallet_address=${walletAddress}`, { headers });
   if (!res.ok) throw new Error('Failed to fetch social accounts');
@@ -31,6 +36,25 @@ function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', 
     try { localStorage.removeItem('powersol-social-link'); } catch {}
 
     const oauthUrl = `${API_BASE}/oauth/${platform}?wallet_address=${walletAddress}&origin=${encodeURIComponent(window.location.origin)}`;
+
+    if (isInAppBrowser()) {
+      try {
+        const isAndroid = /android/i.test(navigator.userAgent);
+        localStorage.setItem('powersol-pending-oauth', JSON.stringify({ platform, walletAddress, url: oauthUrl }));
+
+        if (isAndroid) {
+          const intentUrl = `intent://${window.location.host}/oauth/callback?pending=${platform}#Intent;scheme=https;package=com.android.chrome;end`;
+          window.location.href = intentUrl;
+        } else {
+          window.location.href = oauthUrl;
+        }
+      } catch {
+        window.location.href = oauthUrl;
+      }
+      resolve(null);
+      return;
+    }
+
     const width = 500;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
@@ -98,4 +122,5 @@ export const socialAccountService = {
   getLinkedAccounts,
   startOAuthFlow,
   unlinkAccount,
+  isInAppBrowser,
 };

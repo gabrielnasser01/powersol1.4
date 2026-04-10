@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link2, Unlink, Loader2, ExternalLink } from 'lucide-react';
+import { Link2, Unlink, Loader2, ExternalLink, AlertTriangle, Copy, Check } from 'lucide-react';
 import { socialAccountService, SocialAccount } from '../services/socialAccountService';
 import { useToast } from '../contexts/ToastContext';
 
@@ -64,7 +64,9 @@ export function SocialAccountsCard({ walletAddress, isConnected }: SocialAccount
   const [loading, setLoading] = useState(false);
   const [linkingPlatform, setLinkingPlatform] = useState<string | null>(null);
   const [unlinkingPlatform, setUnlinkingPlatform] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const toast = useToast();
+  const inAppBrowser = useMemo(() => socialAccountService.isInAppBrowser(), []);
 
   const loadAccounts = async () => {
     if (!walletAddress) return;
@@ -174,6 +176,45 @@ export function SocialAccountsCard({ walletAddress, isConnected }: SocialAccount
           </p>
         </div>
       </div>
+
+      {inAppBrowser && (
+        <div
+          className="mb-4 p-3 sm:p-4 rounded-lg flex flex-col gap-2"
+          style={{
+            background: 'rgba(234, 179, 8, 0.1)',
+            border: '1px solid rgba(234, 179, 8, 0.3)',
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#eab308' }} />
+            <div>
+              <p className="font-mono text-xs font-bold" style={{ color: '#eab308' }}>
+                IN-APP BROWSER DETECTED
+              </p>
+              <p className="font-mono text-[10px] sm:text-xs mt-1" style={{ color: '#d4d4d8' }}>
+                Google login does not work in embedded browsers. Open this page in Safari or Chrome to link your accounts.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              setCopied(true);
+              toast.success('Link copied! Paste it in Safari or Chrome.');
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg font-mono text-xs font-bold transition-all"
+            style={{
+              background: 'rgba(234, 179, 8, 0.2)',
+              border: '1px solid rgba(234, 179, 8, 0.4)',
+              color: '#eab308',
+            }}
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? 'COPIED!' : 'COPY LINK'}
+          </button>
+        </div>
+      )}
 
       <div className="space-y-3">
         {PLATFORMS.map((platform) => {

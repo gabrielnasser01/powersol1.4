@@ -21,15 +21,23 @@ export function OAuthCallback() {
       localStorage.setItem('powersol-social-link', JSON.stringify(msg));
     } catch {}
 
-    const closeTimer = setTimeout(() => window.close(), 2000);
-    const textTimer = setTimeout(() => {
-      const el = document.getElementById('hint');
-      if (el) el.textContent = 'You can close this tab manually.';
-    }, 4000);
+    const hasOpener = !!window.opener;
+
+    const closeTimer = setTimeout(() => {
+      if (hasOpener) {
+        window.close();
+      } else {
+        window.location.href = '/profile';
+      }
+    }, 2000);
+
+    const fallbackTimer = setTimeout(() => {
+      window.location.href = '/profile';
+    }, 3000);
 
     return () => {
       clearTimeout(closeTimer);
-      clearTimeout(textTimer);
+      clearTimeout(fallbackTimer);
     };
   }, [status, message]);
 
@@ -64,8 +72,8 @@ export function OAuthCallback() {
         <div style={{ color, fontSize: 16, marginBottom: 24, wordBreak: 'break-word' }}>
           {message}
         </div>
-        <div id="hint" style={{ color: '#888', fontSize: 12 }}>
-          Closing automatically...
+        <div style={{ color: '#888', fontSize: 12 }}>
+          Redirecting to profile...
         </div>
       </div>
     </div>

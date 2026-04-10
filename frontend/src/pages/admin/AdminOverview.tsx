@@ -24,15 +24,15 @@ function StatCard({ label, value, subValue, icon: Icon, color, trend }: {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-zinc-800/80 p-5"
+      className="rounded-xl border border-zinc-800/80 p-3 sm:p-5"
       style={{ background: 'linear-gradient(135deg, rgba(15,17,23,0.9) 0%, rgba(19,22,33,0.9) 100%)' }}
     >
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-2 sm:mb-3">
         <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center"
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center"
           style={{ background: `${color}15`, border: `1px solid ${color}30` }}
         >
-          <Icon className="w-5 h-5" style={{ color }} />
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color }} />
         </div>
         {trend !== undefined && (
           <div className={`flex items-center gap-1 text-xs font-mono ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -41,9 +41,9 @@ function StatCard({ label, value, subValue, icon: Icon, color, trend }: {
           </div>
         )}
       </div>
-      <p className="text-zinc-500 font-mono text-xs mb-1">{label}</p>
-      <p className="text-white font-mono text-xl font-bold">{value}</p>
-      {subValue && <p className="text-zinc-600 font-mono text-xs mt-1">{subValue}</p>}
+      <p className="text-zinc-500 font-mono text-xs mb-1 truncate">{label}</p>
+      <p className="text-white font-mono text-base sm:text-xl font-bold truncate">{value}</p>
+      {subValue && <p className="text-zinc-600 font-mono text-xs mt-1 truncate">{subValue}</p>}
     </motion.div>
   );
 }
@@ -152,13 +152,13 @@ function MonthlyVolumeSection({ data, solPrice }: { data: MonthlyVolume[]; solPr
       className="rounded-xl border border-zinc-800/80 overflow-hidden"
       style={{ background: 'linear-gradient(135deg, rgba(15,17,23,0.9) 0%, rgba(19,22,33,0.9) 100%)' }}
     >
-      <div className="flex items-center justify-between p-5 border-b border-zinc-800/50">
+      <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-800/50 gap-2">
         <div className="flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-emerald-400" />
+          <BarChart3 className="w-5 h-5 text-emerald-400 shrink-0" />
           <h3 className="text-white font-mono text-sm font-bold">Monthly Volume</h3>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-zinc-500 font-mono text-xs">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span className="text-zinc-500 font-mono text-xs hidden sm:inline">
             SOL/USD: <span className="text-emerald-400">${solPrice.toFixed(2)}</span>
           </span>
           {monthOverMonthChange !== undefined && (
@@ -172,24 +172,24 @@ function MonthlyVolumeSection({ data, solPrice }: { data: MonthlyVolume[]; solPr
 
       {currentMonth && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-zinc-800/30">
-          <div className="p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
-            <p className="text-zinc-500 font-mono text-xs mb-1">This Month Tickets</p>
-            <p className="text-white font-mono text-lg font-bold">{currentMonth.ticketCount.toLocaleString()}</p>
+          <div className="p-3 sm:p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
+            <p className="text-zinc-500 font-mono text-xs mb-1">Tickets</p>
+            <p className="text-white font-mono text-base sm:text-lg font-bold">{currentMonth.ticketCount.toLocaleString()}</p>
           </div>
-          <div className="p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
-            <p className="text-zinc-500 font-mono text-xs mb-1">This Month Revenue</p>
-            <p className="text-emerald-400 font-mono text-lg font-bold">{currentMonth.revenueSol.toFixed(4)} SOL</p>
-            <p className="text-zinc-600 font-mono text-xs">{formatUsd(currentMonth.revenueSol)}</p>
+          <div className="p-3 sm:p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
+            <p className="text-zinc-500 font-mono text-xs mb-1">Revenue</p>
+            <p className="text-emerald-400 font-mono text-base sm:text-lg font-bold">{currentMonth.revenueSol.toFixed(4)}</p>
+            <p className="text-zinc-600 font-mono text-xs">SOL ({formatUsd(currentMonth.revenueSol)})</p>
           </div>
-          <div className="p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
-            <p className="text-zinc-500 font-mono text-xs mb-1">This Month Dev Treasury</p>
-            <p className="text-amber-400 font-mono text-lg font-bold">{currentMonth.devTreasurySol.toFixed(4)} SOL</p>
-            <p className="text-zinc-600 font-mono text-xs">{formatUsd(currentMonth.devTreasurySol)}</p>
+          <div className="p-3 sm:p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
+            <p className="text-zinc-500 font-mono text-xs mb-1">Dev Treasury</p>
+            <p className="text-amber-400 font-mono text-base sm:text-lg font-bold">{currentMonth.devTreasurySol.toFixed(4)}</p>
+            <p className="text-zinc-600 font-mono text-xs">SOL ({formatUsd(currentMonth.devTreasurySol)})</p>
           </div>
-          <div className="p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
-            <p className="text-zinc-500 font-mono text-xs mb-1">This Month Delta</p>
-            <p className="text-cyan-400 font-mono text-lg font-bold">{currentMonth.deltaSol.toFixed(4)} SOL</p>
-            <p className="text-zinc-600 font-mono text-xs">{formatUsd(currentMonth.deltaSol)}</p>
+          <div className="p-3 sm:p-4" style={{ background: 'rgba(15,17,23,0.6)' }}>
+            <p className="text-zinc-500 font-mono text-xs mb-1">Delta</p>
+            <p className="text-cyan-400 font-mono text-base sm:text-lg font-bold">{currentMonth.deltaSol.toFixed(4)}</p>
+            <p className="text-zinc-600 font-mono text-xs">SOL ({formatUsd(currentMonth.deltaSol)})</p>
           </div>
         </div>
       )}
@@ -206,12 +206,12 @@ function MonthlyVolumeSection({ data, solPrice }: { data: MonthlyVolume[]; solPr
                 transition={{ delay: i * 0.04 }}
                 className="group"
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-zinc-400 font-mono text-xs w-20">{month.label}</span>
-                  <div className="flex items-center gap-4 text-right">
-                    <span className="text-zinc-500 font-mono text-xs w-14">{month.ticketCount} tix</span>
-                    <span className="text-emerald-400 font-mono text-xs w-28">{month.revenueSol.toFixed(4)} SOL</span>
-                    <span className="text-zinc-500 font-mono text-xs w-20">{formatUsd(month.revenueSol)}</span>
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                  <span className="text-zinc-400 font-mono text-xs shrink-0">{month.label}</span>
+                  <div className="flex items-center gap-2 sm:gap-4 text-right">
+                    <span className="text-zinc-500 font-mono text-xs hidden sm:inline">{month.ticketCount} tix</span>
+                    <span className="text-emerald-400 font-mono text-xs">{month.revenueSol.toFixed(4)} SOL</span>
+                    <span className="text-zinc-500 font-mono text-xs hidden md:inline">{formatUsd(month.revenueSol)}</span>
                   </div>
                 </div>
                 <div className="h-2 rounded-full bg-zinc-800/60 overflow-hidden">
@@ -234,16 +234,16 @@ function MonthlyVolumeSection({ data, solPrice }: { data: MonthlyVolume[]; solPr
 
         {recent.length > 0 && (
           <div className="mt-5 pt-4 border-t border-zinc-800/50">
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-400 font-mono text-xs font-bold">All-Time Total</span>
-              <div className="flex items-center gap-4 text-right">
-                <span className="text-zinc-400 font-mono text-xs font-bold w-14">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-zinc-400 font-mono text-xs font-bold shrink-0">All-Time Total</span>
+              <div className="flex items-center gap-2 sm:gap-4 text-right">
+                <span className="text-zinc-400 font-mono text-xs font-bold hidden sm:inline">
                   {recent.reduce((s, m) => s + m.ticketCount, 0)} tix
                 </span>
-                <span className="text-emerald-400 font-mono text-xs font-bold w-28">
+                <span className="text-emerald-400 font-mono text-xs font-bold">
                   {recent.reduce((s, m) => s + m.revenueSol, 0).toFixed(4)} SOL
                 </span>
-                <span className="text-zinc-400 font-mono text-xs font-bold w-20">
+                <span className="text-zinc-400 font-mono text-xs font-bold hidden md:inline">
                   {formatUsd(recent.reduce((s, m) => s + m.revenueSol, 0))}
                 </span>
               </div>
@@ -333,7 +333,7 @@ export function AdminOverview() {
                 LIVE {lastRefresh.toLocaleTimeString()}
               </span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
               <StatCard
                 label="Total Users"
                 value={stats?.totalUsers?.toLocaleString() || '0'}
@@ -398,9 +398,9 @@ export function AdminOverview() {
               className="rounded-xl border border-zinc-800/80 overflow-hidden"
               style={{ background: 'linear-gradient(135deg, rgba(15,17,23,0.9) 0%, rgba(19,22,33,0.9) 100%)' }}
             >
-              <div className="flex items-center justify-between p-5 border-b border-zinc-800/50">
+              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-800/50 gap-2">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-amber-400" />
+                  <Calendar className="w-5 h-5 text-amber-400 shrink-0" />
                   <h3 className="text-white font-mono text-sm font-bold">Revenue Table</h3>
                 </div>
                 <div className="relative">

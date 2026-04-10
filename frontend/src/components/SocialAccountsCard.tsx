@@ -103,7 +103,7 @@ export function SocialAccountsCard({ walletAddress, isConnected }: SocialAccount
 
   const handleLink = async (platform: 'discord' | 'youtube' | 'tiktok' | 'twitter') => {
     if (!walletAddress) return;
-    if (inAppBrowser) {
+    if (inAppBrowser && platform === 'youtube') {
       setShowInAppModal(true);
       return;
     }

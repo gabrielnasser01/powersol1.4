@@ -90,6 +90,16 @@ export function DailyMissions() {
     loadMissions();
   }, [isConnected]);
 
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && isConnected) {
+        loadMissions();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isConnected, user.publicKey]);
+
   const loadMissions = async () => {
     try {
       setLoading(true);
@@ -688,18 +698,18 @@ export function DailyMissions() {
                     }
 
                     if (mission.mission_key === 'social_discord_join') {
-                      window.open('https://discord.gg/pbbTU7SWwq', '_blank');
                       await markEligibleAPI('social_discord_join');
-                      handleClaimMission('social_discord_join');
+                      await handleClaimMission('social_discord_join');
+                      window.open('https://discord.gg/pbbTU7SWwq', '_blank');
                       return;
                     }
 
                     if (mission.mission_key === 'social_share') {
                       const shareUrl = 'https://powersol.app';
                       const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
-                      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       await markEligibleAPI('social_share');
-                      handleClaimMission('social_share');
+                      await handleClaimMission('social_share');
+                      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       return;
                     }
 

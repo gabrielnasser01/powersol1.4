@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link2, Unlink, Loader2, ExternalLink, AlertTriangle, Copy, Check } from 'lucide-react';
+import { Link2, Unlink, Loader2, ExternalLink, AlertTriangle, Copy, Check, Monitor, X } from 'lucide-react';
 import { socialAccountService, SocialAccount } from '../services/socialAccountService';
 import { useToast } from '../contexts/ToastContext';
 
@@ -65,6 +65,7 @@ export function SocialAccountsCard({ walletAddress, isConnected }: SocialAccount
   const [linkingPlatform, setLinkingPlatform] = useState<string | null>(null);
   const [unlinkingPlatform, setUnlinkingPlatform] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showInAppModal, setShowInAppModal] = useState(false);
   const toast = useToast();
   const inAppBrowser = useMemo(() => socialAccountService.isInAppBrowser(), []);
 
@@ -102,6 +103,10 @@ export function SocialAccountsCard({ walletAddress, isConnected }: SocialAccount
 
   const handleLink = async (platform: 'discord' | 'youtube' | 'tiktok' | 'twitter') => {
     if (!walletAddress) return;
+    if (inAppBrowser) {
+      setShowInAppModal(true);
+      return;
+    }
     setLinkingPlatform(platform);
     try {
       await socialAccountService.startOAuthFlow(platform, walletAddress);
@@ -176,45 +181,6 @@ export function SocialAccountsCard({ walletAddress, isConnected }: SocialAccount
           </p>
         </div>
       </div>
-
-      {inAppBrowser && (
-        <div
-          className="mb-4 p-3 sm:p-4 rounded-lg flex flex-col gap-2"
-          style={{
-            background: 'rgba(234, 179, 8, 0.1)',
-            border: '1px solid rgba(234, 179, 8, 0.3)',
-          }}
-        >
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#eab308' }} />
-            <div>
-              <p className="font-mono text-xs font-bold" style={{ color: '#eab308' }}>
-                IN-APP BROWSER DETECTED
-              </p>
-              <p className="font-mono text-[10px] sm:text-xs mt-1" style={{ color: '#d4d4d8' }}>
-                Google blocks login in embedded browsers (Phantom, Instagram, etc). Open this page in Safari or Chrome to link your accounts.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              setCopied(true);
-              toast.success('Link copied! Paste it in Safari or Chrome.');
-              setTimeout(() => setCopied(false), 2000);
-            }}
-            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg font-mono text-xs font-bold transition-all"
-            style={{
-              background: 'rgba(234, 179, 8, 0.2)',
-              border: '1px solid rgba(234, 179, 8, 0.4)',
-              color: '#eab308',
-            }}
-          >
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            {copied ? 'COPIED!' : 'COPY LINK'}
-          </button>
-        </div>
-      )}
 
       <div className="space-y-3">
         {PLATFORMS.map((platform) => {
@@ -339,6 +305,117 @@ export function SocialAccountsCard({ walletAddress, isConnected }: SocialAccount
           CONNECT_WALLET_TO_LINK_ACCOUNTS
         </div>
       )}
+
+      <AnimatePresence>
+        {showInAppModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0, 0, 0, 0.85)' }}
+            onClick={() => setShowInAppModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-xl overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(15, 15, 20, 0.99), rgba(5, 15, 25, 0.99))',
+                border: '1px solid rgba(234, 179, 8, 0.4)',
+                boxShadow: '0 0 40px rgba(234, 179, 8, 0.15), 0 25px 50px rgba(0, 0, 0, 0.5)',
+              }}
+            >
+              <div className="p-5 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{
+                        background: 'rgba(234, 179, 8, 0.15)',
+                        border: '1px solid rgba(234, 179, 8, 0.3)',
+                      }}
+                    >
+                      <AlertTriangle className="w-5 h-5" style={{ color: '#eab308' }} />
+                    </div>
+                    <p className="font-mono text-sm font-bold" style={{ color: '#eab308' }}>
+                      LINK UNAVAILABLE
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowInAppModal(false)}
+                    className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+                  >
+                    <X className="w-4 h-4" style={{ color: '#888' }} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3 mb-4 p-3 rounded-lg" style={{ background: 'rgba(234, 179, 8, 0.08)' }}>
+                  <Monitor className="w-8 h-8 flex-shrink-0" style={{ color: '#eab308' }} />
+                  <p className="font-mono text-xs leading-relaxed" style={{ color: '#d4d4d8' }}>
+                    Account linking must be done from a <span style={{ color: '#eab308', fontWeight: 700 }}>computer browser</span> (Chrome, Safari, Firefox). Embedded browsers block Google login.
+                  </p>
+                </div>
+
+                <div className="space-y-2 mb-5">
+                  <div className="flex items-start gap-2">
+                    <span className="font-mono text-xs font-bold mt-0.5" style={{ color: '#eab308' }}>1.</span>
+                    <p className="font-mono text-[11px]" style={{ color: '#a1a1aa' }}>
+                      Open <span style={{ color: '#fff', fontWeight: 600 }}>powersol.app</span> on your computer
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-mono text-xs font-bold mt-0.5" style={{ color: '#eab308' }}>2.</span>
+                    <p className="font-mono text-[11px]" style={{ color: '#a1a1aa' }}>
+                      Connect the same wallet
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-mono text-xs font-bold mt-0.5" style={{ color: '#eab308' }}>3.</span>
+                    <p className="font-mono text-[11px]" style={{ color: '#a1a1aa' }}>
+                      Go to <span style={{ color: '#fff', fontWeight: 600 }}>Profile</span> and link your accounts
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      setCopied(true);
+                      toast.success('Link copied!');
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg font-mono text-xs font-bold transition-all"
+                    style={{
+                      background: 'rgba(234, 179, 8, 0.2)',
+                      border: '1px solid rgba(234, 179, 8, 0.4)',
+                      color: '#eab308',
+                    }}
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? 'COPIED!' : 'COPY LINK'}
+                  </button>
+                  <button
+                    onClick={() => setShowInAppModal(false)}
+                    className="px-4 py-2.5 rounded-lg font-mono text-xs font-bold transition-all"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#888',
+                    }}
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

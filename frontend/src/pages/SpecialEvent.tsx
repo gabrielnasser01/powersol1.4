@@ -359,14 +359,14 @@ export function SpecialEvent() {
               transition={{ duration: 0.6, delay: 0.6 }}
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 4px 30px rgba(26, 58, 110, 0.25)',
+                boxShadow: '0 0 30px rgba(248, 249, 250, 0.6)',
               }}
               onClick={() => navigate('/grand-prize')}
-              className="rounded-2xl border cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
+              className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(240, 242, 246, 0.7))',
-                borderColor: 'rgba(26, 58, 110, 0.2)',
-                boxShadow: '0 4px 20px rgba(26, 58, 110, 0.1)',
+                background: 'linear-gradient(135deg, rgba(248, 249, 250, 0.2), rgba(233, 236, 239, 0.2))',
+                borderColor: 'rgba(248, 249, 250, 0.3)',
+                boxShadow: '0 0 20px rgba(248, 249, 250, 0.15)',
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">

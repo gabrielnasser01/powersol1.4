@@ -193,7 +193,7 @@ export function SpecialEvent() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #c5c9cf 0%, #bbc0c8 40%, #b1b7c0 100%)' }}>
+    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #a8abb0 0%, #9fa3ab 40%, #969ca4 100%)' }}>
       {/* Patriotic Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div
@@ -274,11 +274,12 @@ export function SpecialEvent() {
                 boxShadow: `0 4px 20px ${ACCENT_BLUE}15`,
               }}
             >
-              <div className="w-full h-full flex items-center justify-center p-3">
-                <div className="text-center">
-                  <div className="text-3xl mb-1">&#127482;&#127480;</div>
-                  <span className="font-mono text-xs font-bold" style={{ color: ACCENT_BLUE }}>JULY 4TH</span>
-                </div>
+              <div className="w-full h-full flex items-center justify-center p-2">
+                <img
+                  src="https://i.imgur.com/A9aXbmX.png"
+                  alt="Special Event"
+                  className="w-full h-full object-contain"
+                />
               </div>
             </motion.div>
             <div className="text-center">

@@ -193,7 +193,7 @@ export function SpecialEvent() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #e8ecf1 0%, #dce1e8 40%, #d0d6de 100%)' }}>
+    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #c5c9cf 0%, #bbc0c8 40%, #b1b7c0 100%)' }}>
       {/* Patriotic Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div

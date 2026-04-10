@@ -193,15 +193,15 @@ export function SpecialEvent() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden" style={{ background: '#ffffff' }}>
+    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #e8ecf1 0%, #dce1e8 40%, #d0d6de 100%)' }}>
       {/* Patriotic Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute inset-0"
           style={{
             background: `
-              linear-gradient(0deg, rgba(26, 58, 110, 0.03) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(178, 34, 52, 0.03) 1px, transparent 1px)
+              linear-gradient(0deg, rgba(26, 58, 110, 0.04) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(178, 34, 52, 0.04) 1px, transparent 1px)
             `,
             backgroundSize: '40px 40px',
           }}
@@ -315,7 +315,7 @@ export function SpecialEvent() {
             </motion.div>
             <div className="text-center">
               <h3 className="text-sm md:text-lg font-bold" style={{ color: theme.colors.neonPink }}>Tri-Daily Lottery</h3>
-              <p className="text-xs md:text-sm text-purple-300/80">0.1 SOL</p>
+              <p className="text-xs md:text-sm text-pink-600/80">0.1 SOL</p>
             </div>
           </div>
 
@@ -346,8 +346,8 @@ export function SpecialEvent() {
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Monthly Jackpot</h3>
-              <p className="text-xs md:text-sm text-cyan-300/80">0.2 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold text-blue-600">Monthly Jackpot</h3>
+              <p className="text-xs md:text-sm text-blue-500/80">0.2 SOL</p>
             </div>
           </div>
 
@@ -359,14 +359,14 @@ export function SpecialEvent() {
               transition={{ duration: 0.6, delay: 0.6 }}
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 0 30px rgba(248, 249, 250, 0.6)',
+                boxShadow: '0 4px 30px rgba(80, 80, 100, 0.3)',
               }}
               onClick={() => navigate('/grand-prize')}
-              className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
+              className="rounded-2xl border cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
-                background: 'linear-gradient(135deg, rgba(248, 249, 250, 0.2), rgba(233, 236, 239, 0.2))',
-                borderColor: 'rgba(248, 249, 250, 0.4)',
-                boxShadow: '0 0 20px rgba(248, 249, 250, 0.3)',
+                background: 'linear-gradient(135deg, rgba(60, 60, 80, 0.85), rgba(40, 40, 60, 0.9))',
+                borderColor: 'rgba(120, 120, 150, 0.5)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">
@@ -378,8 +378,8 @@ export function SpecialEvent() {
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-gray-200">Annual Grand Prize</h3>
-              <p className="text-xs md:text-sm text-gray-300/80">0.33 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold text-gray-700">Annual Grand Prize</h3>
+              <p className="text-xs md:text-sm text-gray-500">0.33 SOL</p>
             </div>
           </div>
         </motion.div>
@@ -447,9 +447,9 @@ export function SpecialEvent() {
             animate={{ opacity: 1, y: 0 }}
             className="p-6 rounded-2xl border text-center relative overflow-hidden"
             style={{
-              background: '#ffffff',
+              background: '#f8f9fb',
               borderColor: `${ACCENT_BLUE}25`,
-              boxShadow: `0 4px 30px ${ACCENT_BLUE}10, 0 1px 3px rgba(0,0,0,0.08)`,
+              boxShadow: `0 4px 30px ${ACCENT_BLUE}10, 0 1px 4px rgba(0,0,0,0.1)`,
               fontFamily: 'monospace',
             }}
           >
@@ -601,9 +601,9 @@ export function SpecialEvent() {
             animate={{ opacity: 1, y: 0 }}
             className="p-6 rounded-2xl border relative overflow-hidden"
             style={{
-              background: '#ffffff',
+              background: '#f8f9fb',
               borderColor: `${ACCENT_RED}25`,
-              boxShadow: `0 4px 30px ${ACCENT_RED}10, 0 1px 3px rgba(0,0,0,0.08)`,
+              boxShadow: `0 4px 30px ${ACCENT_RED}10, 0 1px 4px rgba(0,0,0,0.1)`,
               fontFamily: 'monospace',
             }}
           >

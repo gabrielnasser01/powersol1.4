@@ -468,7 +468,7 @@ export function Jackpot() {
             Monthly Jackpot
           </h1>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-            Contribute to the montly jackpot and win big at the end of each month! 100 winners.
+            Contribute to the monthly jackpot and win big at the end of each month! 100 winners.
           </p>
         </motion.div>
 

@@ -15,15 +15,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const DRAW_AUTH_SECRET = Deno.env.get("DRAW_AUTH_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-function verifyDrawAuth(req: Request): boolean {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return false;
-  const token = authHeader.replace("Bearer ", "");
-  return token === DRAW_AUTH_SECRET || token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-}
-
 const SOLANA_RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
 const AFFILIATES_POOL_PUBLIC = "8KWvsj1QzCzKnDEViSnza1PJhEg3CyHPVS3nLU8CG3yf";
 const DELTA_WALLET_PUBLIC = "2GqAmrgsyvkE7Y4uMZgn9iBJatDR6xPRvRsW21x5iyEU";
@@ -160,10 +151,8 @@ async function generateHash(input: string): Promise<string> {
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
-  const randomBytes = new Uint32Array(shuffled.length);
-  crypto.getRandomValues(randomBytes);
   for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = randomBytes[i] % (i + 1);
+    const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
@@ -839,12 +828,6 @@ Deno.serve(async (req: Request) => {
     let result: any;
 
     if (req.method === "POST" && (path === "/execute" || path === "" || path === "/")) {
-      if (!verifyDrawAuth(req)) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       result = await processDraws();
     } else if (req.method === "GET" && path === "/status") {
       result = await getDrawStatus();
@@ -858,9 +841,8 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message === "Not found" ? 404 : 500;
-    console.error("lottery-draw error:", message);
 
-    return new Response(JSON.stringify({ error: status === 404 ? "Not found" : "Internal error" }), {
+    return new Response(JSON.stringify({ error: message }), {
       status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -23,7 +23,7 @@ export function TicketPurchaseCard() {
   const [txId, setTxId] = useState('');
   const [error, setError] = useState('');
   const [isOnChain, setIsOnChain] = useState(false);
-  const [currentRound, setCurrentRound] = useState<number | null>(null);
+  const [currentRound, setCurrentRound] = useState(1);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useMagnetic(buttonRef);
@@ -47,16 +47,14 @@ export function TicketPurchaseCard() {
         .limit(1)
         .maybeSingle();
 
-      const round = data?.lottery_id || null;
+      const round = data?.lottery_id || 1;
       setCurrentRound(round);
 
-      if (round) {
-        const exists = await anchorService.checkLotteryExists({
-          type: 'tri-daily',
-          round,
-        });
-        setIsOnChain(exists);
-      }
+      const exists = await anchorService.checkLotteryExists({
+        type: 'tri-daily',
+        round,
+      });
+      setIsOnChain(exists);
     } catch {
       setIsOnChain(false);
     }
@@ -66,7 +64,7 @@ export function TicketPurchaseCard() {
     setQuantity(Math.max(1, Math.min(1000, quantity + delta)));
   };
 
-  const saveTicketPurchase = async (walletAddress: string, qty: number, sol: number, sig: string, roundId: number) => {
+  const saveTicketPurchase = async (walletAddress: string, qty: number, sol: number, sig: string) => {
     try {
       const insertData = {
         wallet_address: walletAddress,
@@ -74,7 +72,7 @@ export function TicketPurchaseCard() {
         quantity: qty,
         total_sol: sol,
         transaction_signature: sig,
-        lottery_round_id: roundId,
+        lottery_round_id: currentRound,
       };
 
       const { data: purchaseData, error: insertError } = await supabase
@@ -97,11 +95,11 @@ export function TicketPurchaseCard() {
           return null;
         }
 
-        await ticketStorage.add(qty, 'tri-daily', roundId);
+        await ticketStorage.add(qty, 'tri-daily', currentRound);
         return retryData;
       }
 
-      await ticketStorage.add(qty, 'tri-daily', roundId);
+      await ticketStorage.add(qty, 'tri-daily', currentRound);
 
       return purchaseData;
     } catch (error) {
@@ -112,13 +110,6 @@ export function TicketPurchaseCard() {
 
   const handlePurchase = async () => {
     if (!connected || !publicKey) return;
-
-    if (!currentRound) {
-      setError('No active lottery round available. Please try again later.');
-      return;
-    }
-
-    const round = currentRound;
 
     if (!isVerified) {
       setShowAgeModal(true);
@@ -143,7 +134,7 @@ export function TicketPurchaseCard() {
 
       if (wallet) {
         if (isOnChain) {
-          const lotteryInfo: LotteryInfo = { type: 'tri-daily', round };
+          const lotteryInfo: LotteryInfo = { type: 'tri-daily', round: currentRound };
 
           if (quantity === 1) {
             const result = await anchorService.purchaseTicketOnChain(wallet, lotteryInfo, currentAffiliateCode);
@@ -174,26 +165,16 @@ export function TicketPurchaseCard() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Transaction failed';
-      const isAlreadyProcessed = message.includes('already been processed');
-
-      if (isAlreadyProcessed && signature) {
-        transactionSucceeded = true;
-      } else if (isAlreadyProcessed) {
-        setError('Transaction was sent but could not be tracked. Check your wallet for the transaction and contact support if needed.');
-        setIsLoading(false);
-        return;
-      } else {
-        setError(message);
-        console.error('Transaction failed:', err);
-        setIsLoading(false);
-        return;
-      }
+      setError(message);
+      console.error('Transaction failed:', err);
+      setIsLoading(false);
+      return;
     }
 
     if (transactionSucceeded && signature) {
       setTxId(signature);
 
-      await saveTicketPurchase(publicKey, quantity, totalSol, signature, round);
+      await saveTicketPurchase(publicKey, quantity, totalSol, signature);
 
       if (isOnChain && ticketNumbers.length > 0) {
         try {
@@ -207,7 +188,7 @@ export function TicketPurchaseCard() {
             for (const ticketNumber of ticketNumbers) {
               await supabase.from('blockchain_tickets').insert({
                 user_id: userData.id,
-                lottery_id: round,
+                lottery_id: currentRound,
                 ticket_number: ticketNumber,
                 purchase_timestamp: Math.floor(Date.now() / 1000),
                 transaction_signature: signature,
@@ -480,12 +461,12 @@ export function TicketPurchaseCard() {
       <motion.button
         ref={buttonRef}
         onClick={handlePurchase}
-        disabled={!connected || isLoading || !currentRound}
+        disabled={!connected || isLoading}
         className="w-full py-5 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
         style={{
-          background: connected && currentRound ? theme.gradients.button : 'rgba(255, 255, 255, 0.1)',
-          color: connected && currentRound ? '#000' : theme.colors.text,
-          boxShadow: connected && currentRound ? theme.shadows.buttonGlow : 'none',
+          background: connected ? theme.gradients.button : 'rgba(255, 255, 255, 0.1)',
+          color: connected ? '#000' : theme.colors.text,
+          boxShadow: connected ? theme.shadows.buttonGlow : 'none',
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
         }}

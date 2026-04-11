@@ -227,7 +227,7 @@ export function Affiliates() {
 
   const copyReferralLink = async () => {
     if (!walletAddress || !canAccessDashboard || !referralCode) return;
-    const link = `https://powersol.app?ref=${referralCode}`;
+    const link = `https://powersol1-4-mjc2.vercel.app?ref=${referralCode}`;
     await navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

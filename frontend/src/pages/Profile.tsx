@@ -237,12 +237,10 @@ export function Profile() {
     return () => { cancelled = true; };
   }, [walletPublicKey, isConnected]);
 
+  // Listen for ticket purchases
   useEffect(() => {
-    const handleTicketsPurchased = () => {
-      setTimeout(async () => {
-        await loadTickets();
-        await loadAffiliateData();
-      }, 2000);
+    const handleTicketsPurchased = async () => {
+      await loadTickets();
     };
 
     window.addEventListener('ticketsPurchased', handleTicketsPurchased);
@@ -699,22 +697,22 @@ export function Profile() {
               <div
                 className="p-3 sm:p-6 rounded-xl border-2 flex flex-col items-center justify-center text-center cursor-pointer h-full"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(0, 15, 20, 0.95))',
-                  borderColor: '#14b8a6',
-                  boxShadow: '0 0 20px rgba(20, 184, 166, 0.3)',
+                  background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(0, 20, 10, 0.95))',
+                  borderColor: '#00ff88',
+                  boxShadow: '0 0 20px rgba(0, 255, 136, 0.3)',
                 }}
                 onClick={() => setShowTicketsModal(true)}
               >
                 <div
                   className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg mb-2 sm:mb-4 flex items-center justify-center"
                   style={{
-                    background: 'rgba(20, 184, 166, 0.2)',
-                    border: '1px solid rgba(20, 184, 166, 0.4)',
+                    background: 'rgba(0, 255, 136, 0.2)',
+                    border: '1px solid rgba(0, 255, 136, 0.4)',
                   }}
                 >
-                  <Trophy className="w-5 h-5 sm:w-8 sm:h-8" style={{ color: '#14b8a6' }} />
+                  <Trophy className="w-5 h-5 sm:w-8 sm:h-8" style={{ color: '#00ff88' }} />
                 </div>
-                <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#14b8a6' }}>
+                <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono" style={{ color: '#00ff88' }}>
                   {String(isConnected ? totalTickets : 0).padStart(3, '0')}
                 </div>
                 <p className="text-xs text-zinc-400 font-mono uppercase">

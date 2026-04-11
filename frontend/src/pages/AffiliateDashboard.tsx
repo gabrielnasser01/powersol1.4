@@ -52,7 +52,7 @@ export function AffiliateDashboard() {
 
   const user = userStorage.get();
   const [realReferralCode, setRealReferralCode] = useState('');
-  const affiliateLink = realReferralCode ? `https://powersol.app?ref=${realReferralCode}` : '';
+  const affiliateLink = realReferralCode ? `https://powersol1-4-mjc2.vercel.app?ref=${realReferralCode}` : '';
 
   useEffect(() => {
     const fetchAffiliateData = async () => {
@@ -125,15 +125,6 @@ export function AffiliateDashboard() {
     };
 
     fetchAffiliateData();
-
-    const handleTicketsPurchased = () => {
-      setTimeout(fetchAffiliateData, 3000);
-    };
-    window.addEventListener('ticketsPurchased', handleTicketsPurchased);
-
-    return () => {
-      window.removeEventListener('ticketsPurchased', handleTicketsPurchased);
-    };
   }, [user.publicKey]);
 
   const copyAffiliateLink = async () => {

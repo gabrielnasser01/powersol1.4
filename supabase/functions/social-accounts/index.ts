@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const VALID_PLATFORMS = new Set(["discord", "youtube", "tiktok", "twitter"]);
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://powersol.app";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://powersol1-4-mjc2.vercel.app";
 
 function isValidWallet(addr: string): boolean {
   return typeof addr === "string" && SOLANA_ADDR_RE.test(addr.trim());
@@ -537,8 +537,8 @@ Deno.serve(async (req: Request) => {
 
     return errorResponse("Not found", 404);
   } catch (error) {
-    console.error("social-accounts error:", error instanceof Error ? error.message : "Unknown");
-    return errorResponse("Internal error", 500);
+    const message = error instanceof Error ? error.message : "Internal error";
+    return errorResponse(message, 500);
   }
 });
 

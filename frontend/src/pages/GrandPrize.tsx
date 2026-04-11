@@ -72,7 +72,7 @@ export function GrandPrize() {
       try {
         const { data } = await supabase.rpc('get_lottery_public_stats', { p_lottery_type: 'grand-prize' });
         if (data) {
-          setLiveContributors(data.current_round_tickets ?? data.total_tickets);
+          setLiveContributors(data.total_tickets);
           setLiveGrowthRate(data.growth_rate);
           setLiveDaysLeft(data.days_left);
         }
@@ -81,15 +81,6 @@ export function GrandPrize() {
       }
     };
     fetchLotteryStats();
-
-    const handleTicketsPurchased = () => {
-      setTimeout(fetchLotteryStats, 2000);
-    };
-    window.addEventListener('ticketsPurchased', handleTicketsPurchased);
-
-    return () => {
-      window.removeEventListener('ticketsPurchased', handleTicketsPurchased);
-    };
   }, []);
 
   const isConnected = connected && !!publicKey;
@@ -190,12 +181,6 @@ export function GrandPrize() {
         .maybeSingle();
 
       const roundId = currentLottery?.lottery_id || null;
-
-      if (!roundId) {
-        setError('No active Grand Prize lottery right now. Your SOL was sent — please contact support for a refund.');
-        setIsLoading(false);
-        return;
-      }
 
       const { data: purchaseData, error: purchaseError } = await supabase.from('ticket_purchases').insert({
         wallet_address: publicKey,
@@ -398,7 +383,7 @@ export function GrandPrize() {
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Monthly Jackpot</h3>
+              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Montly Jackpot</h3>
               <p className="text-xs md:text-sm text-cyan-300/80">0.2 SOL</p>
             </div>
           </div>

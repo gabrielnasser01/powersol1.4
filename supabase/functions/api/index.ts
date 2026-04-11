@@ -143,12 +143,10 @@ async function handlePrizes(req: Request, supabase: ReturnType<typeof createClie
 
   if (req.method === "GET") {
     if (url.pathname.includes("/unclaimed")) {
-      if (!userId) throw new Error("Unauthorized");
       const { data, error } = await supabase
         .from("prizes")
         .select("*")
         .eq("status", "unclaimed")
-        .eq("winner_user_id", userId)
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -157,11 +155,9 @@ async function handlePrizes(req: Request, supabase: ReturnType<typeof createClie
     }
 
     if (url.pathname.includes("/claims")) {
-      if (!userId) throw new Error("Unauthorized");
       const { data, error } = await supabase
         .from("prize_claims")
         .select("*, prize:prizes(*)")
-        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -169,11 +165,9 @@ async function handlePrizes(req: Request, supabase: ReturnType<typeof createClie
       return data;
     }
 
-    if (!userId) throw new Error("Unauthorized");
     const { data, error } = await supabase
       .from("prizes")
       .select("*")
-      .eq("winner_user_id", userId)
       .order("created_at", { ascending: false })
       .limit(100);
 

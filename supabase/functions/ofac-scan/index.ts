@@ -74,26 +74,12 @@ async function fetchOfacList(): Promise<{
   };
 }
 
-function verifyServiceAuth(req: Request): boolean {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return false;
-  const token = authHeader.replace("Bearer ", "");
-  return token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    if (!verifyServiceAuth(req)) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -156,9 +142,8 @@ Deno.serve(async (req: Request) => {
       .select("wallet_address");
 
     if (usersError) {
-      console.error("OFAC scan users fetch error:", usersError.message);
       return new Response(
-        JSON.stringify({ error: "Failed to fetch users" }),
+        JSON.stringify({ error: usersError.message }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -271,9 +256,10 @@ Deno.serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("ofac-scan error:", err instanceof Error ? err.message : "Unknown");
     return new Response(
-      JSON.stringify({ error: "Internal error" }),
+      JSON.stringify({
+        error: err instanceof Error ? err.message : "Internal error",
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

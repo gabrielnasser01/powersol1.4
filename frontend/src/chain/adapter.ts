@@ -91,22 +91,18 @@ class RealChainAdapter implements ChainAdapter {
   async getPoolState() {
     const type = getLotteryTypeFromPath();
 
-    const [walletResult, lotteryResult] = await Promise.allSettled([
-      walletBalanceService.getLotteryPoolBalance(type),
-      supabase
-        .from('blockchain_lotteries')
-        .select('lottery_id')
-        .eq('lottery_type', type)
-        .eq('is_drawn', false)
-        .order('draw_timestamp', { ascending: true })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+    const walletBalance = await walletBalanceService.getLotteryPoolBalance(type);
 
-    const balanceSol = walletResult.status === 'fulfilled' ? walletResult.value.balanceSol : 0;
+    const { data: lottery } = await supabase
+      .from('blockchain_lotteries')
+      .select('lottery_id')
+      .eq('lottery_type', type)
+      .eq('is_drawn', false)
+      .order('draw_timestamp', { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
     let ticketCount = 0;
-    const lottery = lotteryResult.status === 'fulfilled' ? lotteryResult.value.data : null;
     if (lottery) {
       const { data: sumData } = await supabase
         .from('ticket_purchases')
@@ -116,23 +112,21 @@ class RealChainAdapter implements ChainAdapter {
     }
 
     return {
-      totalSol: balanceSol,
+      totalSol: walletBalance.balanceSol,
       ticketCount,
     };
   }
 
   async getGlobalPoolState() {
     const type = getLotteryTypeFromPath();
+    const walletBalance = await walletBalanceService.getLotteryPoolBalance(type);
+    const prizePoolSol = walletBalance.balanceSol;
 
-    const [walletResult, ticketResult] = await Promise.allSettled([
-      walletBalanceService.getLotteryPoolBalance(type),
-      supabase
-        .from('blockchain_tickets')
-        .select('id', { count: 'exact', head: true }),
-    ]);
+    const { count } = await supabase
+      .from('blockchain_tickets')
+      .select('id', { count: 'exact', head: true });
 
-    const prizePoolSol = walletResult.status === 'fulfilled' ? walletResult.value.balanceSol : 0;
-    const totalTickets = ticketResult.status === 'fulfilled' ? (ticketResult.value.count || 0) : 0;
+    const totalTickets = count || 0;
 
     return {
       totalSol: prizePoolSol,
@@ -146,7 +140,7 @@ class RealChainAdapter implements ChainAdapter {
   async getNextDraw() {
     const type = getLotteryTypeFromPath();
 
-    const [lotteryResult, walletResult] = await Promise.allSettled([
+    const [lottery, walletBalance] = await Promise.all([
       supabase
         .from('blockchain_lotteries')
         .select('*')
@@ -159,17 +153,14 @@ class RealChainAdapter implements ChainAdapter {
       walletBalanceService.getLotteryPoolBalance(type),
     ]);
 
-    const lottery = lotteryResult.status === 'fulfilled' ? lotteryResult.value : null;
     if (!lottery) {
       return null;
     }
 
-    const poolSol = walletResult.status === 'fulfilled' ? walletResult.value.balanceSol : 0;
-
     return {
       id: `${type}-${lottery.lottery_id}`,
       type: type,
-      poolSol,
+      poolSol: walletBalance.balanceSol,
       drawTime: new Date(Number(lottery.draw_timestamp) * 1000).toISOString(),
       maxTickets: lottery.max_tickets,
       ticketsSold: 0,

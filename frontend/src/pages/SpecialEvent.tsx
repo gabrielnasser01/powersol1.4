@@ -249,6 +249,14 @@ export function SpecialEvent() {
           [INDEPENDENCE_MODULE]
         </div>
 
+        {/* Mobile terminal indicators */}
+        <div className="block sm:hidden text-center pt-4 pb-2">
+          <div className="flex justify-center space-x-4 text-xs font-mono" style={{ color: `${ACCENT_BLUE}cc` }}>
+            <span>[SYSTEM_ACTIVE]</span>
+            <span>[INDEPENDENCE_MODULE]</span>
+          </div>
+        </div>
+
         {/* Banners Section */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}

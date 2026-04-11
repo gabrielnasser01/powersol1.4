@@ -52,7 +52,7 @@ export function AffiliateDashboard() {
 
   const user = userStorage.get();
   const [realReferralCode, setRealReferralCode] = useState('');
-  const affiliateLink = realReferralCode ? `https://powersol1-4-mjc2.vercel.app?ref=${realReferralCode}` : '';
+  const affiliateLink = realReferralCode ? `https://powersol.app?ref=${realReferralCode}` : '';
 
   useEffect(() => {
     const fetchAffiliateData = async () => {

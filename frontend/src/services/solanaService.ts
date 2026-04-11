@@ -157,15 +157,23 @@ class SolanaService {
   async sendAndConfirmTransaction(signedTransaction: Transaction): Promise<string> {
     const signature = await this.connection.sendRawTransaction(
       signedTransaction.serialize(),
-      { skipPreflight: false, preflightCommitment: 'processed' }
+      { skipPreflight: true, preflightCommitment: 'confirmed', maxRetries: 3 }
     );
 
     const latestBlockhash = await this.connection.getLatestBlockhash();
-    await this.connection.confirmTransaction({
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    }, 'confirmed');
+    try {
+      await this.connection.confirmTransaction({
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      }, 'confirmed');
+    } catch (confirmErr) {
+      const msg = confirmErr instanceof Error ? confirmErr.message : '';
+      if (!msg.includes('already been processed')) {
+        const status = await this.connection.getSignatureStatus(signature);
+        if (!status?.value?.confirmationStatus) throw confirmErr;
+      }
+    }
 
     return signature;
   }

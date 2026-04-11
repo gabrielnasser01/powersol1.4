@@ -221,14 +221,22 @@ class AnchorService {
 
     const signature = await this.connection.sendRawTransaction(
       signedTransaction.serialize(),
-      { skipPreflight: false, preflightCommitment: 'confirmed' }
+      { skipPreflight: true, preflightCommitment: 'confirmed', maxRetries: 3 }
     );
 
-    await this.connection.confirmTransaction({
-      signature,
-      blockhash,
-      lastValidBlockHeight,
-    });
+    try {
+      await this.connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight,
+      }, 'confirmed');
+    } catch (confirmErr) {
+      const msg = confirmErr instanceof Error ? confirmErr.message : '';
+      if (!msg.includes('already been processed')) {
+        const status = await this.connection.getSignatureStatus(signature);
+        if (!status?.value?.confirmationStatus) throw confirmErr;
+      }
+    }
 
     return { signature, ticketNumber: nextTicketNumber };
   }

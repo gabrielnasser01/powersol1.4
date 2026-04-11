@@ -165,10 +165,20 @@ export function TicketPurchaseCard() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Transaction failed';
-      setError(message);
-      console.error('Transaction failed:', err);
-      setIsLoading(false);
-      return;
+      const isAlreadyProcessed = message.includes('already been processed');
+
+      if (isAlreadyProcessed && signature) {
+        transactionSucceeded = true;
+      } else if (isAlreadyProcessed) {
+        setError('Transaction was sent but could not be tracked. Check your wallet for the transaction and contact support if needed.');
+        setIsLoading(false);
+        return;
+      } else {
+        setError(message);
+        console.error('Transaction failed:', err);
+        setIsLoading(false);
+        return;
+      }
     }
 
     if (transactionSucceeded && signature) {

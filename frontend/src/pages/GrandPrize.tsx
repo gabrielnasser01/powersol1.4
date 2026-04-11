@@ -383,7 +383,7 @@ export function GrandPrize() {
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Montly Jackpot</h3>
+              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Monthly Jackpot</h3>
               <p className="text-xs md:text-sm text-cyan-300/80">0.2 SOL</p>
             </div>
           </div>

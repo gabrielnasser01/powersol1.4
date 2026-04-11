@@ -12,7 +12,7 @@ const faqs = [
   {
     id: 'ticket-cost',
     question: 'How much does a ticket cost?',
-    answer: 'Each lottery ticket costs 0.1sol for the tri-daily lottery, 0.2sol for the montly jackpot, 0.2sol for special event tickets and 0.33sol for annual grand prize. You can purchase multiple tickets to increase your chances of winning.',
+    answer: 'Each lottery ticket costs 0.1sol for the tri-daily lottery, 0.2sol for the monthly jackpot, 0.2sol for special event tickets and 0.33sol for annual grand prize. You can purchase multiple tickets to increase your chances of winning.',
   },
   {
     id: 'when-draws',

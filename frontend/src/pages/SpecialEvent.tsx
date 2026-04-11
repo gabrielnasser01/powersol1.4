@@ -203,7 +203,7 @@ export function SpecialEvent() {
               linear-gradient(0deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
               linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px)
             `,
-            backgroundSize: '40px 40px',
+            backgroundSize: '20px 20px',
           }}
         />
         <div
@@ -242,7 +242,7 @@ export function SpecialEvent() {
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
-        <div className="absolute top-24 left-6 text-xs font-mono" style={{ color: `${ACCENT_BLUE}60` }}>
+        <div className="absolute top-24 left-6 text-xs font-mono hidden sm:block" style={{ color: `${ACCENT_BLUE}60` }}>
           [SYSTEM_ACTIVE]
         </div>
         <div className="absolute top-24 right-6 text-xs font-mono hidden sm:block" style={{ color: `${ACCENT_RED}60` }}>

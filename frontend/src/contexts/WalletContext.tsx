@@ -8,7 +8,7 @@ import { getActiveAffiliateCode, getStoredAffiliateCode, initAffiliateTracking }
 import { apiClient } from '../services/api';
 import { powerPointsService } from '../services/powerPointsService';
 
-function isMobileDevice(): boolean {
+export function isMobileDevice(): boolean {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
   );
@@ -27,23 +27,46 @@ function buildUrlWithRef(baseHref: string): string {
   return url.toString();
 }
 
-function openPhantomBrowseDeepLink() {
-  const targetUrl = encodeURIComponent(buildUrlWithRef(window.location.href));
-  if (isAndroid()) {
-    const intentUrl = `intent://browse/${targetUrl}#Intent;scheme=phantom;package=app.phantom;end;`;
-    window.location.href = intentUrl;
-  } else {
-    window.location.href = `https://phantom.app/ul/browse/${targetUrl}`;
-  }
+export function isInsideWalletBrowser(): string | null {
+  if (typeof window === 'undefined') return null;
+  const ua = navigator.userAgent.toLowerCase();
+  const w = window as any;
+
+  if (w.phantom?.solana?.isPhantom || w.solana?.isPhantom) return 'phantom';
+  if (w.solflare) return 'solflare';
+  if (w.backpack) return 'backpack';
+  if (ua.includes('phantom')) return 'phantom';
+  if (ua.includes('solflare')) return 'solflare';
+  if (ua.includes('backpack')) return 'backpack';
+  return null;
 }
 
-function openSolflareBrowseDeepLink() {
+export function openWalletDeepLink(walletType: string) {
   const targetUrl = encodeURIComponent(buildUrlWithRef(window.location.href));
-  if (isAndroid()) {
-    const intentUrl = `intent://ul/v1/browse/${targetUrl}#Intent;scheme=https;package=com.solflare.mobile;S.browser_fallback_url=${encodeURIComponent('https://solflare.com/')};end;`;
-    window.location.href = intentUrl;
-  } else {
-    window.location.href = `https://solflare.com/ul/v1/browse/${targetUrl}`;
+
+  switch (walletType) {
+    case 'phantom':
+      if (isAndroid()) {
+        window.location.href = `intent://browse/${targetUrl}#Intent;scheme=phantom;package=app.phantom;end;`;
+      } else {
+        window.location.href = `https://phantom.app/ul/browse/${targetUrl}`;
+      }
+      break;
+
+    case 'solflare':
+      if (isAndroid()) {
+        window.location.href = `intent://ul/v1/browse/${targetUrl}#Intent;scheme=https;package=com.solflare.mobile;S.browser_fallback_url=${encodeURIComponent('https://solflare.com/')};end;`;
+      } else {
+        window.location.href = `https://solflare.com/ul/v1/browse/${targetUrl}`;
+      }
+      break;
+
+    case 'backpack':
+      window.location.href = `https://backpack.app/ul/browse/${targetUrl}`;
+      break;
+
+    default:
+      break;
   }
 }
 
@@ -83,7 +106,7 @@ interface WalletContextType {
   connecting: boolean;
   balance: number;
   discoveredWallets: DiscoveredWallet[];
-  connect: (walletType?: 'phantom' | 'solflare' | 'standard', walletId?: string) => Promise<void>;
+  connect: (walletType?: 'phantom' | 'solflare' | 'backpack' | 'standard', walletId?: string) => Promise<void>;
   disconnect: () => Promise<void>;
   signTransaction: (transaction: Transaction) => Promise<Transaction>;
   signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
@@ -227,7 +250,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     claimDailyLoginPoints(pubKey);
   }, [discoveredWallets]);
 
-  const connect = useCallback(async (walletType: 'phantom' | 'solflare' | 'standard' = 'phantom', walletId?: string) => {
+  const connect = useCallback(async (walletType: 'phantom' | 'solflare' | 'backpack' | 'standard' = 'phantom', walletId?: string) => {
     setConnecting(true);
 
     try {
@@ -242,7 +265,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         walletProvider = getPhantomProvider();
         if (!walletProvider) {
           if (isMobileDevice()) {
-            openPhantomBrowseDeepLink();
+            openWalletDeepLink('phantom');
             throw new Error('Opening Phantom app...');
           }
           window.open('https://phantom.app/', '_blank');
@@ -252,11 +275,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         walletProvider = getSolflareProvider();
         if (!walletProvider) {
           if (isMobileDevice()) {
-            openSolflareBrowseDeepLink();
+            openWalletDeepLink('solflare');
             throw new Error('Opening Solflare app...');
           }
           window.open('https://solflare.com/', '_blank');
           throw new Error('Solflare wallet not installed. Please install it from solflare.com');
+        }
+      } else if (walletType === 'backpack') {
+        const w = window as any;
+        walletProvider = w.backpack as PhantomProvider | null;
+        if (!walletProvider) {
+          if (isMobileDevice()) {
+            openWalletDeepLink('backpack');
+            throw new Error('Opening Backpack app...');
+          }
+          window.open('https://backpack.app/', '_blank');
+          throw new Error('Backpack wallet not installed. Please install it from backpack.app');
         }
       }
 
@@ -425,6 +459,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             ?? solflare.publicKey?.toBase58();
           if (!pubKey) throw new Error('No public key');
           setProvider(solflare);
+          setPublicKey(pubKey);
+          setConnected(true);
+          userStorage.set({ publicKey: pubKey, connectedAt: Date.now() });
+          const bal = await solanaService.getBalance(pubKey);
+          setBalance(bal);
+          return;
+        } catch {}
+      }
+
+      const w = window as any;
+      if (w.backpack) {
+        try {
+          const resp = await w.backpack.connect();
+          const pubKey = resp?.publicKey?.toBase58()
+            ?? w.backpack.publicKey?.toBase58();
+          if (!pubKey) throw new Error('No public key');
+          setProvider(w.backpack);
           setPublicKey(pubKey);
           setConnected(true);
           userStorage.set({ publicKey: pubKey, connectedAt: Date.now() });

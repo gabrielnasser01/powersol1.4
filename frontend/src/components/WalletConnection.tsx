@@ -1,26 +1,46 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Loader, ChevronDown, Scan } from 'lucide-react';
+import { Wallet, Loader, ChevronDown, Scan, Smartphone, ExternalLink } from 'lucide-react';
 import { theme } from '../theme';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { useWallet } from '../contexts/WalletContext';
+import { isMobileDevice, isInsideWalletBrowser, openWalletDeepLink } from '../contexts/WalletContext';
 import type { DiscoveredWallet } from '../contexts/WalletContext';
 
-const KNOWN_WALLETS = [
+interface WalletConfig {
+  name: string;
+  type: 'phantom' | 'solflare' | 'backpack';
+  description: string;
+  icon: string;
+  color: string;
+  deepLinkSupported: boolean;
+}
+
+const KNOWN_WALLETS: WalletConfig[] = [
   {
     name: 'Phantom',
-    type: 'phantom' as const,
+    type: 'phantom',
     description: 'Most popular Solana wallet',
     icon: 'https://i.imgur.com/g8nBa6n.png',
     color: theme.colors.neonPurple,
+    deepLinkSupported: true,
   },
   {
     name: 'Solflare',
-    type: 'solflare' as const,
+    type: 'solflare',
     description: 'Web & Mobile compatible',
     icon: 'https://i.imgur.com/juhrcfm.png',
     color: theme.colors.neonBlue,
+    deepLinkSupported: true,
+  },
+  {
+    name: 'Backpack',
+    type: 'backpack',
+    description: 'Multi-chain wallet',
+    icon: 'https://i.imgur.com/TiAPbMH.png',
+    color: '#e33e3f',
+    deepLinkSupported: true,
   },
 ];
 
@@ -47,6 +67,9 @@ export function WalletConnection() {
 
   useMagnetic(buttonRef, { strength: 15 });
 
+  const isMobile = isMobileDevice();
+  const walletBrowser = isInsideWalletBrowser();
+
   const handleConnect = async () => {
     if (connected) {
       await disconnect();
@@ -56,7 +79,7 @@ export function WalletConnection() {
     }
   };
 
-  const handleWalletConnect = async (walletType: 'phantom' | 'solflare') => {
+  const handleWalletConnect = async (walletType: 'phantom' | 'solflare' | 'backpack') => {
     setError('');
     setIsConnecting(true);
     try {
@@ -74,6 +97,11 @@ export function WalletConnection() {
     }
   };
 
+  const handleMobileDeepLink = (walletType: string) => {
+    openWalletDeepLink(walletType);
+    setShowModal(false);
+  };
+
   const handleStandardWalletConnect = async (walletId: string) => {
     setError('');
     setIsConnecting(true);
@@ -86,6 +114,91 @@ export function WalletConnection() {
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  const hasNativeProvider = (walletType: string): boolean => {
+    const w = window as any;
+    if (walletType === 'phantom') return !!(w.phantom?.solana?.isPhantom || w.solana?.isPhantom);
+    if (walletType === 'solflare') return !!w.solflare;
+    if (walletType === 'backpack') return !!w.backpack;
+    return false;
+  };
+
+  const renderWalletButton = (wallet: WalletConfig) => {
+    const providerAvailable = hasNativeProvider(wallet.type);
+    const needsDeepLink = isMobile && !providerAvailable;
+
+    const handleClick = () => {
+      if (needsDeepLink) {
+        handleMobileDeepLink(wallet.type);
+      } else {
+        handleWalletConnect(wallet.type);
+      }
+    };
+
+    return (
+      <motion.button
+        key={wallet.type}
+        onClick={handleClick}
+        disabled={isConnecting}
+        className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
+        style={{
+          background: `
+            linear-gradient(0deg, ${wallet.color}08 1px, transparent 1px),
+            linear-gradient(90deg, ${wallet.color}08 1px, transparent 1px),
+            linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
+          `,
+          backgroundSize: '15px 15px, 15px 15px, 100% 100%',
+          borderColor: `${wallet.color}40`,
+          boxShadow: `0 0 15px ${wallet.color}20`,
+        }}
+        whileHover={{
+          borderColor: wallet.color,
+          boxShadow: `0 0 25px ${wallet.color}50`,
+          scale: 1.02,
+        }}
+        whileTap={{ scale: 0.98 }}
+      >
+        <motion.div
+          className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${wallet.color}20, transparent)`,
+          }}
+          animate={{ x: [-100, 100] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+        />
+
+        <div className="flex items-center space-x-4">
+          <div className="w-8 h-8 rounded-md flex items-center justify-center text-sm relative">
+            <img
+              src={wallet.icon}
+              alt={wallet.name}
+              className="w-8 h-8 object-contain"
+            />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
+              {wallet.name}
+            </h4>
+            <p className="text-xs text-zinc-400 font-mono">
+              {needsDeepLink ? 'Open in app' : wallet.description}
+            </p>
+          </div>
+          <div
+            className="text-zinc-400 group-hover:text-white transition-colors font-mono"
+            style={{ color: wallet.color }}
+          >
+            {isConnecting ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : needsDeepLink ? (
+              <ExternalLink className="w-4 h-4" />
+            ) : (
+              '\u2192'
+            )}
+          </div>
+        </div>
+      </motion.button>
+    );
   };
 
   return (
@@ -236,7 +349,10 @@ export function WalletConnection() {
                   {'>'} WALLET_CONNECTION.EXE
                 </h3>
                 <p className="text-green-300/70 font-mono text-xs">
-                  Select wallet to connect (real Solana transactions)
+                  {isMobile && !walletBrowser
+                    ? 'Select a wallet app to open'
+                    : 'Select wallet to connect (real Solana transactions)'
+                  }
                 </p>
               </div>
 
@@ -246,182 +362,142 @@ export function WalletConnection() {
                 </div>
               )}
 
-              <div className="space-y-3 mb-6">
-                {KNOWN_WALLETS.map((wallet, index) => (
-                  <motion.button
-                    key={index}
-                    onClick={() => handleWalletConnect(wallet.type)}
-                    disabled={isConnecting}
-                    className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
-                    style={{
-                      background: `
-                        linear-gradient(0deg, ${wallet.color}08 1px, transparent 1px),
-                        linear-gradient(90deg, ${wallet.color}08 1px, transparent 1px),
-                        linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
-                      `,
-                      backgroundSize: '15px 15px, 15px 15px, 100% 100%',
-                      borderColor: `${wallet.color}40`,
-                      boxShadow: `0 0 15px ${wallet.color}20`,
-                    }}
-                    whileHover={{
-                      borderColor: wallet.color,
-                      boxShadow: `0 0 25px ${wallet.color}50`,
-                      scale: 1.02,
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <motion.div
-                      className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
-                      style={{
-                        background: `linear-gradient(90deg, transparent, ${wallet.color}20, transparent)`,
-                      }}
-                      animate={{ x: [-100, 100] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                    />
-
-                    <div className="flex items-center space-x-4">
-                      <div className="w-8 h-8 rounded-md flex items-center justify-center text-sm relative">
-                        <img
-                          src={wallet.icon}
-                          alt={wallet.name}
-                          className="w-8 h-8 object-contain"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
-                          {wallet.name}
-                        </h4>
-                        <p className="text-xs text-zinc-400 font-mono">
-                          {wallet.description}
-                        </p>
-                      </div>
-                      <div
-                        className="text-zinc-400 group-hover:text-white transition-colors font-mono"
-                        style={{ color: wallet.color }}
-                      >
-                        {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '\u2192'}
-                      </div>
-                    </div>
-                  </motion.button>
-                ))}
-
-                <motion.button
-                  onClick={() => setShowOtherWallets(!showOtherWallets)}
-                  className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden"
-                  style={{
-                    background: `
-                      linear-gradient(0deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
-                      linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
-                    `,
-                    backgroundSize: '15px 15px, 15px 15px, 100% 100%',
-                    borderColor: 'rgba(0, 204, 170, 0.25)',
-                    boxShadow: '0 0 15px rgba(0, 204, 170, 0.1)',
-                  }}
-                  whileHover={{
-                    borderColor: '#00ccaa',
-                    boxShadow: '0 0 25px rgba(0, 204, 170, 0.3)',
-                    scale: 1.02,
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <motion.div
-                    className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
-                    style={{
-                      background: 'linear-gradient(90deg, transparent, rgba(0, 204, 170, 0.12), transparent)',
-                    }}
-                    animate={{ x: [-100, 100] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                  />
-
-                  <div className="flex items-center space-x-4">
-                    <div className="w-8 h-8 rounded-md flex items-center justify-center relative">
-                      <Scan className="w-5 h-5" style={{ color: '#00ccaa' }} />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
-                        Other Wallets
-                      </h4>
-                      <p className="text-xs text-zinc-400 font-mono">
-                        {discoveredWallets.length > 0
-                          ? `${discoveredWallets.length} wallet${discoveredWallets.length > 1 ? 's' : ''} detected`
-                          : 'Wallet Standard auto-detect'}
-                      </p>
-                    </div>
-                    <motion.div
-                      animate={{ rotate: showOtherWallets ? 180 : 0 }}
-                      transition={{ duration: 0.2 }}
-                      style={{ color: '#00ccaa' }}
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </motion.div>
+              {isMobile && !walletBrowser && (
+                <div className="mb-4 p-3 rounded-lg border" style={{ background: 'rgba(0, 204, 255, 0.05)', borderColor: 'rgba(0, 204, 255, 0.2)' }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
+                    <p className="text-xs font-mono text-cyan-300">MOBILE_MODE</p>
                   </div>
-                </motion.button>
+                  <p className="text-[10px] font-mono text-zinc-400">
+                    Your wallet app will open and load this page in its built-in browser. Your referral link is preserved.
+                  </p>
+                </div>
+              )}
 
-                <AnimatePresence>
-                  {showOtherWallets && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden space-y-2"
+              <div className="space-y-3 mb-6">
+                {KNOWN_WALLETS.map(renderWalletButton)}
+
+                {!isMobile && (
+                  <>
+                    <motion.button
+                      onClick={() => setShowOtherWallets(!showOtherWallets)}
+                      className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden"
+                      style={{
+                        background: `
+                          linear-gradient(0deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(0, 204, 170, 0.03) 1px, transparent 1px),
+                          linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 10, 0.8) 100%)
+                        `,
+                        backgroundSize: '15px 15px, 15px 15px, 100% 100%',
+                        borderColor: 'rgba(0, 204, 170, 0.25)',
+                        boxShadow: '0 0 15px rgba(0, 204, 170, 0.1)',
+                      }}
+                      whileHover={{
+                        borderColor: '#00ccaa',
+                        boxShadow: '0 0 25px rgba(0, 204, 170, 0.3)',
+                        scale: 1.02,
+                      }}
+                      whileTap={{ scale: 0.98 }}
                     >
-                      {discoveredWallets.length > 0 ? (
-                        discoveredWallets.map((wallet) => (
-                          <motion.button
-                            key={wallet.id}
-                            onClick={() => handleStandardWalletConnect(wallet.id)}
-                            disabled={isConnecting}
-                            className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
-                            style={{
-                              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 20, 15, 0.8) 100%)',
-                              borderColor: 'rgba(0, 204, 170, 0.2)',
-                            }}
-                            whileHover={{
-                              borderColor: '#00ccaa',
-                              boxShadow: '0 0 20px rgba(0, 204, 170, 0.25)',
-                              scale: 1.02,
-                            }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <div className="flex items-center space-x-4">
-                              <div className="w-8 h-8 rounded-md flex items-center justify-center relative">
-                                <WalletIcon wallet={wallet} />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
-                                  {wallet.name}
-                                </h4>
-                                <p className="text-xs text-zinc-400 font-mono">
-                                  Wallet Standard
-                                </p>
-                              </div>
-                              <div className="text-zinc-400 group-hover:text-white transition-colors font-mono" style={{ color: '#00ccaa' }}>
-                                {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '\u2192'}
-                              </div>
-                            </div>
-                          </motion.button>
-                        ))
-                      ) : (
-                        <div
-                          className="p-4 rounded-lg border text-center"
-                          style={{
-                            background: 'rgba(0, 0, 0, 0.5)',
-                            borderColor: 'rgba(0, 204, 170, 0.15)',
-                          }}
-                        >
-                          <p className="text-xs font-mono text-zinc-500 mb-1">
-                            No additional wallets detected
-                          </p>
-                          <p className="text-[10px] font-mono text-zinc-600">
-                            Install any Solana wallet extension (Backpack, Glow, etc.)
+                      <motion.div
+                        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100"
+                        style={{
+                          background: 'linear-gradient(90deg, transparent, rgba(0, 204, 170, 0.12), transparent)',
+                        }}
+                        animate={{ x: [-100, 100] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                      />
+
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 rounded-md flex items-center justify-center relative">
+                          <Scan className="w-5 h-5" style={{ color: '#00ccaa' }} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
+                            Other Wallets
+                          </h4>
+                          <p className="text-xs text-zinc-400 font-mono">
+                            {discoveredWallets.length > 0
+                              ? `${discoveredWallets.length} wallet${discoveredWallets.length > 1 ? 's' : ''} detected`
+                              : 'Wallet Standard auto-detect'}
                           </p>
                         </div>
+                        <motion.div
+                          animate={{ rotate: showOtherWallets ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                          style={{ color: '#00ccaa' }}
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </motion.div>
+                      </div>
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {showOtherWallets && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden space-y-2"
+                        >
+                          {discoveredWallets.length > 0 ? (
+                            discoveredWallets.map((wallet) => (
+                              <motion.button
+                                key={wallet.id}
+                                onClick={() => handleStandardWalletConnect(wallet.id)}
+                                disabled={isConnecting}
+                                className="w-full p-3 rounded-lg border transition-all duration-300 group text-left relative overflow-hidden disabled:opacity-50"
+                                style={{
+                                  background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 20, 15, 0.8) 100%)',
+                                  borderColor: 'rgba(0, 204, 170, 0.2)',
+                                }}
+                                whileHover={{
+                                  borderColor: '#00ccaa',
+                                  boxShadow: '0 0 20px rgba(0, 204, 170, 0.25)',
+                                  scale: 1.02,
+                                }}
+                                whileTap={{ scale: 0.98 }}
+                              >
+                                <div className="flex items-center space-x-4">
+                                  <div className="w-8 h-8 rounded-md flex items-center justify-center relative">
+                                    <WalletIcon wallet={wallet} />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h4 className="font-bold text-sm font-mono" style={{ color: '#ffffff' }}>
+                                      {wallet.name}
+                                    </h4>
+                                    <p className="text-xs text-zinc-400 font-mono">
+                                      Wallet Standard
+                                    </p>
+                                  </div>
+                                  <div className="text-zinc-400 group-hover:text-white transition-colors font-mono" style={{ color: '#00ccaa' }}>
+                                    {isConnecting ? <Loader className="w-4 h-4 animate-spin" /> : '\u2192'}
+                                  </div>
+                                </div>
+                              </motion.button>
+                            ))
+                          ) : (
+                            <div
+                              className="p-4 rounded-lg border text-center"
+                              style={{
+                                background: 'rgba(0, 0, 0, 0.5)',
+                                borderColor: 'rgba(0, 204, 170, 0.15)',
+                              }}
+                            >
+                              <p className="text-xs font-mono text-zinc-500 mb-1">
+                                No additional wallets detected
+                              </p>
+                              <p className="text-[10px] font-mono text-zinc-600">
+                                Install any Solana wallet extension (Backpack, Glow, etc.)
+                              </p>
+                            </div>
+                          )}
+                        </motion.div>
                       )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </AnimatePresence>
+                  </>
+                )}
               </div>
 
               <motion.button

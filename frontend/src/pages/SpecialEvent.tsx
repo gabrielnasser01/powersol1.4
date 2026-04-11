@@ -57,16 +57,12 @@ export function SpecialEvent() {
 
   useEffect(() => {
     const loadPoolState = async () => {
-      try {
-        const [localState, globalState] = await Promise.all([
-          chainAdapter.getPoolState(),
-          chainAdapter.getGlobalPoolState()
-        ]);
-        setPoolState(localState);
-        setGlobalPool(globalState);
-      } catch (error) {
-        console.error('Failed to load pool state:', error);
-      }
+      const [localResult, globalResult] = await Promise.allSettled([
+        chainAdapter.getPoolState(),
+        chainAdapter.getGlobalPoolState()
+      ]);
+      if (localResult.status === 'fulfilled') setPoolState(localResult.value);
+      if (globalResult.status === 'fulfilled') setGlobalPool(globalResult.value);
     };
 
     loadPoolState();

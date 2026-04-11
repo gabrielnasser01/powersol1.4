@@ -70,7 +70,7 @@ export function Jackpot() {
       try {
         const { data } = await supabase.rpc('get_lottery_public_stats', { p_lottery_type: 'jackpot' });
         if (data) {
-          setLiveContributors(data.total_tickets);
+          setLiveContributors(data.current_round_tickets ?? data.total_tickets);
           setLiveGrowthRate(data.growth_rate);
           setLiveDaysLeft(data.days_left);
         }

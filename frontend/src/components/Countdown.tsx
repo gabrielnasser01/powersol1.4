@@ -13,20 +13,15 @@ export function Countdown() {
 
   useEffect(() => {
     const loadData = async () => {
-      try {
-        const [draw, globalState, localState] = await Promise.all([
-          lotteryService.getNextDraw(),
-          chainAdapter.getGlobalPoolState(),
-          chainAdapter.getPoolState()
-        ]);
-        setNextDraw(draw);
-        setGlobalPool(globalState);
-        setLocalPool(localState);
-      } catch (error) {
-        console.error('Failed to load lottery data:', error);
-      } finally {
-        setLoading(false);
-      }
+      const [drawResult, globalResult, localResult] = await Promise.allSettled([
+        lotteryService.getNextDraw(),
+        chainAdapter.getGlobalPoolState(),
+        chainAdapter.getPoolState()
+      ]);
+      if (drawResult.status === 'fulfilled') setNextDraw(drawResult.value);
+      if (globalResult.status === 'fulfilled') setGlobalPool(globalResult.value);
+      if (localResult.status === 'fulfilled') setLocalPool(localResult.value);
+      setLoading(false);
     };
 
     loadData();

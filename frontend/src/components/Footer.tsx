@@ -86,7 +86,7 @@ export function Footer() {
             </Link>
             
             <p className="text-zinc-400 leading-relaxed">
-              Provably Fair Draw protocol on Solana. Decentralized, Transparent, Secure and Instant.
+              Provably Fair Draw Protocol on Solana. Decentralized, Transparent, Secure and Instant.
             </p>
             
             <div className="flex space-x-4">

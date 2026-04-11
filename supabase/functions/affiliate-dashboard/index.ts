@@ -47,6 +47,13 @@ function getServiceClient() {
   );
 }
 
+function verifyServiceAuth(req: Request): boolean {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return false;
+  const token = authHeader.replace("Bearer ", "");
+  return token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -160,6 +167,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if ((path === "/commission" || path === "/commission/") && req.method === "POST") {
+      if (!verifyServiceAuth(req)) {
+        return errorResponse("Unauthorized", 403);
+      }
       const body = await req.json();
       const { buyer_wallet, ticket_price_lamports, lottery_id } = body;
 
@@ -219,9 +229,7 @@ Deno.serve(async (req: Request) => {
 
     return errorResponse("Not found", 404);
   } catch (error) {
-    return errorResponse(
-      error instanceof Error ? error.message : "Internal server error",
-      500
-    );
+    console.error("affiliate-dashboard error:", error instanceof Error ? error.message : "Unknown");
+    return errorResponse("Internal error", 500);
   }
 });

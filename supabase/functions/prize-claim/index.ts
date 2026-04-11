@@ -19,6 +19,22 @@ const corsHeaders = {
 const SOLANA_RPC_URL =
   Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
 
+const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string, maxRequests = 5, windowMs = 60000): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= maxRequests;
+}
+
 const LOTTERY_WALLET_SECRETS: Record<string, string> = {
   "tri-daily": "SOLANA_LOTTERY_TRI_DAILY_PRIVATE",
   weekly: "SOLANA_LOTTERY_WEEKLY_PRIVATE",
@@ -187,7 +203,7 @@ async function handleClaimPrize(prizeId: string, walletAddress: string) {
   } catch (txError: unknown) {
     const msg = txError instanceof Error ? txError.message : "Transaction failed";
     console.error("Prize claim transaction failed:", msg);
-    return errorResponse(`Transaction failed: ${msg}`, 500);
+    return errorResponse("Transaction failed. Please try again.", 500);
   }
 }
 
@@ -296,7 +312,7 @@ async function handleClaimAffiliate(
   } catch (txError: unknown) {
     const msg = txError instanceof Error ? txError.message : "Transaction failed";
     console.error("Affiliate claim transaction failed:", msg);
-    return errorResponse(`Transaction failed: ${msg}`, 500);
+    return errorResponse("Transaction failed. Please try again.", 500);
   }
 }
 
@@ -327,7 +343,17 @@ Deno.serve(async (req: Request) => {
       if (!prize_id || !wallet_address) {
         return errorResponse("prize_id and wallet_address are required");
       }
-      return await handleClaimPrize(prize_id, wallet_address);
+      if (!SOLANA_ADDR_RE.test(wallet_address.trim())) {
+        return errorResponse("Invalid wallet address");
+      }
+      if (typeof prize_id === "string" && !UUID_RE.test(prize_id)) {
+        return errorResponse("Invalid prize_id format");
+      }
+      const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+      if (!checkRateLimit(`prize:${wallet_address}:${clientIp}`, 3, 60000)) {
+        return errorResponse("Too many claim attempts. Try again later.", 429);
+      }
+      return await handleClaimPrize(prize_id, wallet_address.trim());
     }
 
     if (path === "/confirm") {
@@ -341,7 +367,17 @@ Deno.serve(async (req: Request) => {
       if (!wallet_address || week_number === undefined) {
         return errorResponse("wallet_address and week_number are required");
       }
-      return await handleClaimAffiliate(wallet_address, week_number);
+      if (!SOLANA_ADDR_RE.test(wallet_address.trim())) {
+        return errorResponse("Invalid wallet address");
+      }
+      if (typeof week_number !== "number" || week_number < 0 || !Number.isInteger(week_number)) {
+        return errorResponse("Invalid week_number");
+      }
+      const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+      if (!checkRateLimit(`aff:${wallet_address}:${clientIp}`, 3, 60000)) {
+        return errorResponse("Too many claim attempts. Try again later.", 429);
+      }
+      return await handleClaimAffiliate(wallet_address.trim(), week_number);
     }
 
     if (path === "/affiliate/confirm") {
@@ -352,9 +388,8 @@ Deno.serve(async (req: Request) => {
 
     return errorResponse("Not found", 404);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Internal error";
-    console.error("prize-claim error:", message);
-    return new Response(JSON.stringify({ success: false, error: message }), {
+    console.error("prize-claim error:", err instanceof Error ? err.message : "Unknown");
+    return new Response(JSON.stringify({ success: false, error: "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

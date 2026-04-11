@@ -5,13 +5,53 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Client-Info, Apikey",
+    "Content-Type, Authorization, X-Client-Info, Apikey, X-Admin-Timestamp, X-Admin-Signature",
 };
 
-const ADMIN_WALLETS = [
-  "E1qK8XaiZrKP8KRCm1ejTMramwTKCpoyX1e31UbB8Qx7",
-  "9M6d7A8R4grWLsxpJhUPDNgJgd1MRei7nqodWrtzkxLQ",
-];
+const ADMIN_WALLETS_RAW = Deno.env.get("ADMIN_WALLETS") || "";
+const ADMIN_WALLETS = ADMIN_WALLETS_RAW
+  ? ADMIN_WALLETS_RAW.split(",").map((w) => w.trim()).filter(Boolean)
+  : [
+      "E1qK8XaiZrKP8KRCm1ejTMramwTKCpoyX1e31UbB8Qx7",
+      "9M6d7A8R4grWLsxpJhUPDNgJgd1MRei7nqodWrtzkxLQ",
+    ];
+
+const ADMIN_SECRET = Deno.env.get("ADMIN_HMAC_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string, maxRequests = 30, windowMs = 60000): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= maxRequests;
+}
+
+async function verifyAdminSignature(wallet: string, timestamp: string, signature: string): Promise<boolean> {
+  const now = Date.now();
+  const ts = parseInt(timestamp, 10);
+  if (isNaN(ts) || Math.abs(now - ts) > 5 * 60 * 1000) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(ADMIN_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const data = encoder.encode(`${wallet}:${timestamp}`);
+  const sig = await crypto.subtle.sign("HMAC", key, data);
+  const expected = Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return expected === signature;
+}
 
 function errorResponse(message: string, status: number) {
   return new Response(JSON.stringify({ error: message }), {
@@ -32,12 +72,27 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+    if (!checkRateLimit(clientIp, 30, 60000)) {
+      return errorResponse("Too many requests", 429);
+    }
+
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
     const adminWallet = url.searchParams.get("wallet");
 
-    if (!adminWallet || !ADMIN_WALLETS.includes(adminWallet)) {
+    if (!adminWallet || !SOLANA_ADDR_RE.test(adminWallet) || !ADMIN_WALLETS.includes(adminWallet)) {
       return errorResponse("Unauthorized", 403);
+    }
+
+    const hmacTimestamp = req.headers.get("X-Admin-Timestamp");
+    const hmacSignature = req.headers.get("X-Admin-Signature");
+
+    if (hmacTimestamp && hmacSignature) {
+      const valid = await verifyAdminSignature(adminWallet, hmacTimestamp, hmacSignature);
+      if (!valid) {
+        return errorResponse("Invalid signature", 403);
+      }
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -561,7 +616,7 @@ Deno.serve(async (req: Request) => {
         })
         .eq("wallet_address", target_wallet);
 
-      if (updateError) return errorResponse(updateError.message, 500);
+      if (updateError) return errorResponse("Operation failed", 500);
 
       await supabase.from("admin_ban_log").insert({
         admin_wallet: adminWallet,
@@ -588,7 +643,7 @@ Deno.serve(async (req: Request) => {
         })
         .eq("wallet_address", target_wallet);
 
-      if (updateError) return errorResponse(updateError.message, 500);
+      if (updateError) return errorResponse("Operation failed", 500);
 
       await supabase.from("admin_ban_log").insert({
         admin_wallet: adminWallet,
@@ -874,7 +929,7 @@ Deno.serve(async (req: Request) => {
         .from("whale_score_history")
         .upsert(rows, { onConflict: "wallet_address,snapshot_date" });
 
-      if (upsertError) return errorResponse(upsertError.message, 500);
+      if (upsertError) return errorResponse("Operation failed", 500);
 
       return jsonResponse({ success: true, saved: rows.length, date: today });
     }
@@ -952,7 +1007,7 @@ Deno.serve(async (req: Request) => {
         .update({ manual_tier: Number(new_tier), updated_at: new Date().toISOString() })
         .eq("id", affiliate_id);
 
-      if (updateError) return errorResponse(updateError.message, 500);
+      if (updateError) return errorResponse("Operation failed", 500);
 
       return jsonResponse({ success: true, affiliate_id, new_tier: Number(new_tier) });
     }
@@ -970,7 +1025,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { data, error: fetchError } = await query;
-      if (fetchError) return errorResponse(fetchError.message, 500);
+      if (fetchError) return errorResponse("Operation failed", 500);
 
       return jsonResponse(data || []);
     }
@@ -992,7 +1047,7 @@ Deno.serve(async (req: Request) => {
         .eq("id", application_id)
         .maybeSingle();
 
-      if (fetchErr) return errorResponse(fetchErr.message, 500);
+      if (fetchErr) return errorResponse("Operation failed", 500);
       if (!app) return errorResponse("Application not found", 404);
 
       const { error: updateError } = await supabase
@@ -1005,7 +1060,7 @@ Deno.serve(async (req: Request) => {
         })
         .eq("id", application_id);
 
-      if (updateError) return errorResponse(updateError.message, 500);
+      if (updateError) return errorResponse("Operation failed", 500);
 
       if (decision === "approved") {
         const { data: existingUser } = await supabase
@@ -1067,7 +1122,7 @@ Deno.serve(async (req: Request) => {
         .update({ referral_code: trimmed, updated_at: new Date().toISOString() })
         .eq("id", affiliate_id);
 
-      if (updateError) return errorResponse(updateError.message, 500);
+      if (updateError) return errorResponse("Operation failed", 500);
 
       return jsonResponse({ success: true, affiliate_id, new_code: trimmed });
     }
@@ -1154,7 +1209,7 @@ Deno.serve(async (req: Request) => {
         data_source: "ofac_sdn",
       });
 
-      if (insertError) return errorResponse(insertError.message, 500);
+      if (insertError) return errorResponse("Operation failed", 500);
 
       await supabase
         .from("users")
@@ -1218,7 +1273,7 @@ Deno.serve(async (req: Request) => {
         issued_by: adminWallet,
       });
 
-      if (insertError) return errorResponse(insertError.message, 500);
+      if (insertError) return errorResponse("Operation failed", 500);
 
       if (severity === "high" || severity === "critical") {
         await supabase
@@ -1245,7 +1300,7 @@ Deno.serve(async (req: Request) => {
         })
         .eq("id", warning_id);
 
-      if (updateError) return errorResponse(updateError.message, 500);
+      if (updateError) return errorResponse("Operation failed", 500);
       return jsonResponse({ success: true });
     }
 
@@ -1285,7 +1340,7 @@ Deno.serve(async (req: Request) => {
         status: "open",
       });
 
-      if (insertError) return errorResponse(insertError.message, 500);
+      if (insertError) return errorResponse("Operation failed", 500);
 
       await supabase
         .from("users")
@@ -1314,7 +1369,7 @@ Deno.serve(async (req: Request) => {
         .update(updates)
         .eq("id", report_id);
 
-      if (updateError) return errorResponse(updateError.message, 500);
+      if (updateError) return errorResponse("Operation failed", 500);
       return jsonResponse({ success: true });
     }
 
@@ -1364,7 +1419,7 @@ Deno.serve(async (req: Request) => {
         verified_at: new Date().toISOString(),
       });
 
-      if (insertError) return errorResponse(insertError.message, 500);
+      if (insertError) return errorResponse("Operation failed", 500);
 
       await supabase
         .from("users")
@@ -1391,7 +1446,7 @@ Deno.serve(async (req: Request) => {
         .update({ compliance_status })
         .eq("wallet_address", wallet_address);
 
-      if (updateError) return errorResponse(updateError.message, 500);
+      if (updateError) return errorResponse("Operation failed", 500);
 
       if (compliance_status === "banned") {
         await supabase
@@ -1494,7 +1549,7 @@ Deno.serve(async (req: Request) => {
         .select("id")
         .maybeSingle();
 
-      if (insertError) return errorResponse(insertError.message, 500);
+      if (insertError) return errorResponse("Operation failed", 500);
 
       if (severity === "critical" || severity === "high") {
         await supabase
@@ -1538,7 +1593,7 @@ Deno.serve(async (req: Request) => {
         .select("id")
         .maybeSingle();
 
-      if (insertError) return errorResponse(insertError.message, 500);
+      if (insertError) return errorResponse("Operation failed", 500);
 
       if (severity === "critical" || severity === "high") {
         await supabase
@@ -1552,9 +1607,7 @@ Deno.serve(async (req: Request) => {
 
     return errorResponse("Unknown action", 400);
   } catch (err) {
-    return errorResponse(
-      err instanceof Error ? err.message : "Internal error",
-      500
-    );
+    console.error("admin-data error:", err instanceof Error ? err.message : "Unknown");
+    return errorResponse("Internal error", 500);
   }
 });

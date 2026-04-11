@@ -667,9 +667,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const walletParam = url.searchParams.get("wallet_address") || url.searchParams.get("user_id");
+    const isServiceCall = authHeader?.includes(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "NONE");
     if (walletParam && !walletAddress) {
       if (!isValidWallet(walletParam)) {
         return errorResponse("Invalid wallet address format", 400);
+      }
+      if (req.method === "POST" && !isServiceCall) {
+        return errorResponse("Authentication required for write operations", 401);
       }
       walletAddress = walletParam.trim();
     }

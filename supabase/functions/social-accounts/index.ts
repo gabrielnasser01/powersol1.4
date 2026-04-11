@@ -537,8 +537,8 @@ Deno.serve(async (req: Request) => {
 
     return errorResponse("Not found", 404);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return errorResponse(message, 500);
+    console.error("social-accounts error:", error instanceof Error ? error.message : "Unknown");
+    return errorResponse("Internal error", 500);
   }
 });
 

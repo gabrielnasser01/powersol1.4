@@ -118,9 +118,7 @@ Deno.serve(async (req: Request) => {
 
     return errorResponse("Not found", 404);
   } catch (err) {
-    return errorResponse(
-      err instanceof Error ? err.message : "Internal error",
-      500
-    );
+    console.error("age-verification error:", err instanceof Error ? err.message : "Unknown");
+    return errorResponse("Internal error", 500);
   }
 });

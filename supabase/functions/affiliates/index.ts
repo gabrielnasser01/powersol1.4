@@ -47,6 +47,13 @@ function getServiceClient() {
   );
 }
 
+function verifyServiceAuth(req: Request): boolean {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return false;
+  const token = authHeader.replace("Bearer ", "");
+  return token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+}
+
 async function submitApplication(req: Request) {
   const body = await req.json();
   const { wallet_address, full_name, email, country, social_media, marketing_experience, marketing_strategy } = body;
@@ -587,6 +594,7 @@ Deno.serve(async (req: Request) => {
     let result: unknown;
 
     if (req.method === "POST" && path === "/process-commission") {
+      if (!verifyServiceAuth(req)) return errorResponse("Unauthorized", 403);
       result = await processCommission(req);
     } else if (req.method === "POST" && path === "/register-referral") {
       result = await registerReferral(req);
@@ -597,13 +605,16 @@ Deno.serve(async (req: Request) => {
       if (!wallet) return errorResponse("Wallet address required", 400);
       result = await getMyApplication(wallet);
     } else if (req.method === "GET" && path === "/list") {
+      if (!verifyServiceAuth(req)) return errorResponse("Unauthorized", 403);
       result = await listApplications(url);
     } else if (req.method === "PATCH" && path.includes("/status")) {
+      if (!verifyServiceAuth(req)) return errorResponse("Unauthorized", 403);
       const pathParts = path.split("/");
       const applicationId = pathParts[1];
       const body = await req.json();
       result = await updateApplicationStatus(applicationId, body);
     } else if (req.method === "DELETE") {
+      if (!verifyServiceAuth(req)) return errorResponse("Unauthorized", 403);
       const pathParts = path.split("/");
       const applicationId = pathParts[1];
       result = await deleteApplication(applicationId);

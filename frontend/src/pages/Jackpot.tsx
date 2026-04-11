@@ -323,14 +323,14 @@ export function Jackpot() {
               transition={{ duration: 0.6, delay: 0 }}
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 0 30px #1a3a6e40',
+                boxShadow: '0 0 30px #1a3a6e60',
               }}
               onClick={() => navigate('/special-event')}
               className="rounded-2xl border cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
-                background: 'linear-gradient(135deg, #1a3a6e15, #b2223410)',
-                borderColor: '#1a3a6e40',
-                boxShadow: '0 4px 20px #1a3a6e15',
+                background: 'linear-gradient(135deg, #1a3a6e30, #b2223420)',
+                borderColor: '#1a3a6e60',
+                boxShadow: '0 0 20px #1a3a6e30',
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">
@@ -338,6 +338,7 @@ export function Jackpot() {
                   src="https://i.imgur.com/E9cayTO.png"
                   alt="Special Event"
                   className="w-full h-full object-contain"
+                  style={{ transform: 'scale(1.1)' }}
                 />
               </div>
             </motion.div>

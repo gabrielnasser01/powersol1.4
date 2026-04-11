@@ -315,7 +315,7 @@ export function Jackpot() {
           transition={{ duration: 0.8 }}
           className="grid grid-cols-2 md:flex md:flex-row justify-center items-start gap-4 md:gap-6 mb-8 px-4 max-w-md md:max-w-none mx-auto"
         >
-          {/* Banner 1 - Halloween */}
+          {/* Banner 1 - Special Event */}
           <div className="flex flex-col items-center gap-3">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -323,27 +323,27 @@ export function Jackpot() {
               transition={{ duration: 0.6, delay: 0 }}
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 0 30px rgba(135, 206, 250, 0.6)',
+                boxShadow: '0 0 30px #1a3a6e40',
               }}
               onClick={() => navigate('/special-event')}
-              className="rounded-2xl border backdrop-blur-md cursor-pointer relative w-full md:w-[200px] h-[100px] md:h-[120px]"
+              className="rounded-2xl border cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
-                background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.35), rgba(135, 206, 250, 0.3))',
-                borderColor: 'rgba(135, 206, 250, 0.5)',
-                boxShadow: '0 0 20px rgba(135, 206, 250, 0.3)',
+                background: 'linear-gradient(135deg, #1a3a6e15, #b2223410)',
+                borderColor: '#1a3a6e40',
+                boxShadow: '0 4px 20px #1a3a6e15',
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">
                 <img
-                  src="https://i.imgur.com/484ahmV.png"
-                  alt="Valentine's Day"
+                  src="https://i.imgur.com/E9cayTO.png"
+                  alt="Special Event"
                   className="w-full h-full object-contain"
                 />
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-sky-300">Special Event</h3>
-              <p className="text-xs md:text-sm text-sky-300/80">0.2 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold" style={{ color: '#1a3a6e' }}>Special Event</h3>
+              <p className="text-xs md:text-sm" style={{ color: '#b22234' }}>0.2 SOL</p>
             </div>
           </div>
 

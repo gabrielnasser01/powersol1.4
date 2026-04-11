@@ -199,6 +199,12 @@ export function Jackpot() {
 
       const roundId = currentLottery?.lottery_id || null;
 
+      if (!roundId) {
+        setError('No active Jackpot lottery right now. Your SOL was sent — please contact support for a refund.');
+        setIsLoading(false);
+        return;
+      }
+
       const { data: purchaseData, error: purchaseError } = await supabase.from('ticket_purchases').insert({
         wallet_address: publicKey,
         lottery_type: 'jackpot',

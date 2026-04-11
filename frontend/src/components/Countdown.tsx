@@ -30,22 +30,17 @@ export function Countdown() {
     };
 
     loadData();
-    const poolInterval = setInterval(async () => {
-      try {
-        const [draw, globalState, localState] = await Promise.all([
-          lotteryService.getNextDraw(),
-          chainAdapter.getGlobalPoolState(),
-          chainAdapter.getPoolState()
-        ]);
-        setNextDraw(draw);
-        setGlobalPool(globalState);
-        setLocalPool(localState);
-      } catch (error) {
-        console.error('Failed to refresh pool state:', error);
-      }
-    }, 30000);
+    const poolInterval = setInterval(loadData, 30000);
 
-    return () => clearInterval(poolInterval);
+    const handleTicketsPurchased = () => {
+      setTimeout(loadData, 2000);
+    };
+    window.addEventListener('ticketsPurchased', handleTicketsPurchased);
+
+    return () => {
+      clearInterval(poolInterval);
+      window.removeEventListener('ticketsPurchased', handleTicketsPurchased);
+    };
   }, []);
 
   useEffect(() => {

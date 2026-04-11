@@ -100,6 +100,15 @@ export function Jackpot() {
     };
     fetchLotteryStats();
     fetchDrawCycle();
+
+    const handleTicketsPurchased = () => {
+      setTimeout(fetchLotteryStats, 2000);
+    };
+    window.addEventListener('ticketsPurchased', handleTicketsPurchased);
+
+    return () => {
+      window.removeEventListener('ticketsPurchased', handleTicketsPurchased);
+    };
   }, []);
 
   const now = new Date();

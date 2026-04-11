@@ -125,6 +125,15 @@ export function AffiliateDashboard() {
     };
 
     fetchAffiliateData();
+
+    const handleTicketsPurchased = () => {
+      setTimeout(fetchAffiliateData, 3000);
+    };
+    window.addEventListener('ticketsPurchased', handleTicketsPurchased);
+
+    return () => {
+      window.removeEventListener('ticketsPurchased', handleTicketsPurchased);
+    };
   }, [user.publicKey]);
 
   const copyAffiliateLink = async () => {

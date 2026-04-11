@@ -72,6 +72,11 @@ export function SpecialEvent() {
     loadPoolState();
     const poolInterval = setInterval(loadPoolState, 10000);
 
+    const handleTicketsPurchased = () => {
+      setTimeout(loadPoolState, 2000);
+    };
+    window.addEventListener('ticketsPurchased', handleTicketsPurchased);
+
     const updateCountdown = () => {
       const drawDate = new Date('2026-07-04T23:59:00Z').getTime();
       const now = Date.now();
@@ -94,6 +99,7 @@ export function SpecialEvent() {
     return () => {
       clearInterval(interval);
       clearInterval(poolInterval);
+      window.removeEventListener('ticketsPurchased', handleTicketsPurchased);
     };
   }, []);
 

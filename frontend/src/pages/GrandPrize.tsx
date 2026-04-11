@@ -81,6 +81,15 @@ export function GrandPrize() {
       }
     };
     fetchLotteryStats();
+
+    const handleTicketsPurchased = () => {
+      setTimeout(fetchLotteryStats, 2000);
+    };
+    window.addEventListener('ticketsPurchased', handleTicketsPurchased);
+
+    return () => {
+      window.removeEventListener('ticketsPurchased', handleTicketsPurchased);
+    };
   }, []);
 
   const isConnected = connected && !!publicKey;

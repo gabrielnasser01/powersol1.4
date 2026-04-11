@@ -237,10 +237,12 @@ export function Profile() {
     return () => { cancelled = true; };
   }, [walletPublicKey, isConnected]);
 
-  // Listen for ticket purchases
   useEffect(() => {
-    const handleTicketsPurchased = async () => {
-      await loadTickets();
+    const handleTicketsPurchased = () => {
+      setTimeout(async () => {
+        await loadTickets();
+        await loadAffiliateData();
+      }, 2000);
     };
 
     window.addEventListener('ticketsPurchased', handleTicketsPurchased);

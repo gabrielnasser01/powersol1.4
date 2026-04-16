@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Shield, Trophy, Plus, Minus, Ticket, Loader, Calendar, Users, TrendingUp, Ghost, Crown, AlertTriangle } from 'lucide-react';
+import { Zap, Shield, Trophy, Plus, Minus, Ticket, Loader, Calendar, Users, TrendingUp, Crown, AlertTriangle, Star } from 'lucide-react';
 import { theme } from '../theme';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { chainAdapter, formatSol, formatUsd, solToUsd, SPECIAL_EVENT_TICKET_PRICE_SOL } from '../chain/adapter';
@@ -13,6 +13,12 @@ import { solanaService } from '../services/solanaService';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../services/api';
 
+const ACCENT_BLUE = '#1a3a6e';
+const ACCENT_RED = '#b22234';
+const ACCENT_BLUE_LIGHT = '#3c65a4';
+const ACCENT_RED_LIGHT = '#d4485a';
+const TEXT_DARK = '#1a2744';
+const TEXT_MID = '#4a5568';
 
 export function SpecialEvent() {
   const navigate = useNavigate();
@@ -67,9 +73,9 @@ export function SpecialEvent() {
     const poolInterval = setInterval(loadPoolState, 10000);
 
     const updateCountdown = () => {
-      const valentines = new Date('2026-04-05T23:59:00Z').getTime();
+      const drawDate = new Date('2026-07-04T23:59:00Z').getTime();
       const now = Date.now();
-      const difference = valentines - now;
+      const difference = drawDate - now;
 
       if (difference > 0) {
         const days = Math.floor(difference / (1000 * 60 * 60 * 24));
@@ -90,56 +96,6 @@ export function SpecialEvent() {
       clearInterval(poolInterval);
     };
   }, []);
-
-  const banners = [
-    {
-      id: 1,
-      icon: Zap,
-      title: 'POWER BOOST',
-      subtitle: 'System Enhanced',
-      color: '#FF8EC8',
-      gradient: `linear-gradient(135deg, rgba(255, 142, 200, 0.2), rgba(255, 105, 180, 0.15))`,
-      onClick: () => navigate('/special-event'),
-      path: '/special-event',
-    },
-    {
-      id: 2,
-      icon: Shield,
-      title: 'SECURE PLAY',
-      subtitle: 'Protected Mode',
-      color: theme.colors.neonPink,
-      gradient: `linear-gradient(135deg, ${theme.colors.neonPink}20, ${theme.colors.neonPurple}20)`,
-      onClick: () => navigate('/lottery'),
-      path: '/lottery',
-    },
-    {
-      id: 3,
-      icon: Trophy,
-      title: 'WIN BIG',
-      subtitle: 'Jackpot Ready',
-      color: '#0099ff',
-      gradient: `linear-gradient(135deg, rgba(0, 153, 255, 0.2), rgba(0, 204, 255, 0.2))`,
-      onClick: () => navigate('/jackpot'),
-      path: '/jackpot',
-    },
-    {
-      id: 4,
-      icon: Crown,
-      title: 'GRAND PRIZE',
-      subtitle: 'Annual Event',
-      color: '#ffffff',
-      gradient: `linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(233, 236, 239, 0.2))`,
-      onClick: () => navigate('/grand-prize'),
-      path: '/grand-prize',
-    },
-  ];
-
-  const stats = [
-    { label: 'Prize Pool', value: `$${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Trophy, color: '#FF8EC8' },
-    { label: 'Participants', value: globalPool.ticketCount.toString(), icon: Users, color: '#FF8EC8' },
-    { label: 'Days Left', value: timeLeft.days.toString(), icon: Calendar, color: '#FF8EC8' },
-    { label: 'Easter Spirit', value: '100%', icon: Ghost, color: '#FF8EC8' },
-  ];
 
   const timeUnits = [
     { label: 'Days', value: timeLeft.days },
@@ -237,61 +193,70 @@ export function SpecialEvent() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden">
-      {/* Easter Pastel Background */}
-      <div className="absolute inset-0">
+    <div className="min-h-screen pt-20 pb-20 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #878a8d 0%, #7e8189 40%, #767c83 100%)' }}>
+      {/* Patriotic Background */}
+      <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute inset-0"
           style={{
             background: `
-              linear-gradient(0deg, rgba(135, 206, 250, 0.06) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(135, 206, 250, 0.06) 1px, transparent 1px),
-              linear-gradient(135deg, rgba(15, 30, 50, 0.98) 0%, rgba(20, 40, 65, 0.95) 100%)
+              linear-gradient(0deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px)
             `,
-            backgroundSize: '20px 20px, 20px 20px, 100% 100%',
+            backgroundSize: '20px 20px',
           }}
         />
-
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `
-              repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(135, 206, 250, 0.02) 2px,
-                rgba(135, 206, 250, 0.02) 4px
-              ),
-              repeating-linear-gradient(
-                90deg,
-                transparent,
-                transparent 3px,
-                rgba(135, 206, 250, 0.015) 3px,
-                rgba(135, 206, 250, 0.015) 6px
-              )
-            `,
-            animation: 'easterScan 4s linear infinite',
-          }}
+          className="absolute top-0 left-0 right-0 h-2"
+          style={{ background: `linear-gradient(90deg, ${ACCENT_RED}, ${ACCENT_BLUE}, ${ACCENT_RED}, ${ACCENT_BLUE})` }}
+        />
+        <div
+          className="absolute bottom-0 left-0 right-0 h-2"
+          style={{ background: `linear-gradient(90deg, ${ACCENT_BLUE}, ${ACCENT_RED}, ${ACCENT_BLUE}, ${ACCENT_RED})` }}
         />
 
-        <style jsx>{`
-          @keyframes easterScan {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
-          }
-        `}</style>
+        {Array.from({ length: 20 }).map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              opacity: 0.06,
+            }}
+            animate={{
+              y: [0, -20, 0],
+              rotate: [0, 180, 360],
+              opacity: [0.04, 0.08, 0.04],
+            }}
+            transition={{
+              duration: 6 + Math.random() * 4,
+              delay: Math.random() * 3,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          >
+            <Star className="w-4 h-4" style={{ color: i % 2 === 0 ? ACCENT_BLUE : ACCENT_RED }} fill={i % 2 === 0 ? ACCENT_BLUE : ACCENT_RED} />
+          </motion.div>
+        ))}
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
-        {/* Terminal corner decorations - Desktop */}
-        <div className="absolute top-24 left-6 text-xs font-mono text-sky-300/40">
+        <div className="absolute top-24 left-6 text-xs font-mono hidden sm:block" style={{ color: `${ACCENT_BLUE}60` }}>
           [SYSTEM_ACTIVE]
         </div>
-        <div className="absolute top-24 right-6 text-xs font-mono text-sky-300/60 hidden sm:block">
-          [EASTER_MODULE]
+        <div className="absolute top-24 right-6 text-xs font-mono hidden sm:block" style={{ color: `${ACCENT_RED}60` }}>
+          [INDEPENDENCE_MODULE]
         </div>
-        
+
+        {/* Mobile terminal indicators */}
+        <div className="block sm:hidden text-center pt-4 pb-2">
+          <div className="flex justify-center space-x-4 text-xs font-mono" style={{ color: `${ACCENT_BLUE}cc` }}>
+            <span>[SYSTEM_ACTIVE]</span>
+            <span>[INDEPENDENCE_MODULE]</span>
+          </div>
+        </div>
+
         {/* Banners Section */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
@@ -299,7 +264,7 @@ export function SpecialEvent() {
           transition={{ duration: 0.8 }}
           className="grid grid-cols-2 md:flex md:flex-row justify-center items-start gap-4 md:gap-6 mb-8 px-4 max-w-md md:max-w-none mx-auto"
         >
-          {/* Banner 1 - Valentine's */}
+          {/* Banner 1 - Special Event */}
           <div className="flex flex-col items-center gap-3">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -307,31 +272,32 @@ export function SpecialEvent() {
               transition={{ duration: 0.6, delay: 0 }}
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 0 30px rgba(135, 206, 250, 0.6)',
+                boxShadow: `0 0 30px ${ACCENT_BLUE}60`,
               }}
               onClick={() => navigate('/special-event')}
-              className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
+              className="rounded-2xl border cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
-                background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.35), rgba(135, 206, 250, 0.3))',
-                borderColor: 'rgba(135, 206, 250, 0.5)',
-                boxShadow: '0 0 20px rgba(135, 206, 250, 0.3)',
+                background: `linear-gradient(135deg, ${ACCENT_BLUE}30, ${ACCENT_RED}20)`,
+                borderColor: `${ACCENT_BLUE}60`,
+                boxShadow: `0 0 20px ${ACCENT_BLUE}30`,
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">
                 <img
-                  src="https://i.imgur.com/484ahmV.png"
-                  alt="Valentine's Day"
+                  src="https://i.imgur.com/E9cayTO.png"
+                  alt="Special Event"
                   className="w-full h-full object-contain"
+                  style={{ transform: 'scale(1.1)' }}
                 />
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-sky-300">Special Event</h3>
-              <p className="text-xs md:text-sm text-sky-300/80">0.2 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold" style={{ color: ACCENT_BLUE }}>Special Event</h3>
+              <p className="text-xs md:text-sm" style={{ color: ACCENT_RED }}>0.2 SOL</p>
             </div>
           </div>
 
-          {/* Banner 2 - Secure Play */}
+          {/* Banner 2 - Lottery */}
           <div className="flex flex-col items-center gap-3">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -359,11 +325,11 @@ export function SpecialEvent() {
             </motion.div>
             <div className="text-center">
               <h3 className="text-sm md:text-lg font-bold" style={{ color: theme.colors.neonPink }}>Tri-Daily Lottery</h3>
-              <p className="text-xs md:text-sm text-purple-300/80">0.1 SOL</p>
+              <p className="text-xs md:text-sm text-pink-600/80">0.1 SOL</p>
             </div>
           </div>
 
-          {/* Banner 3 - Win Big */}
+          {/* Banner 3 - Jackpot */}
           <div className="flex flex-col items-center gap-3">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -390,8 +356,8 @@ export function SpecialEvent() {
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Monthly Jackpot</h3>
-              <p className="text-xs md:text-sm text-cyan-300/80">0.2 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold text-blue-600">Monthly Jackpot</h3>
+              <p className="text-xs md:text-sm text-blue-500/80">0.2 SOL</p>
             </div>
           </div>
 
@@ -409,8 +375,8 @@ export function SpecialEvent() {
               className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
                 background: 'linear-gradient(135deg, rgba(248, 249, 250, 0.2), rgba(233, 236, 239, 0.2))',
-                borderColor: 'rgba(248, 249, 250, 0.4)',
-                boxShadow: '0 0 20px rgba(248, 249, 250, 0.3)',
+                borderColor: 'rgba(248, 249, 250, 0.3)',
+                boxShadow: '0 0 20px rgba(248, 249, 250, 0.15)',
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">
@@ -422,12 +388,12 @@ export function SpecialEvent() {
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-gray-200">Annual Grand Prize</h3>
-              <p className="text-xs md:text-sm text-gray-300/80">0.33 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold text-gray-700">Annual Grand Prize</h3>
+              <p className="text-xs md:text-sm text-gray-500">0.33 SOL</p>
             </div>
           </div>
         </motion.div>
-        
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -435,38 +401,53 @@ export function SpecialEvent() {
           transition={{ duration: 0.8 }}
           className="text-center mb-16"
         >
+          <div className="flex items-center justify-center gap-3 mb-4">
+            {[...Array(5)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, delay: i * 0.2, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <Star className="w-5 h-5 md:w-6 md:h-6" style={{ color: ACCENT_BLUE }} fill={ACCENT_BLUE} />
+              </motion.div>
+            ))}
+          </div>
           <h1
-            className="text-2xl md:text-3xl font-bold mb-4 text-center"
+            className="text-3xl md:text-4xl font-bold mb-2 text-center"
             style={{
               fontFamily: 'Orbitron, monospace',
-              background: 'linear-gradient(135deg, #FF8EC8 0%, #FF69B4 50%, #FF8EC8 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              color: 'transparent',
-              textShadow: '0 0 40px rgba(255, 142, 200, 0.5)',
+              color: ACCENT_BLUE,
             }}
           >
-            EASTER
+            INDEPENDENCE DAY
           </h1>
           <h2
-            className="text-3xl md:text-5xl mb-6 text-center"
+            className="text-4xl md:text-6xl font-bold mb-6 text-center"
             style={{
               fontFamily: 'Orbitron, monospace',
-              background: 'linear-gradient(135deg, #FF8EC8 0%, #FF69B4 50%, #FF8EC8 100%)',
+              background: `linear-gradient(135deg, ${ACCENT_RED} 0%, ${ACCENT_BLUE} 50%, ${ACCENT_RED} 100%)`,
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               color: 'transparent',
-              textShadow: '0 0 40px rgba(255, 142, 200, 0.5)',
             }}
           >
             SPECIAL
           </h2>
-          <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-mono">
-            Easter lottery event accumulating until April 5th! Odds 1:20
+          <p className="text-lg font-mono max-w-2xl mx-auto" style={{ color: TEXT_MID }}>
+            July 4th celebration draw! Accumulating until Independence Day. Odds 1:20
           </p>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            {[...Array(5)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ rotate: [0, -10, 10, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, delay: i * 0.2, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <Star className="w-5 h-5 md:w-6 md:h-6" style={{ color: ACCENT_RED }} fill={ACCENT_RED} />
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
-
-        {/* Stats Grid */}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
@@ -476,72 +457,57 @@ export function SpecialEvent() {
             animate={{ opacity: 1, y: 0 }}
             className="p-6 rounded-2xl border text-center relative overflow-hidden"
             style={{
-              background: `
-                linear-gradient(0deg, rgba(255, 142, 200, 0.06) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 142, 200, 0.06) 1px, transparent 1px),
-                linear-gradient(135deg, rgba(20, 15, 30, 0.98) 0%, rgba(30, 20, 40, 0.95) 100%)
-              `,
-              backgroundSize: '20px 20px, 20px 20px, 100% 100%',
-              borderColor: 'rgba(255, 142, 200, 0.45)',
-              boxShadow: '0 0 25px rgba(255, 142, 200, 0.3), inset 0 0 40px rgba(0, 0, 0, 0.9)',
-              backdropFilter: 'blur(20px)',
+              background: '#f8f9fb',
+              borderColor: `${ACCENT_BLUE}25`,
+              boxShadow: `0 4px 30px ${ACCENT_BLUE}10, 0 1px 4px rgba(0,0,0,0.1)`,
               fontFamily: 'monospace',
             }}
           >
-            <div className="absolute top-2 left-2 text-xs font-mono" style={{ color: 'rgba(255, 142, 200, 0.6)' }}>
+            <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${ACCENT_RED}, ${ACCENT_BLUE})` }} />
+            <div className="absolute top-3 left-3 text-xs font-mono" style={{ color: `${ACCENT_BLUE}80` }}>
               [COUNTDOWN_SYS]
             </div>
-            <div className="absolute top-2 right-2 text-xs font-mono" style={{ color: 'rgba(255, 142, 200, 0.6)' }}>
+            <div className="absolute top-3 right-3 text-xs font-mono" style={{ color: `${ACCENT_RED}80` }}>
               [ACTIVE]
             </div>
 
-            <div className="flex items-center justify-center space-x-3 mb-6">
+            <div className="flex items-center justify-center space-x-3 mb-6 mt-4">
               <div
                 className="p-3 rounded-xl"
                 style={{
-                  background: `linear-gradient(135deg, rgba(255, 142, 200, 0.25), rgba(255, 105, 180, 0.15))`,
-                  border: `1px solid rgba(255, 142, 200, 0.4)`,
+                  background: `linear-gradient(135deg, ${ACCENT_BLUE}12, ${ACCENT_RED}08)`,
+                  border: `1px solid ${ACCENT_BLUE}20`,
                 }}
               >
-                <img
-                  src="https://i.imgur.com/484ahmV.png"
-                  alt="Easter"
-                  className="w-6 h-6 object-contain"
-                  style={{
-                    filter: 'brightness(1.2) contrast(1.1)',
-                  }}
-                />
+                <span className="text-2xl">&#127482;&#127480;</span>
               </div>
               <div className="text-left">
-                <h3 className="text-xl font-bold font-mono" style={{ color: '#aaaaaa' }}>
-                  Easter Draw
+                <h3 className="text-xl font-bold font-mono" style={{ color: TEXT_DARK }}>
+                  Independence Day Draw
                 </h3>
-                <p className="font-mono text-sm" style={{ color: 'rgba(255, 142, 200, 0.7)' }}>
-                  April 5, 2026
+                <p className="font-mono text-sm" style={{ color: ACCENT_RED }}>
+                  July 4, 2026
                 </p>
               </div>
             </div>
 
             {/* Prize Pool Display */}
             <div className="mb-6 p-4 rounded-xl relative" style={{
-              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(20, 15, 30, 0.4))',
-              border: '1px solid rgba(255, 142, 200, 0.3)',
-              boxShadow: 'inset 0 0 20px rgba(255, 142, 200, 0.08)'
+              background: `linear-gradient(135deg, ${ACCENT_BLUE}06, ${ACCENT_RED}04)`,
+              border: `1px solid ${ACCENT_BLUE}15`,
             }}>
               <div className="flex items-center justify-center space-x-2 mb-3">
-                <Trophy className="w-5 h-5" style={{ color: '#FF8EC8' }} />
-                <span className="text-sm font-medium font-mono" style={{ color: '#aaaaaa' }}>Easter Prize Pool</span>
+                <Trophy className="w-5 h-5" style={{ color: ACCENT_RED }} />
+                <span className="text-sm font-medium font-mono" style={{ color: TEXT_MID }}>Prize Pool</span>
               </div>
               <div className="text-2xl font-bold font-mono mb-2 flex items-center justify-center" style={{
-                color: '#FF8EC8',
-                textShadow: '0 0 10px rgba(255, 142, 200, 0.5)'
+                color: ACCENT_BLUE,
               }}>
                 <div className="flex items-center space-x-3">
                   <motion.div
-                    className="w-12 h-12 flex items-center justify-center"
+                    className="flex items-center justify-center"
                     animate={{
-                      scale: [1, 1.15, 1],
-                      rotate: [0, 10, -10, 0],
+                      scale: [1, 1.1, 1],
                     }}
                     transition={{
                       duration: 2.5,
@@ -549,21 +515,13 @@ export function SpecialEvent() {
                       ease: 'easeInOut',
                     }}
                   >
-                    <img
-                      src="https://i.imgur.com/XArHsvQ.png"
-                      alt="Easter Egg"
-                      className="w-full h-full object-contain"
-                      style={{
-                        filter: 'brightness(1.2) contrast(1.1) drop-shadow(0 0 8px rgba(255, 142, 200, 0.5))',
-                      }}
-                    />
+                    <Star className="w-8 h-8" style={{ color: ACCENT_RED }} fill={ACCENT_RED} />
                   </motion.div>
                   <span>${globalPool.prizePoolUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
               <div className="flex items-center justify-center space-x-2 text-lg font-mono" style={{
-                color: '#FF8EC8',
-                textShadow: '0 0 8px rgba(255, 142, 200, 0.4)'
+                color: ACCENT_RED,
               }}>
                 <motion.img
                   src="https://i.imgur.com/eE1m8fp.png"
@@ -580,10 +538,8 @@ export function SpecialEvent() {
                 />
                 {globalPool.prizePoolSol.toFixed(2)} SOL
               </div>
-              <div className="text-center mt-2">
-              </div>
             </div>
-            
+
             <div className="grid grid-cols-4 gap-4">
               {timeUnits.map((unit, index) => (
                 <motion.div
@@ -593,9 +549,10 @@ export function SpecialEvent() {
                   transition={{ delay: index * 0.1 }}
                   className="p-2 sm:p-4 rounded-xl"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(20, 15, 30, 0.5))',
-                    border: '1px solid rgba(255, 142, 200, 0.25)',
-                    boxShadow: 'inset 0 0 15px rgba(255, 142, 200, 0.08)',
+                    background: index % 2 === 0
+                      ? `linear-gradient(135deg, ${ACCENT_BLUE}08, ${ACCENT_BLUE}04)`
+                      : `linear-gradient(135deg, ${ACCENT_RED}08, ${ACCENT_RED}04)`,
+                    border: `1px solid ${index % 2 === 0 ? ACCENT_BLUE : ACCENT_RED}18`,
                   }}
                 >
                   <motion.div
@@ -605,14 +562,13 @@ export function SpecialEvent() {
                     transition={{ duration: 0.3 }}
                     className="text-lg sm:text-2xl md:text-3xl font-bold mb-1"
                     style={{
-                      color: '#aaaaaa',
+                      color: TEXT_DARK,
                       fontFamily: 'monospace',
-                      textShadow: '0 0 8px rgba(255, 142, 200, 0.5)',
                     }}
                   >
                     {unit.value.toString().padStart(2, '0')}
                   </motion.div>
-                  <div className="text-xs uppercase tracking-wide font-mono" style={{ color: '#FF8EC8' }}>
+                  <div className="text-xs uppercase tracking-wide font-mono" style={{ color: index % 2 === 0 ? ACCENT_BLUE : ACCENT_RED }}>
                     <span className="hidden sm:inline">{unit.label}</span>
                     <span className="sm:hidden">{unit.label.slice(0, 3)}</span>
                   </div>
@@ -626,13 +582,12 @@ export function SpecialEvent() {
               transition={{ delay: 0.5 }}
               className="mt-5 px-4 py-2.5 rounded-lg flex items-center justify-center gap-2"
               style={{
-                background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(20, 15, 30, 0.6))',
-                border: '1px solid rgba(255, 142, 200, 0.2)',
-                boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.8), 0 0 8px rgba(255, 142, 200, 0.12)',
+                background: `linear-gradient(135deg, ${ACCENT_BLUE}06, ${ACCENT_RED}04)`,
+                border: `1px solid ${ACCENT_BLUE}15`,
               }}
             >
-              <Ticket className="w-3.5 h-3.5" style={{ color: '#FF8EC8' }} />
-              <span className="font-mono text-xs" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+              <Ticket className="w-3.5 h-3.5" style={{ color: ACCENT_BLUE }} />
+              <span className="font-mono text-xs" style={{ color: TEXT_MID }}>
                 TICKETS IN POOL:
               </span>
               <motion.span
@@ -641,8 +596,7 @@ export function SpecialEvent() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="font-mono text-sm font-bold tabular-nums"
                 style={{
-                  color: '#FF8EC8',
-                  textShadow: '0 0 8px rgba(255, 142, 200, 0.5)',
+                  color: ACCENT_RED,
                   letterSpacing: '1px',
                 }}
               >
@@ -657,34 +611,26 @@ export function SpecialEvent() {
             animate={{ opacity: 1, y: 0 }}
             className="p-6 rounded-2xl border relative overflow-hidden"
             style={{
-              background: `
-                linear-gradient(0deg, rgba(255, 142, 200, 0.06) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 142, 200, 0.06) 1px, transparent 1px),
-                linear-gradient(135deg, rgba(20, 15, 30, 0.98) 0%, rgba(30, 20, 40, 0.95) 100%)
-              `,
-              backgroundSize: '20px 20px, 20px 20px, 100% 100%',
-              borderColor: 'rgba(255, 142, 200, 0.35)',
-              boxShadow: '0 0 30px rgba(255, 142, 200, 0.2), inset 0 0 50px rgba(0, 0, 0, 0.9)',
-              backdropFilter: 'blur(20px)',
+              background: '#f8f9fb',
+              borderColor: `${ACCENT_RED}25`,
+              boxShadow: `0 4px 30px ${ACCENT_RED}10, 0 1px 4px rgba(0,0,0,0.1)`,
               fontFamily: 'monospace',
             }}
           >
-            <div className="absolute top-2 left-2 text-xs font-mono" style={{ color: 'rgba(255, 142, 200, 0.6)' }}>
+            <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${ACCENT_BLUE}, ${ACCENT_RED})` }} />
+            <div className="absolute top-3 left-3 text-xs font-mono" style={{ color: `${ACCENT_BLUE}80` }}>
               [TICKET_SYS]
             </div>
-            <div className="absolute top-2 right-2 text-xs font-mono" style={{ color: 'rgba(255, 142, 200, 0.6)' }}>
+            <div className="absolute top-3 right-3 text-xs font-mono" style={{ color: `${ACCENT_RED}80` }}>
               [READY]
             </div>
 
-            <div className="flex items-center justify-center space-x-3 mb-8 mt-4 text-center">
+            <div className="flex items-center justify-center space-x-3 mb-8 mt-6 text-center">
               <div className="text-center">
-                <h3 className="text-xl font-bold font-mono mb-2" style={{
-                  color: '#aaaaaa',
-                  textShadow: '0 0 10px rgba(255, 142, 200, 0.4)'
-                }}>
-                  Easter Tickets
+                <h3 className="text-xl font-bold font-mono mb-2" style={{ color: TEXT_DARK }}>
+                  Independence Day Tickets
                 </h3>
-                <div className="text-lg font-bold font-mono" style={{ color: '#FF8EC8' }}>
+                <div className="text-lg font-bold font-mono" style={{ color: ACCENT_RED }}>
                   {formatSol(SPECIAL_EVENT_TICKET_PRICE_SOL)}
                 </div>
               </div>
@@ -692,8 +638,8 @@ export function SpecialEvent() {
 
             {/* Quantity selector */}
             <div className="mb-8">
-              <label className="block text-sm font-medium mb-3 font-mono text-center" style={{ color: '#aaaaaa' }}>
-                <span className="text-gray-400/90">Quantity</span>
+              <label className="block text-sm font-medium mb-3 font-mono text-center" style={{ color: TEXT_MID }}>
+                Quantity
               </label>
               <div className="flex items-center justify-center space-x-6">
                 <motion.button
@@ -701,10 +647,9 @@ export function SpecialEvent() {
                   disabled={quantity <= 1}
                   className="w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-50"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(20, 15, 30, 0.5))',
-                    border: '1px solid rgba(255, 142, 200, 0.25)',
-                    boxShadow: 'inset 0 0 15px rgba(255, 142, 200, 0.08)',
-                    color: '#FF8EC8',
+                    background: `linear-gradient(135deg, ${ACCENT_BLUE}08, ${ACCENT_BLUE}04)`,
+                    border: `1px solid ${ACCENT_BLUE}20`,
+                    color: ACCENT_BLUE,
                   }}
                   whileHover={quantity > 1 ? { scale: 1.05 } : {}}
                   whileTap={quantity > 1 ? { scale: 0.95 } : {}}
@@ -718,14 +663,11 @@ export function SpecialEvent() {
                     value={quantity}
                     onChange={(e) => setQuantity(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
                     className="w-full text-center text-3xl font-bold bg-transparent border-none outline-none font-mono"
-                    style={{
-                      color: '#aaaaaa',
-                      textShadow: '0 0 8px rgba(255, 142, 200, 0.5)'
-                    }}
+                    style={{ color: TEXT_DARK }}
                     min="1"
                     max="1000"
                   />
-                  <div className="text-xs text-white/40 font-mono mt-1">tickets</div>
+                  <div className="text-xs font-mono mt-1" style={{ color: TEXT_MID }}>tickets</div>
                 </div>
 
                 <motion.button
@@ -733,10 +675,9 @@ export function SpecialEvent() {
                   disabled={quantity >= 1000}
                   className="w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-50"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(20, 15, 30, 0.5))',
-                    border: '1px solid rgba(255, 142, 200, 0.25)',
-                    boxShadow: 'inset 0 0 15px rgba(255, 142, 200, 0.08)',
-                    color: '#FF8EC8',
+                    background: `linear-gradient(135deg, ${ACCENT_RED}08, ${ACCENT_RED}04)`,
+                    border: `1px solid ${ACCENT_RED}20`,
+                    color: ACCENT_RED,
                   }}
                   whileHover={quantity < 1000 ? { scale: 1.05 } : {}}
                   whileTap={quantity < 1000 ? { scale: 0.95 } : {}}
@@ -748,29 +689,22 @@ export function SpecialEvent() {
 
             {/* Total Cost */}
             <div className="mb-6 p-4 rounded-xl text-center" style={{
-              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(15, 10, 25, 0.6))',
-              border: '1px solid rgba(255, 142, 200, 0.25)',
-              boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.9)'
+              background: `linear-gradient(135deg, ${ACCENT_BLUE}06, ${ACCENT_RED}04)`,
+              border: `1px solid ${ACCENT_BLUE}15`,
             }}>
-              <div className="text-sm font-medium font-mono mb-2" style={{ color: '#aaaaaa' }}>
-                TOTAL COST ({quantity} easter ticket{quantity > 1 ? 's' : ''})
+              <div className="text-sm font-medium font-mono mb-2" style={{ color: TEXT_MID }}>
+                TOTAL COST ({quantity} ticket{quantity > 1 ? 's' : ''})
               </div>
               <div className="flex items-center justify-center space-x-4">
-                <div className="text-2xl font-bold font-mono" style={{
-                  color: '#FF8EC8',
-                  textShadow: '0 0 10px rgba(255, 142, 200, 0.4)'
-                }}>
+                <div className="text-2xl font-bold font-mono" style={{ color: ACCENT_BLUE }}>
                   {formatSol(totalSol)}
                 </div>
-                <div className="text-lg text-gray-400/70 font-mono" style={{
-                  textShadow: '0 0 8px rgba(255, 142, 200, 0.4)',
-                  color: '#FF8EC8'
-                }}>
+                <div className="text-lg font-mono" style={{ color: ACCENT_RED }}>
                   {formatUsd(totalUsd)}
                 </div>
               </div>
               {isConnected && (
-                <div className="text-xs text-gray-400/50 font-mono mt-2">
+                <div className="text-xs font-mono mt-2" style={{ color: TEXT_MID }}>
                   Your balance: {balance.toFixed(4)} SOL
                 </div>
               )}
@@ -783,12 +717,12 @@ export function SpecialEvent() {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-4 p-4 rounded-xl flex items-center space-x-3"
                 style={{
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  background: `${ACCENT_RED}10`,
+                  border: `1px solid ${ACCENT_RED}30`,
                 }}
               >
-                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                <p className="text-red-400 text-sm font-mono">{error}</p>
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: ACCENT_RED }} />
+                <p className="text-sm font-mono" style={{ color: ACCENT_RED }}>{error}</p>
               </motion.div>
             )}
 
@@ -799,9 +733,11 @@ export function SpecialEvent() {
               disabled={!isConnected || isLoading}
               className="w-full py-5 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3"
               style={{
-                background: isConnected ? 'linear-gradient(135deg, #FF8EC8, #FF69B4)' : 'rgba(170, 170, 170, 0.1)',
-                color: isConnected ? '#1a1a2e' : '#aaaaaa',
-                boxShadow: isConnected ? '0 0 30px rgba(255, 142, 200, 0.4)' : 'none',
+                background: isConnected
+                  ? `linear-gradient(135deg, ${ACCENT_BLUE}, ${ACCENT_RED})`
+                  : `${ACCENT_BLUE}10`,
+                color: isConnected ? '#ffffff' : TEXT_MID,
+                boxShadow: isConnected ? `0 4px 20px ${ACCENT_BLUE}30` : 'none',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 fontFamily: 'monospace',
@@ -821,12 +757,12 @@ export function SpecialEvent() {
                     alt="PWRS Ticket"
                     className="w-8 h-8 object-contain"
                     style={{
-                      filter: 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px rgba(255, 142, 200, 0.5))',
+                      filter: 'brightness(2) contrast(1.2)',
                     }}
                   />
                   <span>
                     {isConnected
-                      ? `Buy ${quantity} Easter Ticket${quantity > 1 ? 's' : ''}`
+                      ? `Buy ${quantity} Ticket${quantity > 1 ? 's' : ''}`
                       : 'Connect Wallet'
                     }
                   </span>
@@ -843,27 +779,20 @@ export function SpecialEvent() {
                   exit={{ opacity: 0, y: -20 }}
                   className="mt-4 p-4 rounded-xl"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(255, 142, 200, 0.15), rgba(255, 105, 180, 0.08))',
-                    border: '1px solid rgba(255, 142, 200, 0.35)',
-                    boxShadow: '0 0 20px rgba(255, 142, 200, 0.2)',
+                    background: `linear-gradient(135deg, ${ACCENT_BLUE}10, ${ACCENT_RED}08)`,
+                    border: `1px solid ${ACCENT_BLUE}25`,
                   }}
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <div
                       className="w-2 h-2 rounded-full animate-pulse"
-                      style={{ background: '#FF8EC8' }}
+                      style={{ background: ACCENT_BLUE }}
                     />
-                    <p className="text-sm font-semibold font-mono" style={{
-                      color: '#FF8EC8',
-                      textShadow: `0 0 8px rgba(255, 142, 200, 0.5)`
-                    }}>
-                      EASTER TICKETS PURCHASED!
+                    <p className="text-sm font-semibold font-mono" style={{ color: ACCENT_BLUE }}>
+                      TICKETS PURCHASED!
                     </p>
                   </div>
-                  <p className="text-xs font-mono ml-5" style={{
-                    color: 'rgba(170, 170, 170, 0.7)',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <p className="text-xs font-mono ml-5" style={{ color: TEXT_MID }}>
                     TX_ID: {txId}
                   </p>
                 </motion.div>
@@ -871,8 +800,8 @@ export function SpecialEvent() {
             </AnimatePresence>
 
             {!isConnected && (
-              <p className="text-xs text-center text-zinc-500 mt-4 font-mono">
-                Connect your wallet to purchase easter tickets
+              <p className="text-xs text-center mt-4 font-mono" style={{ color: TEXT_MID }}>
+                Connect your wallet to purchase tickets
               </p>
             )}
           </motion.div>
@@ -882,7 +811,7 @@ export function SpecialEvent() {
         <div className="mt-16">
           <WinnersDisplay
             title="Winners"
-            accentColor="#FF8EC8"
+            accentColor={ACCENT_BLUE}
             lotteryType="special-event"
           />
         </div>

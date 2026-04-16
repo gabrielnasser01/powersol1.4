@@ -228,7 +228,7 @@ export function AdminPowerPoints() {
             )}
 
             <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-md">
+              <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -238,7 +238,7 @@ export function AdminPowerPoints() {
                   className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-red-500/50"
                 />
               </div>
-              <div className="text-zinc-600 font-mono text-xs">
+              <div className="text-zinc-600 font-mono text-xs shrink-0">
                 {filtered.length} users
               </div>
             </div>
@@ -251,26 +251,28 @@ export function AdminPowerPoints() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-zinc-800">
-                      <th className="text-left py-3 px-4 text-zinc-500 font-mono text-xs font-normal">#</th>
-                      <th className="text-left py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Wallet</th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-zinc-500 font-mono text-xs font-normal">#</th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-zinc-500 font-mono text-xs font-normal">Wallet</th>
                       <th
-                        className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal cursor-pointer hover:text-zinc-300 transition-colors"
+                        className="text-right py-3 px-2 sm:px-4 text-zinc-500 font-mono text-xs font-normal cursor-pointer hover:text-zinc-300 transition-colors"
                         onClick={() => toggleSort('power_points')}
                       >
                         <span className="flex items-center justify-end gap-1">
-                          Power Points <SortIcon field="power_points" />
+                          <span className="hidden sm:inline">Power Points</span>
+                          <span className="sm:hidden">PP</span>
+                          <SortIcon field="power_points" />
                         </span>
                       </th>
                       <th
-                        className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal cursor-pointer hover:text-zinc-300 transition-colors"
+                        className="text-right py-3 px-2 sm:px-4 text-zinc-500 font-mono text-xs font-normal cursor-pointer hover:text-zinc-300 transition-colors"
                         onClick={() => toggleSort('missions_completed')}
                       >
                         <span className="flex items-center justify-end gap-1">
                           Missions <SortIcon field="missions_completed" />
                         </span>
                       </th>
-                      <th className="text-right py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Streak</th>
-                      <th className="text-center py-3 px-4 text-zinc-500 font-mono text-xs font-normal">Details</th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-zinc-500 font-mono text-xs font-normal hidden sm:table-cell">Streak</th>
+                      <th className="text-center py-3 px-2 sm:px-4 text-zinc-500 font-mono text-xs font-normal">Details</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -284,7 +286,7 @@ export function AdminPowerPoints() {
                           user.is_banned ? 'opacity-40' : ''
                         }`}
                       >
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-2 sm:px-4">
                           <span className={`font-mono text-sm ${
                             i === 0 ? 'text-amber-400 font-bold' :
                             i === 1 ? 'text-zinc-300 font-bold' :
@@ -294,35 +296,35 @@ export function AdminPowerPoints() {
                             {i + 1}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-2 sm:px-4">
                           <div>
-                            <p className="text-zinc-300 font-mono text-sm">
-                              {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
+                            <p className="text-zinc-300 font-mono text-xs sm:text-sm">
+                              {user.wallet_address.slice(0, 4)}...{user.wallet_address.slice(-4)}
                             </p>
                             {user.display_name && (
-                              <p className="text-zinc-600 font-mono text-xs">{user.display_name}</p>
+                              <p className="text-zinc-600 font-mono text-xs truncate max-w-[100px] sm:max-w-none">{user.display_name}</p>
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="text-amber-400 font-mono text-sm font-bold">
+                        <td className="py-3 px-2 sm:px-4 text-right">
+                          <span className="text-amber-400 font-mono text-xs sm:text-sm font-bold">
                             {user.power_points.toLocaleString()}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="text-emerald-400 font-mono text-sm">
+                        <td className="py-3 px-2 sm:px-4 text-right">
+                          <span className="text-emerald-400 font-mono text-xs sm:text-sm">
                             {user.missions_completed}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-2 sm:px-4 text-right hidden sm:table-cell">
                           <span className="text-cyan-400 font-mono text-sm">
                             {user.login_streak}d
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-center">
+                        <td className="py-3 px-2 sm:px-4 text-center">
                           <button
                             onClick={() => setSelectedWallet(user.wallet_address)}
-                            className="text-zinc-500 hover:text-red-400 font-mono text-xs transition-colors px-2 py-1 rounded border border-zinc-800 hover:border-red-500/30"
+                            className="text-zinc-500 hover:text-red-400 font-mono text-xs transition-colors px-1.5 sm:px-2 py-1 rounded border border-zinc-800 hover:border-red-500/30"
                           >
                             View
                           </button>

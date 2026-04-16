@@ -524,27 +524,27 @@ function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () =
         style={{ background: '#0a0b0f', borderColor: `${riskColor}30` }}
       >
         <div className="sticky top-0 z-10 border-b p-4" style={{ background: '#0a0b0f', borderColor: `${riskColor}20` }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-start justify-between mb-4 gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shrink-0"
                 style={{ background: `${riskColor}15`, border: `1px solid ${riskColor}40` }}
               >
-                <Shield className="w-5 h-5" style={{ color: riskColor }} />
+                <Shield className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: riskColor }} />
               </div>
-              <div>
-                <h3 className="text-white font-mono text-sm font-bold">Sybil Analysis Detail</h3>
-                <p className="text-zinc-500 font-mono text-xs">
-                  {alert.wallet_address.slice(0, 12)}...{alert.wallet_address.slice(-6)}
+              <div className="min-w-0">
+                <h3 className="text-white font-mono text-sm font-bold">Sybil Analysis</h3>
+                <p className="text-zinc-500 font-mono text-xs truncate">
+                  {alert.wallet_address.slice(0, 8)}...{alert.wallet_address.slice(-4)}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
               <div
-                className="px-3 py-1.5 rounded-lg font-mono text-xs font-bold"
+                className="px-2 sm:px-3 py-1.5 rounded-lg font-mono text-xs font-bold"
                 style={{ background: `${riskColor}20`, border: `1px solid ${riskColor}50`, color: riskColor }}
               >
-                RISK {alert.risk_score}/100
+                {alert.risk_score}/100
               </div>
               <button
                 onClick={async () => {
@@ -557,10 +557,10 @@ function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () =
                     if (res.already_exists) alert.wallet_address;
                   } catch {}
                 }}
-                className="px-2.5 py-1.5 rounded-lg font-mono text-xs border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
+                className="hidden sm:flex px-2.5 py-1.5 rounded-lg font-mono text-xs border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors items-center"
               >
-                <AlertTriangle className="w-3 h-3 inline mr-1" />
-                Flag Compliance
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Flag
               </button>
               <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
                 <X className="w-5 h-5" />
@@ -568,7 +568,7 @@ function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () =
             </div>
           </div>
 
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {[
               { label: 'Total Refs', value: alert.total_referrals, color: '#a1a1aa' },
               { label: 'Validated', value: alert.validated_referrals, color: '#10b981' },
@@ -583,12 +583,12 @@ function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () =
             ))}
           </div>
 
-          <div className="flex gap-1 mt-4">
+          <div className="flex gap-1 mt-4 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {(['overview', 'wallets', 'rapid', 'tools'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className="px-3 py-1.5 rounded-md font-mono text-xs transition-all"
+                className="px-2.5 sm:px-3 py-1.5 rounded-md font-mono text-xs transition-all whitespace-nowrap shrink-0"
                 style={{
                   background: activeTab === tab ? `${riskColor}15` : 'transparent',
                   color: activeTab === tab ? riskColor : '#71717a',
@@ -596,9 +596,9 @@ function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () =
                 }}
               >
                 {tab === 'overview' && 'Overview'}
-                {tab === 'wallets' && `Suspect Wallets (${alert.single_ticket_wallets.length + alert.zero_ticket_wallets.length})`}
-                {tab === 'rapid' && `Rapid Signups (${alert.rapid_signups.length})`}
-                {tab === 'tools' && 'Cluster Analysis'}
+                {tab === 'wallets' && `Wallets (${alert.single_ticket_wallets.length + alert.zero_ticket_wallets.length})`}
+                {tab === 'rapid' && `Rapid (${alert.rapid_signups.length})`}
+                {tab === 'tools' && 'Cluster'}
               </button>
             ))}
           </div>
@@ -698,19 +698,19 @@ function SybilDetailModal({ alert, onClose }: { alert: SybilAlert; onClose: () =
                         href={`https://solscan.io/account/${w.wallet}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between p-2.5 rounded-lg border border-amber-500/10 bg-amber-500/5 hover:border-amber-500/30 transition-colors group"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-lg border border-amber-500/10 bg-amber-500/5 hover:border-amber-500/30 transition-colors group gap-1"
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>#{i + 1}</span>
-                          <span className="text-zinc-300 font-mono text-sm">
-                            {w.wallet.slice(0, 10)}...{w.wallet.slice(-6)}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-zinc-600 font-mono shrink-0" style={{ fontSize: '10px' }}>#{i + 1}</span>
+                          <span className="text-zinc-300 font-mono text-xs sm:text-sm truncate">
+                            {w.wallet.slice(0, 8)}...{w.wallet.slice(-4)}
                           </span>
-                          <ExternalLink className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <ExternalLink className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </div>
-                        <div className="flex items-center gap-3 text-zinc-500 font-mono" style={{ fontSize: '10px' }}>
-                          <span>{w.tickets} ticket</span>
+                        <div className="flex items-center gap-3 text-zinc-500 font-mono pl-5 sm:pl-0 shrink-0" style={{ fontSize: '10px' }}>
+                          <span>{w.tickets} tix</span>
                           <span>{w.sol.toFixed(4)} SOL</span>
-                          <span>{new Date(w.created).toLocaleDateString('pt-BR')}</span>
+                          <span className="hidden sm:inline">{new Date(w.created).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </a>
                     ))}
@@ -850,21 +850,21 @@ function NetworkModal({ affiliate, onClose }: { affiliate: AffiliateRanking; onC
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-2.5 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-2 sm:p-2.5 text-center">
               <p className="text-zinc-500 font-mono" style={{ fontSize: '10px' }}>Referrals</p>
               <p className="text-white font-mono text-sm font-bold">{referrals.length}</p>
-              <p className="text-emerald-400 font-mono" style={{ fontSize: '10px' }}>{validatedCount} validated</p>
+              <p className="text-emerald-400 font-mono" style={{ fontSize: '10px' }}>{validatedCount} valid</p>
             </div>
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-2.5 text-center">
-              <p className="text-zinc-500 font-mono" style={{ fontSize: '10px' }}>Volume (SOL)</p>
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-2 sm:p-2.5 text-center">
+              <p className="text-zinc-500 font-mono" style={{ fontSize: '10px' }}>Volume</p>
               <p className="text-amber-400 font-mono text-sm font-bold">{totalValue.toFixed(4)}</p>
             </div>
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-2.5 text-center">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-2 sm:p-2.5 text-center">
               <p className="text-zinc-500 font-mono" style={{ fontSize: '10px' }}>Commission</p>
               <p className="text-emerald-400 font-mono text-sm font-bold">{totalCommission.toFixed(4)}</p>
             </div>
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-2.5 text-center">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-2 sm:p-2.5 text-center">
               <p className="text-zinc-500 font-mono" style={{ fontSize: '10px' }}>Claimed</p>
               <p className="text-cyan-400 font-mono text-sm font-bold">{affiliate.total_claimed_sol.toFixed(4)}</p>
             </div>
@@ -1463,7 +1463,7 @@ export function AdminAffiliates() {
                                 key={alert.affiliate_id}
                                 whileHover={{ scale: 1.005 }}
                                 onClick={() => setSelectedSybilAlert(alert)}
-                                className="flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all hover:bg-white/[0.02]"
+                                className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 p-3 rounded-lg border cursor-pointer transition-all hover:bg-white/[0.02]"
                                 style={{ borderColor: `${riskColor}20`, background: `${riskColor}05` }}
                               >
                                 <div className="flex items-center gap-2 shrink-0">
@@ -1483,8 +1483,8 @@ export function AdminAffiliates() {
 
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <p className="text-zinc-300 font-mono text-sm truncate">
-                                      {alert.wallet_address.slice(0, 8)}...{alert.wallet_address.slice(-4)}
+                                    <p className="text-zinc-300 font-mono text-xs sm:text-sm truncate">
+                                      {alert.wallet_address.slice(0, 6)}...{alert.wallet_address.slice(-4)}
                                     </p>
                                     <span
                                       className="font-mono px-1.5 py-0.5 rounded-full border"
@@ -1493,13 +1493,13 @@ export function AdminAffiliates() {
                                       {tier.label}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-3 text-zinc-600 font-mono mt-0.5" style={{ fontSize: '10px' }}>
+                                  <div className="flex items-center gap-2 sm:gap-3 text-zinc-600 font-mono mt-0.5 flex-wrap" style={{ fontSize: '10px' }}>
                                     <span>{alert.total_referrals} refs</span>
-                                    <span className="text-amber-400">{alert.single_ticket_referrals} single-ticket</span>
+                                    <span className="text-amber-400">{alert.single_ticket_referrals} 1-tix</span>
                                     <span className="text-red-400">{alert.zero_ticket_referrals} ghost</span>
                                     {alert.rapid_signups.length > 0 && (
                                       <span className="text-amber-400 flex items-center gap-0.5">
-                                        <Zap className="w-2.5 h-2.5" />{alert.rapid_signups.length} rapid
+                                        <Zap className="w-2.5 h-2.5" />{alert.rapid_signups.length}
                                       </span>
                                     )}
                                   </div>
@@ -1509,10 +1509,10 @@ export function AdminAffiliates() {
                                   <p className="font-mono text-sm font-bold" style={{ color: riskColor }}>
                                     {alert.single_ticket_rate}%
                                   </p>
-                                  <p className="text-zinc-600 font-mono" style={{ fontSize: '9px' }}>1-ticket rate</p>
+                                  <p className="text-zinc-600 font-mono hidden sm:block" style={{ fontSize: '9px' }}>1-ticket rate</p>
                                 </div>
 
-                                <div className="shrink-0">
+                                <div className="shrink-0 hidden sm:block">
                                   <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
                                     <div
                                       className="h-full rounded-full"
@@ -1671,7 +1671,7 @@ export function AdminAffiliates() {
             <ApplicationsPanel onApplicationReviewed={loadData} />
 
             <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-md">
+              <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -1681,7 +1681,7 @@ export function AdminAffiliates() {
                   className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-red-500/50"
                 />
               </div>
-              <div className="text-zinc-600 font-mono text-xs">
+              <div className="text-zinc-600 font-mono text-xs shrink-0">
                 {filtered.length} affiliates
               </div>
             </div>

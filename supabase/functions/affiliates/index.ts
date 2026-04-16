@@ -265,7 +265,17 @@ async function registerReferral(req: Request) {
     return await processReferral(supabase, newUser.id, referral_code.trim());
   }
 
-  return await processReferral(supabase, user.id, referral_code.trim());
+  const { data: existingRef } = await supabase
+    .from("referrals")
+    .select("id")
+    .eq("referred_user_id", user.id)
+    .maybeSingle();
+
+  if (existingRef) {
+    return { success: true, message: "Referral already registered" };
+  }
+
+  return { success: true, message: "User already exists without referral - assignment locked" };
 }
 
 async function processReferral(

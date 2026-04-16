@@ -59,7 +59,7 @@ export function RoadmapBalloons() {
             Roadmap
           </h2>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-            Our journey to create the most innovative lottery experience on Solana
+            Our journey to create the most innovative draw experience on Solana
           </p>
         </motion.div>
 

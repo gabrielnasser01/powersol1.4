@@ -6,6 +6,7 @@ import { theme } from '../theme';
 import { useMagnetic } from '../hooks/useMagnetic';
 import { userStorage } from '../store/persist';
 import { OptimizedImage } from './OptimizedImage';
+import { useWallet } from '../contexts/WalletContext';
 
 function detectLiteMode(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -21,35 +22,30 @@ export function Hero() {
   const [isHovered, setIsHovered] = useState(false);
   const [user, setUser] = useState(userStorage.get());
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const isConnected = !!user.publicKey;
+  const { connected: walletConnected, publicKey: walletPublicKey, disconnect } = useWallet();
+  const isConnected = walletConnected && !!walletPublicKey;
   const buttonRef = useRef<HTMLButtonElement>(null);
   const playButtonRef = useRef<HTMLButtonElement>(null);
 
   useMagnetic(buttonRef, { disabled: lite });
   useMagnetic(playButtonRef, { disabled: lite });
 
-  // Listen for storage changes to sync across components
   React.useEffect(() => {
     const handleStorageChange = () => {
       setUser(userStorage.get());
     };
 
     window.addEventListener('walletStorageChange', handleStorageChange);
-    const interval = setInterval(handleStorageChange, 1000);
-
     return () => {
       window.removeEventListener('walletStorageChange', handleStorageChange);
-      clearInterval(interval);
     };
   }, []);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (isConnected) {
-      userStorage.clear();
-      setUser({});
-      window.dispatchEvent(new CustomEvent('walletStorageChange'));
+      await disconnect();
+      setUser(userStorage.get());
     } else {
-      // Trigger the same wallet connection as navbar
       const walletButton = document.querySelector('[data-wallet-connect]');
       if (walletButton) {
         (walletButton as HTMLElement).click();
@@ -292,14 +288,14 @@ export function Hero() {
                   <Wallet className="w-3 h-3 md:w-4 md:h-4" />
                 </motion.div>
                 <span className="hidden sm:inline">
-                  {isConnected 
-                    ? `${user.publicKey?.slice(0, 3)}...${user.publicKey?.slice(-3)}`
+                  {isConnected
+                    ? `${walletPublicKey?.slice(0, 3)}...${walletPublicKey?.slice(-3)}`
                     : 'CONNECT_WALLET'
                   }
                 </span>
                 <span className="sm:hidden">
-                  {isConnected 
-                    ? `${user.publicKey?.slice(0, 2)}...${user.publicKey?.slice(-2)}`
+                  {isConnected
+                    ? `${walletPublicKey?.slice(0, 2)}...${walletPublicKey?.slice(-2)}`
                     : 'CONNECT_WALLET'
                   }
                 </span>

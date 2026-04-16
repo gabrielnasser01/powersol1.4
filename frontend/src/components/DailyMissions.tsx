@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Trophy, Gift, CheckCircle, Clock, Zap, Users, Shield, Activity, Terminal, Heart, Share2, TrendingUp, Calendar, Star, Coins, Lock, LogIn, Ticket, MessageCircle, Repeat, ShoppingCart, Twitter, Music, MessageSquare, Eye, ShoppingBag } from 'lucide-react';
+import { Target, Trophy, Gift, CheckCircle, Clock, Zap, Users, Shield, Activity, Terminal, Heart, Share2, TrendingUp, Calendar, Star, Coins, Lock, LogIn, Ticket, MessageCircle, Repeat, ShoppingCart, Twitter, Music, MessageSquare, Eye, ShoppingBag, Link2 } from 'lucide-react';
 import { userStatsStorage, userStorage } from '../store/persist';
 import { useWallet } from '../contexts/WalletContext';
 import { useToast } from '../contexts/ToastContext';
@@ -89,6 +89,16 @@ export function DailyMissions() {
   useEffect(() => {
     loadMissions();
   }, [isConnected]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && isConnected) {
+        loadMissions();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isConnected, user.publicKey]);
 
   const loadMissions = async () => {
     try {
@@ -615,7 +625,8 @@ export function DailyMissions() {
               const isCompleted = mission.user_progress?.completed || false;
               const isDonationMission = mission.mission_key === 'daily_donation';
               const isEligible = !isCompleted && mission.user_progress?.progress?.eligible === true;
-              const isClickable = !isCompleted && (isEligible || isDonationMission ||
+              const isSocialLinkMission = ['social_link_discord', 'social_link_twitter', 'social_link_youtube', 'social_link_all'].includes(mission.mission_key);
+              const isClickable = !isCompleted && (isEligible || isDonationMission || isSocialLinkMission ||
                 ['daily_login', 'daily_visit', 'social_discord_join', 'social_share',
                  'activity_explore_transparency'].includes(mission.mission_key));
 
@@ -688,18 +699,18 @@ export function DailyMissions() {
                     }
 
                     if (mission.mission_key === 'social_discord_join') {
-                      window.open('https://discord.gg/pbbTU7SWwq', '_blank');
                       await markEligibleAPI('social_discord_join');
-                      handleClaimMission('social_discord_join');
+                      await handleClaimMission('social_discord_join');
+                      window.open('https://discord.gg/pbbTU7SWwq', '_blank');
                       return;
                     }
 
                     if (mission.mission_key === 'social_share') {
                       const shareUrl = 'https://powersol.app';
                       const shareText = 'Check out PowerSOL - The Ultimate Solana Lottery!';
-                      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       await markEligibleAPI('social_share');
-                      handleClaimMission('social_share');
+                      await handleClaimMission('social_share');
+                      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
                       return;
                     }
 
@@ -707,6 +718,11 @@ export function DailyMissions() {
                       await markEligibleAPI('activity_explore_transparency');
                       await claimMissionAPI('activity_explore_transparency');
                       window.location.href = '/transparency';
+                      return;
+                    }
+
+                    if (isSocialLinkMission) {
+                      window.location.href = '/profile';
                       return;
                     }
                   }}
@@ -851,6 +867,11 @@ export function DailyMissions() {
                         <Gift className="w-4 h-4" />
                         <span>CLAIM</span>
                       </motion.div>
+                    ) : isSocialLinkMission ? (
+                      <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: categoryColor }}>
+                        <Link2 className="w-4 h-4" />
+                        <span>PROFILE</span>
+                      </div>
                     ) : isClickable ? (
                       <div className="flex items-center space-x-1 text-sm font-mono" style={{ color: categoryColor }}>
                         <Clock className="w-4 h-4" />

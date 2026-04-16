@@ -1,14 +1,4 @@
-import { Connection, PublicKey, Transaction, TransactionInstruction, SystemProgram, LAMPORTS_PER_SOL, ComputeBudgetProgram } from '@solana/web3.js';
-
-const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
-function buildUniqueMemoIx(): TransactionInstruction {
-  const nonce = `psol-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  return new TransactionInstruction({
-    keys: [],
-    programId: MEMO_PROGRAM_ID,
-    data: Buffer.from(nonce, 'utf8'),
-  });
-}
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { LOTTERY_WALLETS } from './walletBalanceService';
 import { TREASURY_WALLET, AFFILIATES_POOL_WALLET } from './anchorService';
 import { supabase } from '../lib/supabase';
@@ -92,19 +82,12 @@ class SolanaService {
     const deltaAmount = affiliatesReserved - affiliateCommission;
 
     const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('finalized');
-    console.log('[solanaService] createTicketPurchaseTransaction blockhash:', blockhash);
 
     const transaction = new Transaction({
       feePayer: buyer,
       blockhash,
       lastValidBlockHeight,
     });
-
-    const uniquePriorityFee = (Date.now() % 1_000_000) + Math.floor(Math.random() * 10_000) + 1;
-    transaction.add(
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: uniquePriorityFee })
-    );
-    transaction.add(buildUniqueMemoIx());
 
     transaction.add(
       SystemProgram.transfer({
@@ -156,35 +139,26 @@ class SolanaService {
 
     const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('finalized');
 
-    const uniquePriorityFee = (Date.now() % 1_000_000) + Math.floor(Math.random() * 10_000) + 1;
     const transaction = new Transaction({
       feePayer: donor,
       blockhash,
       lastValidBlockHeight,
-    })
-      .add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: uniquePriorityFee }))
-      .add(buildUniqueMemoIx())
-      .add(
-        SystemProgram.transfer({
-          fromPubkey: donor,
-          toPubkey: recipient,
-          lamports,
-        })
-      );
+    }).add(
+      SystemProgram.transfer({
+        fromPubkey: donor,
+        toPubkey: recipient,
+        lamports,
+      })
+    );
 
     return transaction;
   }
 
   async sendAndConfirmTransaction(signedTransaction: Transaction): Promise<string> {
-    console.log('[solanaService] sendRawTransaction START', {
-      txBlockhash: signedTransaction.recentBlockhash,
-      numSignatures: signedTransaction.signatures.length,
-    });
     const signature = await this.connection.sendRawTransaction(
       signedTransaction.serialize(),
-      { skipPreflight: true, preflightCommitment: 'processed', maxRetries: 5 }
+      { skipPreflight: false, preflightCommitment: 'processed', maxRetries: 3 }
     );
-    console.log('[solanaService] Transaction sent, signature:', signature);
 
     const txBlockhash = signedTransaction.recentBlockhash;
     const txLastValidBlockHeight = signedTransaction.lastValidBlockHeight;
@@ -202,7 +176,6 @@ class SolanaService {
         lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
       }, 'confirmed');
     }
-    console.log('[solanaService] Transaction confirmed:', signature);
 
     return signature;
   }

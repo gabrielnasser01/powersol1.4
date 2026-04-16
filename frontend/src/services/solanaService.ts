@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, ComputeBudgetProgram } from '@solana/web3.js';
 import { LOTTERY_WALLETS } from './walletBalanceService';
 import { TREASURY_WALLET, AFFILIATES_POOL_WALLET } from './anchorService';
 import { supabase } from '../lib/supabase';
@@ -81,13 +81,19 @@ class SolanaService {
     const affiliateCommission = Math.floor((totalLamports * commissionPct) / 100);
     const deltaAmount = affiliatesReserved - affiliateCommission;
 
-    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
+    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('finalized');
+    console.log('[solanaService] createTicketPurchaseTransaction blockhash:', blockhash);
 
     const transaction = new Transaction({
       feePayer: buyer,
       blockhash,
       lastValidBlockHeight,
     });
+
+    const uniquePriorityFee = (Date.now() % 1_000_000) + Math.floor(Math.random() * 10_000) + 1;
+    transaction.add(
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: uniquePriorityFee })
+    );
 
     transaction.add(
       SystemProgram.transfer({
@@ -137,35 +143,54 @@ class SolanaService {
     const recipient = new PublicKey(recipientWallet || LOTTERY_WALLETS['tri-daily']);
     const lamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
-    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
+    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('finalized');
 
+    const uniquePriorityFee = (Date.now() % 1_000_000) + Math.floor(Math.random() * 10_000) + 1;
     const transaction = new Transaction({
       feePayer: donor,
       blockhash,
       lastValidBlockHeight,
-    }).add(
-      SystemProgram.transfer({
-        fromPubkey: donor,
-        toPubkey: recipient,
-        lamports,
-      })
-    );
+    })
+      .add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: uniquePriorityFee }))
+      .add(
+        SystemProgram.transfer({
+          fromPubkey: donor,
+          toPubkey: recipient,
+          lamports,
+        })
+      );
 
     return transaction;
   }
 
   async sendAndConfirmTransaction(signedTransaction: Transaction): Promise<string> {
+    console.log('[solanaService] sendRawTransaction START', {
+      txBlockhash: signedTransaction.recentBlockhash,
+      numSignatures: signedTransaction.signatures.length,
+    });
     const signature = await this.connection.sendRawTransaction(
       signedTransaction.serialize(),
-      { skipPreflight: false, preflightCommitment: 'processed' }
+      { skipPreflight: false, preflightCommitment: 'processed', maxRetries: 3 }
     );
+    console.log('[solanaService] Transaction sent, signature:', signature);
 
-    const latestBlockhash = await this.connection.getLatestBlockhash();
-    await this.connection.confirmTransaction({
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    }, 'confirmed');
+    const txBlockhash = signedTransaction.recentBlockhash;
+    const txLastValidBlockHeight = signedTransaction.lastValidBlockHeight;
+    if (txBlockhash && txLastValidBlockHeight) {
+      await this.connection.confirmTransaction({
+        signature,
+        blockhash: txBlockhash,
+        lastValidBlockHeight: txLastValidBlockHeight,
+      }, 'confirmed');
+    } else {
+      const latestBlockhash = await this.connection.getLatestBlockhash();
+      await this.connection.confirmTransaction({
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      }, 'confirmed');
+    }
+    console.log('[solanaService] Transaction confirmed:', signature);
 
     return signature;
   }

@@ -18,16 +18,30 @@ export const solPriceService = {
     pendingFetch = (async () => {
       try {
         const response = await fetch(
-          'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd'
+          'https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT'
         );
         const data = await response.json();
-        if (data?.solana?.usd) {
-          cachedPrice = data.solana.usd;
+        const price = data?.price ? parseFloat(data.price) : 0;
+        if (price > 0) {
+          cachedPrice = price;
           lastFetch = Date.now();
           listeners.forEach(cb => cb(cachedPrice));
         }
       } catch (error) {
-        console.warn('Failed to fetch SOL price, using cached:', cachedPrice);
+        try {
+          const fallback = await fetch(
+            'https://api.coinbase.com/v2/prices/SOL-USD/spot'
+          );
+          const json = await fallback.json();
+          const price = json?.data?.amount ? parseFloat(json.data.amount) : 0;
+          if (price > 0) {
+            cachedPrice = price;
+            lastFetch = Date.now();
+            listeners.forEach(cb => cb(cachedPrice));
+          }
+        } catch {
+          console.warn('Failed to fetch SOL price, using cached:', cachedPrice);
+        }
       } finally {
         pendingFetch = null;
       }

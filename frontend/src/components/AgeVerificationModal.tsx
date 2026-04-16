@@ -251,6 +251,17 @@ export function AgeVerificationModal({ open, onVerified, recordVerification }: A
               </span>
             </label>
 
+            <div
+              className="p-2.5 sm:p-3 rounded-lg mb-3 sm:mb-4 font-mono text-[10px] sm:text-xs text-zinc-400 leading-relaxed"
+              style={{
+                background: 'rgba(0, 0, 0, 0.5)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              <p className="text-zinc-600 text-[9px] sm:text-[10px] mb-1">MESSAGE TO SIGN:</p>
+              "{AGE_VERIFICATION_MESSAGE}"
+            </div>
+
             {error && (
               <div
                 className="p-3 rounded-lg mb-4"

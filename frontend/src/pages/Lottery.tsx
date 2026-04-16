@@ -100,7 +100,7 @@ export function Lottery() {
           transition={{ duration: 0.8 }}
           className="grid grid-cols-2 md:flex md:flex-row justify-center items-start gap-4 md:gap-6 mb-8 px-4 max-w-md md:max-w-none mx-auto"
         >
-          {/* Banner 1 - Special Event */}
+          {/* Banner 1 - Halloween */}
           <div className="flex flex-col items-center gap-3">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -108,28 +108,27 @@ export function Lottery() {
               transition={{ duration: 0.6, delay: 0 }}
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 0 30px #1a3a6e60',
+                boxShadow: '0 0 30px rgba(135, 206, 250, 0.6)',
               }}
               onClick={() => navigate('/special-event')}
-              className="rounded-2xl border cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
+              className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
-                background: 'linear-gradient(135deg, #1a3a6e30, #b2223420)',
-                borderColor: '#1a3a6e60',
-                boxShadow: '0 0 20px #1a3a6e30',
+                background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.35), rgba(135, 206, 250, 0.3))',
+                borderColor: 'rgba(135, 206, 250, 0.5)',
+                boxShadow: '0 0 20px rgba(135, 206, 250, 0.3)',
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">
                 <img
-                  src="https://i.imgur.com/E9cayTO.png"
-                  alt="Special Event"
+                  src="https://i.imgur.com/484ahmV.png"
+                  alt="Valentine's Day"
                   className="w-full h-full object-contain"
-                  style={{ transform: 'scale(1.1)' }}
                 />
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold" style={{ color: '#1a3a6e' }}>Special Event</h3>
-              <p className="text-xs md:text-sm" style={{ color: '#b22234' }}>0.2 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold text-sky-300">Special Event</h3>
+              <p className="text-xs md:text-sm text-sky-300/80">0.2 SOL</p>
             </div>
           </div>
 
@@ -192,7 +191,7 @@ export function Lottery() {
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Monthly Jackpot</h3>
+              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Montly Jackpot</h3>
               <p className="text-xs md:text-sm text-cyan-300/80">0.2 SOL</p>
             </div>
           </div>
@@ -250,7 +249,7 @@ export function Lottery() {
             Tri-Daily Lottery
           </h1>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-            Join the most exciting draw on Solana. Every 3 days with instant payouts! Odds 1:20
+            Join the most exciting lottery on Solana. Draws every 3 days with instant payouts! Odds 1:20
           </p>
         </motion.div>
 

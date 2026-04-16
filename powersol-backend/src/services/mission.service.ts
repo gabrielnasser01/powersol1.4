@@ -271,20 +271,6 @@ export class MissionService {
 
     }
 
-    const ticketsPerLottery = new Map<string, number>();
-    for (const p of purchases) {
-      ticketsPerLottery.set(p.lottery_type, (ticketsPerLottery.get(p.lottery_type) || 0) + p.ticket_count);
-    }
-    const requiredTypes = ['tri_daily', 'jackpot', 'special_event', 'grand_prize'];
-    const minPerLottery = Math.min(...requiredTypes.map(t => ticketsPerLottery.get(t) || 0));
-    try {
-      if (minPerLottery >= 10) {
-        await this.completeMission(userId, 'activity_10_each_lottery');
-      }
-    } catch (error) {
-
-    }
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weekStart = new Date(today);

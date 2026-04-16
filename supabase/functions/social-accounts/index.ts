@@ -9,7 +9,6 @@ const corsHeaders = {
 
 const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const VALID_PLATFORMS = new Set(["discord", "youtube", "tiktok", "twitter"]);
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://powersol1-4-mjc2.vercel.app";
 
 function isValidWallet(addr: string): boolean {
   return typeof addr === "string" && SOLANA_ADDR_RE.test(addr.trim());
@@ -122,9 +121,8 @@ Deno.serve(async (req: Request) => {
         return errorResponse("Valid wallet_address required", 400);
       }
 
-      const origin = url.searchParams.get("origin") || "";
       const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-accounts/oauth/discord/callback`;
-      const state = btoa(JSON.stringify({ wallet: wallet.trim(), origin }));
+      const state = btoa(JSON.stringify({ wallet: wallet.trim() }));
       const scope = "identify";
 
       const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}`;
@@ -139,23 +137,20 @@ Deno.serve(async (req: Request) => {
       const code = url.searchParams.get("code");
       const stateParam = url.searchParams.get("state");
 
-      let origin = "";
-      let wallet = "";
-
-      try {
-        const stateData = JSON.parse(atob(stateParam || ""));
-        wallet = stateData.wallet || "";
-        origin = stateData.origin || "";
-      } catch {}
-
-      if (!origin) origin = FRONTEND_URL;
-
       if (!code || !stateParam) {
-        return callbackRedirect(origin, "error", "Missing code or state");
+        return new Response(buildCallbackHtml("error", "Missing code or state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
-      if (!wallet) {
-        return callbackRedirect(origin, "error", "Invalid state");
+      let wallet: string;
+      try {
+        const stateData = JSON.parse(atob(stateParam));
+        wallet = stateData.wallet;
+      } catch {
+        return new Response(buildCallbackHtml("error", "Invalid state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const clientId = Deno.env.get("DISCORD_CLIENT_ID");
@@ -175,7 +170,9 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!tokenRes.ok) {
-        return callbackRedirect(origin, "error", "Failed to exchange token");
+        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const tokenData = await tokenRes.json();
@@ -185,7 +182,9 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!userRes.ok) {
-        return callbackRedirect(origin, "error", "Failed to get Discord user info");
+        return new Response(buildCallbackHtml("error", "Failed to get Discord user info"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const discordUser = await userRes.json();
@@ -202,8 +201,10 @@ Deno.serve(async (req: Request) => {
         p_platform_avatar_url: avatarUrl,
       });
 
-      EdgeRuntime.waitUntil(triggerSocialLinkMissionCheck(wallet));
-      return callbackRedirect(origin, "success", `Discord account linked: ${discordUser.username}`);
+      return new Response(
+        buildCallbackHtml("success", `Discord account linked: ${discordUser.username}`),
+        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
+      );
     }
 
     if (req.method === "GET" && path === "/oauth/youtube") {
@@ -215,9 +216,8 @@ Deno.serve(async (req: Request) => {
         return errorResponse("Valid wallet_address required", 400);
       }
 
-      const origin = url.searchParams.get("origin") || "";
       const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-accounts/oauth/youtube/callback`;
-      const state = btoa(JSON.stringify({ wallet: wallet.trim(), origin }));
+      const state = btoa(JSON.stringify({ wallet: wallet.trim() }));
       const scope = "https://www.googleapis.com/auth/youtube.readonly";
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&access_type=offline`;
@@ -232,23 +232,20 @@ Deno.serve(async (req: Request) => {
       const code = url.searchParams.get("code");
       const stateParam = url.searchParams.get("state");
 
-      let origin = "";
-      let wallet = "";
-
-      try {
-        const stateData = JSON.parse(atob(stateParam || ""));
-        wallet = stateData.wallet || "";
-        origin = stateData.origin || "";
-      } catch {}
-
-      if (!origin) origin = FRONTEND_URL;
-
       if (!code || !stateParam) {
-        return callbackRedirect(origin, "error", "Missing code or state");
+        return new Response(buildCallbackHtml("error", "Missing code or state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
-      if (!wallet) {
-        return callbackRedirect(origin, "error", "Invalid state");
+      let wallet: string;
+      try {
+        const stateData = JSON.parse(atob(stateParam));
+        wallet = stateData.wallet;
+      } catch {
+        return new Response(buildCallbackHtml("error", "Invalid state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
@@ -268,7 +265,9 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!tokenRes.ok) {
-        return callbackRedirect(origin, "error", "Failed to exchange token");
+        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const tokenData = await tokenRes.json();
@@ -279,14 +278,18 @@ Deno.serve(async (req: Request) => {
       );
 
       if (!channelRes.ok) {
-        return callbackRedirect(origin, "error", "Failed to get YouTube channel info");
+        return new Response(buildCallbackHtml("error", "Failed to get YouTube channel info"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const channelData = await channelRes.json();
       const channel = channelData.items?.[0];
 
       if (!channel) {
-        return callbackRedirect(origin, "error", "No YouTube channel found");
+        return new Response(buildCallbackHtml("error", "No YouTube channel found"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const supabase = getServiceClient();
@@ -298,8 +301,10 @@ Deno.serve(async (req: Request) => {
         p_platform_avatar_url: channel.snippet.thumbnails?.default?.url || "",
       });
 
-      EdgeRuntime.waitUntil(triggerSocialLinkMissionCheck(wallet));
-      return callbackRedirect(origin, "success", `YouTube channel linked: ${channel.snippet.title}`);
+      return new Response(
+        buildCallbackHtml("success", `YouTube channel linked: ${channel.snippet.title}`),
+        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
+      );
     }
 
     if (req.method === "GET" && path === "/oauth/tiktok") {
@@ -311,10 +316,9 @@ Deno.serve(async (req: Request) => {
         return errorResponse("Valid wallet_address required", 400);
       }
 
-      const origin = url.searchParams.get("origin") || "";
       const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-accounts/oauth/tiktok/callback`;
-      const state = btoa(JSON.stringify({ wallet: wallet.trim(), origin }));
-      const scope = "user.info.profile";
+      const state = btoa(JSON.stringify({ wallet: wallet.trim() }));
+      const scope = "user.info.basic";
 
       const authUrl = `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&response_type=code&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
 
@@ -328,23 +332,20 @@ Deno.serve(async (req: Request) => {
       const code = url.searchParams.get("code");
       const stateParam = url.searchParams.get("state");
 
-      let origin = "";
-      let wallet = "";
-
-      try {
-        const stateData = JSON.parse(atob(stateParam || ""));
-        wallet = stateData.wallet || "";
-        origin = stateData.origin || "";
-      } catch {}
-
-      if (!origin) origin = FRONTEND_URL;
-
       if (!code || !stateParam) {
-        return callbackRedirect(origin, "error", "Missing code or state");
+        return new Response(buildCallbackHtml("error", "Missing code or state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
-      if (!wallet) {
-        return callbackRedirect(origin, "error", "Invalid state");
+      let wallet: string;
+      try {
+        const stateData = JSON.parse(atob(stateParam));
+        wallet = stateData.wallet;
+      } catch {
+        return new Response(buildCallbackHtml("error", "Invalid state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const clientKey = Deno.env.get("TIKTOK_CLIENT_KEY");
@@ -364,7 +365,9 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!tokenRes.ok) {
-        return callbackRedirect(origin, "error", "Failed to exchange token");
+        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const tokenData = await tokenRes.json();
@@ -375,7 +378,9 @@ Deno.serve(async (req: Request) => {
       );
 
       if (!userRes.ok) {
-        return callbackRedirect(origin, "error", "Failed to get TikTok user info");
+        return new Response(buildCallbackHtml("error", "Failed to get TikTok user info"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const userData = await userRes.json();
@@ -390,7 +395,10 @@ Deno.serve(async (req: Request) => {
         p_platform_avatar_url: tiktokUser?.avatar_url || "",
       });
 
-      return callbackRedirect(origin, "success", `TikTok account linked: ${tiktokUser?.display_name || "TikTok User"}`);
+      return new Response(
+        buildCallbackHtml("success", `TikTok account linked: ${tiktokUser?.display_name || "TikTok User"}`),
+        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
+      );
     }
 
     if (req.method === "GET" && path === "/oauth/twitter") {
@@ -402,25 +410,23 @@ Deno.serve(async (req: Request) => {
         return errorResponse("Valid wallet_address required", 400);
       }
 
-      const origin = url.searchParams.get("origin") || "";
       const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-accounts/oauth/twitter/callback`;
+      const state = btoa(JSON.stringify({ wallet: wallet.trim() }));
 
-      const rawBytes = new Uint8Array(48);
-      crypto.getRandomValues(rawBytes);
-      const codeVerifier = Array.from(rawBytes, (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[b % 62]).join("");
-
+      const codeVerifier = crypto.randomUUID() + crypto.randomUUID();
       const encoder = new TextEncoder();
-      const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(codeVerifier));
+      const data = encoder.encode(codeVerifier);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
       const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)))
         .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-      const stateWithVerifier = btoa(JSON.stringify({ w: wallet.trim(), v: codeVerifier, o: origin }));
+      const stateWithVerifier = btoa(JSON.stringify({ wallet: wallet.trim(), cv: codeVerifier }));
 
       const params = new URLSearchParams({
         response_type: "code",
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: "tweet.read users.read",
+        scope: "tweet.read users.read offline.access",
         state: stateWithVerifier,
         code_challenge: codeChallenge,
         code_challenge_method: "S256",
@@ -437,32 +443,23 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET" && path === "/oauth/twitter/callback") {
       const code = url.searchParams.get("code");
       const stateParam = url.searchParams.get("state");
-      const errorParam = url.searchParams.get("error");
-
-      let origin = "";
-      let wallet = "";
-      let codeVerifier = "";
-
-      try {
-        const stateData = JSON.parse(atob(stateParam || ""));
-        wallet = stateData.w || "";
-        codeVerifier = stateData.v || "";
-        origin = stateData.o || "";
-      } catch {}
-
-      if (!origin) origin = FRONTEND_URL;
-
-      if (errorParam) {
-        const desc = url.searchParams.get("error_description") || errorParam;
-        return callbackRedirect(origin, "error", `Twitter denied: ${desc}`);
-      }
 
       if (!code || !stateParam) {
-        return callbackRedirect(origin, "error", "Missing code or state from Twitter");
+        return new Response(buildCallbackHtml("error", "Missing code or state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
-      if (!wallet || !codeVerifier) {
-        return callbackRedirect(origin, "error", "Invalid state parameter");
+      let wallet: string;
+      let codeVerifier: string;
+      try {
+        const stateData = JSON.parse(atob(stateParam));
+        wallet = stateData.wallet;
+        codeVerifier = stateData.cv;
+      } catch {
+        return new Response(buildCallbackHtml("error", "Invalid state"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const clientId = Deno.env.get("TWITTER_CLIENT_ID");
@@ -471,7 +468,7 @@ Deno.serve(async (req: Request) => {
 
       const basicAuth = btoa(`${clientId}:${clientSecret}`);
 
-      const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
+      const tokenRes = await fetch("https://api.x.com/2/oauth2/token", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -481,58 +478,44 @@ Deno.serve(async (req: Request) => {
           grant_type: "authorization_code",
           code,
           redirect_uri: redirectUri,
-          client_id: clientId!,
           code_verifier: codeVerifier,
         }),
       });
 
-      const tokenText = await tokenRes.text();
-      let tokenData: Record<string, unknown>;
-      try {
-        tokenData = JSON.parse(tokenText);
-      } catch {
-        return callbackRedirect(origin, "error", "Invalid token response from Twitter");
-      }
-
       if (!tokenRes.ok) {
-        const errDetail = (tokenData as Record<string, string>).error_description || (tokenData as Record<string, string>).error || "Token exchange failed";
-        return callbackRedirect(origin, "error", `Twitter token error: ${errDetail}`);
+        return new Response(buildCallbackHtml("error", "Failed to exchange token"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
-      const userRes = await fetch("https://api.twitter.com/2/users/me?user.fields=profile_image_url", {
+      const tokenData = await tokenRes.json();
+
+      const userRes = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url", {
         headers: { Authorization: `Bearer ${tokenData.access_token}` },
       });
 
       if (!userRes.ok) {
-        const userErrText = await userRes.text();
-        return callbackRedirect(origin, "error", `Failed to get X user info (${userRes.status}): ${userErrText.slice(0, 100)}`);
+        return new Response(buildCallbackHtml("error", "Failed to get X user info"), {
+          headers: { ...corsHeaders, "Content-Type": "text/html" },
+        });
       }
 
       const xUserData = await userRes.json();
       const xUser = xUserData.data;
 
-      if (!xUser?.id) {
-        return callbackRedirect(origin, "error", "Twitter returned no user data");
-      }
-
       const supabase = getServiceClient();
-      const { data: linkData, error: linkError } = await supabase.rpc("link_social_account", {
+      await supabase.rpc("link_social_account", {
         p_wallet_address: wallet,
         p_platform: "twitter",
-        p_platform_user_id: xUser.id,
-        p_platform_username: `@${xUser.username}`,
-        p_platform_avatar_url: xUser.profile_image_url || "",
+        p_platform_user_id: xUser?.id || "unknown",
+        p_platform_username: xUser?.username ? `@${xUser.username}` : "X User",
+        p_platform_avatar_url: xUser?.profile_image_url || "",
       });
 
-      if (linkError) {
-        return callbackRedirect(origin, "error", `Failed to save link: ${linkError.message}`);
-      }
-      if (linkData?.error) {
-        return callbackRedirect(origin, "error", linkData.error);
-      }
-
-      EdgeRuntime.waitUntil(triggerSocialLinkMissionCheck(wallet));
-      return callbackRedirect(origin, "success", `X account linked: @${xUser.username}`);
+      return new Response(
+        buildCallbackHtml("success", `X account linked: @${xUser?.username || "unknown"}`),
+        { headers: { ...corsHeaders, "Content-Type": "text/html" } }
+      );
     }
 
     return errorResponse("Not found", 404);
@@ -542,40 +525,32 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function triggerSocialLinkMissionCheck(walletAddress: string) {
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const res = await fetch(`${supabaseUrl}/functions/v1/missions/check-social-links?wallet_address=${walletAddress}`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${serviceKey}`,
-        "Content-Type": "application/json",
-      },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      for (const m of (data.eligibleMissions || [])) {
-        if (m?.missionKey) {
-          await fetch(`${supabaseUrl}/functions/v1/missions/claim?wallet_address=${walletAddress}`, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${serviceKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ mission_key: m.missionKey }),
-          });
-        }
-      }
-    }
-  } catch {}
-}
-
-function callbackRedirect(origin: string, status: "success" | "error", message: string): Response {
-  const params = new URLSearchParams({ status, message });
-  const redirectUrl = `${origin}/oauth/callback?${params.toString()}`;
-  return new Response(null, {
-    status: 302,
-    headers: { ...corsHeaders, Location: redirectUrl },
-  });
+function buildCallbackHtml(status: "success" | "error", message: string): string {
+  const color = status === "success" ? "#00ff88" : "#ff4444";
+  const icon = status === "success" ? "&#10003;" : "&#10007;";
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PowerSOL - Social Account ${status === "success" ? "Linked" : "Error"}</title>
+  <style>
+    body { background: #0a0a0a; color: #fff; font-family: monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { background: rgba(0,0,0,0.9); border: 2px solid ${color}; border-radius: 16px; padding: 40px; text-align: center; max-width: 400px; box-shadow: 0 0 40px ${color}33; }
+    .icon { font-size: 48px; color: ${color}; margin-bottom: 16px; }
+    .msg { color: ${color}; font-size: 16px; margin-bottom: 24px; }
+    .hint { color: #888; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">${icon}</div>
+    <div class="msg">${message}</div>
+    <div class="hint">You can close this window and return to PowerSOL.</div>
+  </div>
+  <script>
+    setTimeout(() => { if (window.opener) { window.opener.postMessage({ type: 'social-link-${status}', message: '${message.replace(/'/g, "\\'")}' }, '*'); window.close(); } }, 2000);
+  </script>
+</body>
+</html>`;
 }

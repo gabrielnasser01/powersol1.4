@@ -21,7 +21,7 @@ class StatsService {
       const uniquePlayers = new Set(ticketData?.map(t => t.wallet_address) || []).size;
 
       const { data: prizeData, error: prizeError } = await supabase
-        .from('prizes')
+        .from('lottery_winners')
         .select('prize_amount_lamports')
         .eq('lottery_type', 'tri-daily');
 

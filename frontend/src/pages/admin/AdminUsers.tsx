@@ -327,13 +327,13 @@ function WhaleDetailModal({ whale, onClose }: { whale: WhaleUser; onClose: () =>
         className="relative w-full max-w-xl rounded-xl border border-zinc-800 p-6 max-h-[85vh] overflow-y-auto"
         style={{ background: '#0f1117' }}
       >
-        <div className="flex items-start justify-between mb-4 gap-2">
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <BarChart3 className="w-5 h-5 text-red-400 shrink-0" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <BarChart3 className="w-5 h-5 text-red-400" />
             <h3 className="text-white font-mono text-sm font-bold">Whale Analysis</h3>
             <WhaleScoreBadge score={whale.whale_score} />
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
             <button
               onClick={async () => {
                 try {
@@ -344,10 +344,10 @@ function WhaleDetailModal({ whale, onClose }: { whale: WhaleUser; onClose: () =>
                   );
                 } catch {}
               }}
-              className="hidden sm:flex px-2.5 py-1.5 rounded-lg font-mono text-xs border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors items-center"
+              className="px-2.5 py-1.5 rounded-lg font-mono text-xs border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
             >
-              <AlertTriangle className="w-3 h-3 mr-1" />
-              Flag
+              <AlertTriangle className="w-3 h-3 inline mr-1" />
+              Flag Compliance
             </button>
             <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
               <X className="w-5 h-5" />
@@ -520,12 +520,12 @@ function WhaleHistoryRanking({ history, onSelectWhale, whaleData }: {
       style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.02) 0%, rgba(15, 15, 20, 0.95) 100%)' }}
     >
       <div className="p-4">
-        <div className="flex items-center justify-between mb-3 gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <History className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="text-white font-mono text-xs sm:text-sm font-bold truncate">Historical Whale Ranking</span>
-            <span className="text-zinc-600 font-mono px-2 py-0.5 rounded-full border border-zinc-800 shrink-0" style={{ fontSize: '10px' }}>
-              {entries.length}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <History className="w-4 h-4 text-amber-400" />
+            <span className="text-white font-mono text-sm font-bold">Historical Whale Risk Ranking</span>
+            <span className="text-zinc-600 font-mono px-2 py-0.5 rounded-full border border-zinc-800" style={{ fontSize: '10px' }}>
+              {entries.length} wallets tracked
             </span>
           </div>
           <button
@@ -743,14 +743,14 @@ function WhaleAnalysisPanel({ whaleData, onSelectWhale, onSnapshotSaved }: {
       }}
     >
       <div className="p-4">
-        <div className="flex items-start sm:items-center justify-between mb-3 gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
             {hasUsers ? (
-              <BarChart3 className="w-4 h-4 text-red-400 shrink-0" />
+              <BarChart3 className="w-4 h-4 text-red-400" />
             ) : (
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
             )}
-            <span className="text-white font-mono text-xs sm:text-sm font-bold">Whale Analysis</span>
+            <span className="text-white font-mono text-sm font-bold">Whale / Pool Manipulation Analysis</span>
             {critical.length > 0 && (
               <span className="text-red-400 font-mono text-xs px-2 py-0.5 rounded-full border border-red-500/30 bg-red-500/10">
                 {critical.length} critical
@@ -758,30 +758,30 @@ function WhaleAnalysisPanel({ whaleData, onSelectWhale, onSnapshotSaved }: {
             )}
             {hasUsers && flagged.length === 0 && (
               <span className="text-emerald-400 font-mono text-xs px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-                clear
+                all clear
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-3">
             {hasUsers && (
               <button
                 onClick={handleSaveSnapshot}
                 disabled={saving || saved}
-                className={`flex items-center gap-1.5 font-mono text-xs px-2 py-1 rounded-lg border transition-all ${
+                className={`flex items-center gap-1.5 font-mono text-xs px-2.5 py-1 rounded-lg border transition-all ${
                   saved
                     ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                     : 'border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:text-white hover:border-zinc-500'
                 }`}
               >
                 {saved ? <CheckCircle className="w-3 h-3" /> : <Save className="w-3 h-3" />}
-                <span className="hidden sm:inline">{saving ? 'Saving...' : saved ? 'Saved' : 'Snapshot'}</span>
+                {saving ? 'Saving...' : saved ? 'Saved' : 'Save Snapshot'}
               </button>
             )}
             <a
               href={`https://app.bubblemaps.io/sol/token/${CLAIM_PROGRAM_ID}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1 text-emerald-400 font-mono text-xs hover:text-emerald-300 transition-colors"
+              className="flex items-center gap-1 text-emerald-400 font-mono text-xs hover:text-emerald-300 transition-colors"
             >
               Bubblemaps <ExternalLink className="w-3 h-3" />
             </a>
@@ -789,7 +789,7 @@ function WhaleAnalysisPanel({ whaleData, onSelectWhale, onSnapshotSaved }: {
               href={`https://solsniffer.com/address/${CLAIM_PROGRAM_ID}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1 text-orange-400 font-mono text-xs hover:text-orange-300 transition-colors"
+              className="flex items-center gap-1 text-orange-400 font-mono text-xs hover:text-orange-300 transition-colors"
             >
               SolSniffer <ExternalLink className="w-3 h-3" />
             </a>

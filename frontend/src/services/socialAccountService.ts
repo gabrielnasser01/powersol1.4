@@ -19,15 +19,6 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-function isInAppBrowser(): boolean {
-  const ua = navigator.userAgent || navigator.vendor || '';
-  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
-  if (isMobile && /Phantom/i.test(ua)) return true;
-  const w = window as any;
-  if (isMobile && (w.phantom?.solana || w.solana?.isPhantom)) return true;
-  return /FBAN|FBAV|Instagram|Line\/|Snapchat|Twitter|MicroMessenger|TikTok|BytedanceWebview|Musical_ly|SamsungBrowser\/.*CrossApp/i.test(ua);
-}
-
 async function getLinkedAccounts(walletAddress: string): Promise<SocialAccount[]> {
   const res = await fetch(`${API_BASE}?wallet_address=${walletAddress}`, { headers });
   if (!res.ok) throw new Error('Failed to fetch social accounts');
@@ -37,28 +28,7 @@ async function getLinkedAccounts(walletAddress: string): Promise<SocialAccount[]
 
 function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', walletAddress: string): Promise<SocialAccount | null> {
   return new Promise((resolve) => {
-    try { localStorage.removeItem('powersol-social-link'); } catch {}
-
-    const oauthUrl = `${API_BASE}/oauth/${platform}?wallet_address=${walletAddress}&origin=${encodeURIComponent(window.location.origin)}`;
-
-    if (isInAppBrowser()) {
-      try {
-        const isAndroid = /android/i.test(navigator.userAgent);
-        localStorage.setItem('powersol-pending-oauth', JSON.stringify({ platform, walletAddress, url: oauthUrl }));
-
-        if (isAndroid) {
-          const intentUrl = `intent://${window.location.host}/oauth/callback?pending=${platform}#Intent;scheme=https;package=com.android.chrome;end`;
-          window.location.href = intentUrl;
-        } else {
-          window.location.href = oauthUrl;
-        }
-      } catch {
-        window.location.href = oauthUrl;
-      }
-      resolve(null);
-      return;
-    }
-
+    const oauthUrl = `${API_BASE}/oauth/${platform}?wallet_address=${walletAddress}`;
     const width = 500;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
@@ -70,17 +40,10 @@ function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', 
       `width=${width},height=${height},left=${left},top=${top},popup=yes`
     );
 
-    let resolved = false;
-    const cleanup = () => {
-      if (resolved) return;
-      resolved = true;
-      window.removeEventListener('message', handleMessage);
-      clearInterval(pollTimer);
-    };
-
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'social-link-success' || event.data?.type === 'social-link-error') {
-        cleanup();
+        window.removeEventListener('message', handleMessage);
+        clearInterval(pollTimer);
         resolve(event.data.type === 'social-link-success' ? {} as SocialAccount : null);
       }
     };
@@ -88,25 +51,16 @@ function startOAuthFlow(platform: 'discord' | 'youtube' | 'tiktok' | 'twitter', 
     window.addEventListener('message', handleMessage);
 
     const pollTimer = setInterval(() => {
-      try {
-        const stored = localStorage.getItem('powersol-social-link');
-        if (stored) {
-          localStorage.removeItem('powersol-social-link');
-          const msg = JSON.parse(stored);
-          cleanup();
-          resolve(msg.type === 'social-link-success' ? {} as SocialAccount : null);
-          return;
-        }
-      } catch {}
-
       if (popup?.closed) {
-        cleanup();
+        clearInterval(pollTimer);
+        window.removeEventListener('message', handleMessage);
         resolve(null);
       }
     }, 500);
 
     setTimeout(() => {
-      cleanup();
+      clearInterval(pollTimer);
+      window.removeEventListener('message', handleMessage);
       if (popup && !popup.closed) popup.close();
       resolve(null);
     }, 120000);
@@ -126,5 +80,4 @@ export const socialAccountService = {
   getLinkedAccounts,
   startOAuthFlow,
   unlinkAccount,
-  isInAppBrowser,
 };

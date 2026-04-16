@@ -125,8 +125,6 @@ function NavButton({ onClick, disabled, children, label }: {
   );
 }
 
-const WINNERS_PER_PAGE = 100;
-
 function DrawDataSection({
   draws,
   currentIndex,
@@ -140,22 +138,10 @@ function DrawDataSection({
   loading: boolean;
   error: string | null;
 }) {
-  const [winnersPage, setWinnersPage] = useState(0);
   const drawData = draws[currentIndex] || null;
   const totalDraws = draws.length;
   const isNewest = currentIndex === 0;
   const isOldest = currentIndex >= totalDraws - 1;
-
-  const allWinners = drawData?.winners || [];
-  const totalWinnersPages = Math.max(1, Math.ceil(allWinners.length / WINNERS_PER_PAGE));
-  const paginatedWinners = allWinners.slice(
-    winnersPage * WINNERS_PER_PAGE,
-    (winnersPage + 1) * WINNERS_PER_PAGE
-  );
-
-  useEffect(() => {
-    setWinnersPage(0);
-  }, [currentIndex]);
 
   const displayData = drawData
     ? {
@@ -165,10 +151,7 @@ function DrawDataSection({
         seedHash: drawData.seedHash,
         participants: drawData.participants,
         prizePool: drawData.prizePool,
-        winners: paginatedWinners,
-        ...(allWinners.length > WINNERS_PER_PAGE
-          ? { _winnersPage: `${winnersPage + 1} of ${totalWinnersPages} (${allWinners.length} total winners)` }
-          : {}),
+        winners: drawData.winners,
       }
     : null;
 
@@ -318,62 +301,6 @@ function DrawDataSection({
                 animate={{ opacity: [1, 0, 1] }}
                 transition={{ duration: 1, repeat: Infinity }}
               />
-
-              {totalWinnersPages > 1 && (
-                <div
-                  className="flex items-center justify-center gap-2 sm:gap-3 mt-6 pt-4"
-                  style={{ borderTop: '1px solid rgba(0, 255, 136, 0.15)' }}
-                >
-                  <NavButton
-                    onClick={() => setWinnersPage(0)}
-                    disabled={winnersPage === 0}
-                    label="First page of winners"
-                  >
-                    <ChevronsLeft className="w-4 h-4" />
-                  </NavButton>
-
-                  <NavButton
-                    onClick={() => setWinnersPage(winnersPage - 1)}
-                    disabled={winnersPage === 0}
-                    label="Previous winners"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </NavButton>
-
-                  <div
-                    className="px-3 py-2 rounded-lg font-mono text-xs whitespace-nowrap"
-                    style={{
-                      background: 'rgba(0, 255, 136, 0.1)',
-                      border: '1px solid rgba(0, 255, 136, 0.3)',
-                      color: '#00ff88',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <span className="hidden sm:inline">
-                      Winners {winnersPage * WINNERS_PER_PAGE + 1}-{Math.min((winnersPage + 1) * WINNERS_PER_PAGE, allWinners.length)} / {allWinners.length}
-                    </span>
-                    <span className="sm:hidden">
-                      {winnersPage + 1} / {totalWinnersPages}
-                    </span>
-                  </div>
-
-                  <NavButton
-                    onClick={() => setWinnersPage(winnersPage + 1)}
-                    disabled={winnersPage >= totalWinnersPages - 1}
-                    label="Next winners"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </NavButton>
-
-                  <NavButton
-                    onClick={() => setWinnersPage(totalWinnersPages - 1)}
-                    disabled={winnersPage >= totalWinnersPages - 1}
-                    label="Last page of winners"
-                  >
-                    <ChevronsRight className="w-4 h-4" />
-                  </NavButton>
-                </div>
-              )}
             </motion.div>
           </AnimatePresence>
         )}

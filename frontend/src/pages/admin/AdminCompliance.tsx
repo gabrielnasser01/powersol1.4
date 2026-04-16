@@ -89,12 +89,12 @@ function WalletShort({ address }: { address: string }) {
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: any; color: string }) {
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 sm:p-4">
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-2">
-        <Icon className="w-4 h-4 shrink-0" style={{ color }} />
-        <span className="text-zinc-500 font-mono truncate" style={{ fontSize: '10px' }}>{label}</span>
+        <Icon className="w-4 h-4" style={{ color }} />
+        <span className="text-zinc-500 font-mono" style={{ fontSize: '10px' }}>{label}</span>
       </div>
-      <p className="font-mono text-lg sm:text-2xl font-bold truncate" style={{ color }}>{value}</p>
+      <p className="font-mono text-2xl font-bold" style={{ color }}>{value}</p>
     </div>
   );
 }
@@ -138,21 +138,21 @@ function OfacCheckPanel({ onRefresh }: { onRefresh: () => void }) {
           <span className="text-white font-mono text-sm font-bold">OFAC Sanctions Check</span>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
+        <div className="flex gap-3 mb-4">
           <input
             type="text"
             value={walletInput}
             onChange={e => setWalletInput(e.target.value)}
-            placeholder="Enter wallet address..."
-            className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-red-500/50 min-w-0"
+            placeholder="Enter wallet address to check..."
+            className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-red-500/50"
             onKeyDown={e => e.key === 'Enter' && handleCheck()}
           />
           <button
             onClick={handleCheck}
             disabled={checking || !walletInput.trim()}
-            className="px-4 py-2.5 rounded-lg font-mono text-sm border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 whitespace-nowrap shrink-0"
+            className="px-4 py-2.5 rounded-lg font-mono text-sm border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            {checking ? 'Checking...' : 'OFAC Check'}
+            {checking ? 'Checking...' : 'Run OFAC Check'}
           </button>
         </div>
 
@@ -860,18 +860,18 @@ function ReportsPanel({ onRefresh }: { onRefresh: () => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
-          <span className="text-white font-mono text-sm font-bold">Reports</span>
-          <span className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>{reports.length}</span>
+          <FileText className="w-4 h-4 text-cyan-400" />
+          <span className="text-white font-mono text-sm font-bold">Compliance Reports</span>
+          <span className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>{reports.length} entries</span>
         </div>
-        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="flex gap-2">
           {['all', 'open', 'investigating', 'resolved', 'dismissed'].map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`font-mono text-xs px-2 sm:px-2.5 py-1 rounded-lg border transition-all whitespace-nowrap shrink-0 ${
+              className={`font-mono text-xs px-2.5 py-1 rounded-lg border transition-all ${
                 statusFilter === s
                   ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400'
                   : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
@@ -1084,78 +1084,75 @@ export function AdminCompliance() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  {tabs.map(tab => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.key;
-                    return (
-                      <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg font-mono text-xs border transition-all whitespace-nowrap shrink-0 ${
-                          isActive
-                            ? 'border-red-500/50 bg-red-500/10 text-red-400'
-                            : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">{tab.label}</span>
-                        <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
-                  <button
-                    onClick={() => setShowLookupModal(true)}
-                    className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg font-mono text-xs border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Lookup</span>
-                  </button>
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  <span className="text-zinc-600 font-mono text-xs hidden sm:inline">
-                    LIVE {lastRefresh.toLocaleTimeString()}
-                  </span>
-                </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {tabs.map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-xs border transition-all ${
+                        isActive
+                          ? 'border-red-500/50 bg-red-500/10 text-red-400'
+                          : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowLookupModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  Wallet Lookup
+                </button>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span className="text-zinc-600 font-mono text-xs">
+                  LIVE {lastRefresh.toLocaleTimeString()}
+                </span>
               </div>
             </div>
 
             {activeTab === 'overview' && stats && (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <StatCard label="Active Warnings" value={stats.activeWarnings} icon={AlertTriangle} color="#f59e0b" />
                   <StatCard label="Open Reports" value={stats.openReports} icon={FileText} color="#3b82f6" />
                   <StatCard label="OFAC Flagged" value={stats.ofacFlagged} icon={ShieldAlert} color="#ef4444" />
                   <StatCard label="Age Verified" value={`${stats.ageVerified}/${stats.totalUsers}`} icon={Fingerprint} color="#10b981" />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <StatCard label="Total Warnings" value={stats.totalWarnings} icon={AlertTriangle} color="#71717a" />
                   <StatCard label="Total Reports" value={stats.totalReports} icon={FileText} color="#71717a" />
-                  <StatCard label="OFAC Checks" value={stats.totalOfacChecks} icon={Shield} color="#71717a" />
+                  <StatCard label="OFAC Checks Run" value={stats.totalOfacChecks} icon={Shield} color="#71717a" />
                   <StatCard label="Total Users" value={stats.totalUsers} icon={Activity} color="#71717a" />
                 </div>
 
-                <div className="flex gap-2 sm:gap-3">
+                <div className="flex gap-3">
                   <button
                     onClick={() => setShowWarningModal(true)}
-                    className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-mono text-xs sm:text-sm border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-mono text-sm border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Issue</span> Warning
+                    Issue Warning
                   </button>
                   <button
                     onClick={() => setShowReportModal(true)}
-                    className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-mono text-xs sm:text-sm border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-mono text-sm border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Create</span> Report
+                    Create Report
                   </button>
                 </div>
 
@@ -1228,13 +1225,13 @@ export function AdminCompliance() {
                     </div>
                     <div className="space-y-2">
                       {stats.recentWarnings.slice(0, 5).map(w => (
-                        <div key={w.id} className="flex items-center justify-between py-2 border-b border-zinc-800/50 last:border-0 gap-2">
-                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-wrap">
+                        <div key={w.id} className="flex items-center justify-between py-2 border-b border-zinc-800/50 last:border-0">
+                          <div className="flex items-center gap-3">
                             <WalletShort address={w.wallet_address} />
                             <SeverityBadge severity={w.severity} />
-                            <span className="text-zinc-500 font-mono text-xs hidden sm:inline">{w.warning_type.replace(/_/g, ' ')}</span>
+                            <span className="text-zinc-500 font-mono text-xs">{w.warning_type.replace(/_/g, ' ')}</span>
                           </div>
-                          <span className="text-zinc-600 font-mono shrink-0" style={{ fontSize: '10px' }}>{new Date(w.created_at).toLocaleDateString()}</span>
+                          <span className="text-zinc-600 font-mono" style={{ fontSize: '10px' }}>{new Date(w.created_at).toLocaleDateString()}</span>
                         </div>
                       ))}
                     </div>
@@ -1249,11 +1246,11 @@ export function AdminCompliance() {
                     </div>
                     <div className="space-y-2">
                       {stats.recentReports.slice(0, 5).map(r => (
-                        <div key={r.id} className="flex items-center justify-between py-2 border-b border-zinc-800/50 last:border-0 gap-2">
-                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-wrap">
+                        <div key={r.id} className="flex items-center justify-between py-2 border-b border-zinc-800/50 last:border-0">
+                          <div className="flex items-center gap-3">
                             <WalletShort address={r.wallet_address} />
                             <StatusBadge status={r.status} />
-                            <span className="text-zinc-300 font-mono text-xs truncate hidden sm:inline">{r.title}</span>
+                            <span className="text-zinc-300 font-mono text-xs">{r.title}</span>
                           </div>
                           <SeverityBadge severity={r.priority} />
                         </div>

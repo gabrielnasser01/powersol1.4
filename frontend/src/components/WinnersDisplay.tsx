@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { winnersService, Winner } from '../services/winnersService';
 import { theme } from '../theme';
 import { solToUsd } from '../chain/adapter';
@@ -18,7 +17,6 @@ export function WinnersDisplay({
   accentColor = theme.colors.neonPink,
   lotteryType
 }: WinnersDisplayProps) {
-  const navigate = useNavigate();
   const [winners, setWinners] = useState<Winner[]>([]);
   const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState<number[]>([]);
@@ -39,8 +37,20 @@ export function WinnersDisplay({
     setLoading(true);
     try {
       const data = await winnersService.getWinnersByRound(lotteryType, round);
-      const maxWinners = lotteryType === 'grand-prize' ? 3 : 100;
-      setWinners(data.slice(0, maxWinners));
+      let filteredWinners = data;
+
+      switch (lotteryType) {
+        case 'jackpot':
+          filteredWinners = data.slice(0, 100);
+          break;
+        case 'grand-prize':
+          filteredWinners = data.slice(0, 3);
+          break;
+        default:
+          filteredWinners = data;
+          break;
+      }
+      setWinners(filteredWinners);
     } catch (error) {
       console.error('Error loading winners:', error);
     } finally {
@@ -192,75 +202,81 @@ export function WinnersDisplay({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-2"
+                className="space-y-4"
               >
                 {sortedWinners.map((winner, index) => (
                   <motion.div
                     key={`${winner.id}-${index}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: Math.min(index * 0.03, 1) }}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-lg"
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="flex items-center justify-between p-4 rounded-lg"
                     style={{
                       background: 'rgba(255, 255, 255, 0.02)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                     }}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 flex items-center justify-center">
                         <img
                           src={index === 0 ? "https://i.imgur.com/jF1YzEF.png" : index === 1 ? "https://i.imgur.com/8WfHMkU.png" : index === 2 ? "https://i.imgur.com/r6hiZta.png" : "https://i.imgur.com/oNzelCb.png"}
                           alt={`${index + 1}º lugar`}
-                          className="w-6 h-6 object-contain"
+                          className="w-8 h-8 object-contain"
                           style={{
-                            filter: `brightness(1.2) contrast(1.1) drop-shadow(0 0 6px ${accentColor}60)`,
+                            filter: `brightness(1.2) contrast(1.1) drop-shadow(0 0 8px ${accentColor}60)`,
                           }}
                         />
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-mono text-xs sm:text-sm" style={{ color: theme.colors.text }}>
+                      <div>
+                        <div className="font-mono text-sm" style={{ color: theme.colors.text }}>
                           {winner.maskedWallet}
                         </div>
-                        <div className="text-[10px] sm:text-xs text-zinc-400 truncate">
+                        <div className="text-xs text-zinc-400">
                           Ticket #{winner.ticket_number} • {new Date(winner.timestamp).toLocaleString()}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 flex-shrink-0">
-                      <motion.img
-                        src="https://i.imgur.com/eE1m8fp.png"
-                        alt="Solana Coin"
-                        className="w-6 h-6 rounded-full object-cover hidden sm:block"
-                        animate={{ rotate: [0, 360] }}
-                        transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                      />
-                      <div className="text-right">
-                        <div className="font-bold text-sm" style={{ color: theme.colors.neonCyan }}>
+                    <div className="text-right">
+                      <div className="flex flex-col items-end space-y-1">
+                        <motion.img
+                          src="https://i.imgur.com/eE1m8fp.png"
+                          alt="Solana Coin"
+                          className="w-8 h-8 rounded-full object-cover"
+                          animate={{
+                            rotate: [0, 360],
+                          }}
+                          transition={{
+                            duration: 8,
+                            repeat: Infinity,
+                            ease: 'linear',
+                          }}
+                        />
+                        <div className="font-bold" style={{ color: theme.colors.neonCyan }}>
                           {winner.prizeSol.toFixed(2)} SOL
                         </div>
-                        <div className="text-[10px] sm:text-xs text-zinc-400">
-                          ≈ ${solToUsd(winner.prizeSol).toFixed(2)}
-                        </div>
-                        {winner.claimed && (
-                          winner.claim_signature ? (
-                            <a
-                              href={`https://solscan.io/tx/${winner.claim_signature}?cluster=devnet`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-end gap-1 text-[10px] sm:text-xs text-green-400 hover:text-green-300 transition-colors"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <span>Claimed</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            <div className="text-[10px] sm:text-xs text-green-400">
-                              Claimed
-                            </div>
-                          )
-                        )}
                       </div>
+                      <div className="text-xs text-zinc-400">
+                        ≈ ${solToUsd(winner.prizeSol).toFixed(2)}
+                      </div>
+                      {winner.claimed && (
+                        winner.claim_signature ? (
+                          <a
+                            href={`https://solscan.io/tx/${winner.claim_signature}?cluster=devnet`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-green-400 mt-1 hover:text-green-300 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span>Claimed</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <div className="text-xs text-green-400 mt-1">
+                            Claimed
+                          </div>
+                        )
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -279,23 +295,6 @@ export function WinnersDisplay({
               <p>No recent winners yet. Be the first!</p>
             </div>
           )}
-        </div>
-
-        <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${accentColor}15` }}>
-          <motion.button
-            onClick={() => navigate('/transparency')}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-mono text-xs font-bold transition-all"
-            style={{
-              background: `${accentColor}08`,
-              border: `1px solid ${accentColor}25`,
-              color: accentColor,
-            }}
-            whileHover={{ scale: 1.01, background: `${accentColor}15` }}
-            whileTap={{ scale: 0.99 }}
-          >
-            <BarChart3 className="w-4 h-4" />
-            VIEW FULL TRANSPARENCY REPORT
-          </motion.button>
         </div>
       </div>
     </motion.div>

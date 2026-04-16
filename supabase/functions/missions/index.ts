@@ -391,14 +391,6 @@ async function checkAndCompleteTicketMilestones(walletAddress: string, lotteryTy
     if (result) completed.push(result);
   }
 
-  const { data: minTicketsPerLottery } = await supabase.rpc("get_user_tickets_per_lottery_by_wallet", {
-    wallet_param: walletAddress,
-  });
-  if ((minTicketsPerLottery || 0) >= 10) {
-    const result = await tryMarkEligible(walletAddress, "activity_10_each_lottery");
-    if (result) completed.push(result);
-  }
-
   const lotteryMissionMap: Record<string, string> = {
     special_event: "weekly_buy_special_event",
     jackpot: "weekly_buy_jackpot",
@@ -605,37 +597,6 @@ async function recordExploreTransparency(walletAddress: string) {
   return await tryMarkEligible(walletAddress, "activity_explore_transparency");
 }
 
-async function checkSocialLinkMissions(walletAddress: string) {
-  const supabase = getServiceClient();
-  const { data: linkedAccounts } = await supabase
-    .from("user_social_accounts")
-    .select("platform")
-    .eq("wallet_address", walletAddress);
-
-  const platforms = new Set((linkedAccounts || []).map((a: { platform: string }) => a.platform));
-  const completed: Record<string, unknown>[] = [];
-
-  const platformMissions: [string, string][] = [
-    ["discord", "social_link_discord"],
-    ["twitter", "social_link_twitter"],
-    ["youtube", "social_link_youtube"],
-  ];
-
-  for (const [platform, missionKey] of platformMissions) {
-    if (platforms.has(platform)) {
-      const result = await tryMarkEligible(walletAddress, missionKey);
-      if (result) completed.push(result);
-    }
-  }
-
-  if (platforms.has("discord") && platforms.has("twitter") && platforms.has("youtube")) {
-    const result = await tryMarkEligible(walletAddress, "social_link_all");
-    if (result) completed.push(result);
-  }
-
-  return { linkedPlatforms: Array.from(platforms), eligibleMissions: completed };
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -730,9 +691,6 @@ Deno.serve(async (req: Request) => {
     } else if (req.method === "POST" && path === "/explore-transparency") {
       if (!walletAddress) return errorResponse("Wallet address required", 401);
       result = await recordExploreTransparency(walletAddress);
-    } else if (req.method === "POST" && path === "/check-social-links") {
-      if (!walletAddress) return errorResponse("Wallet address required", 401);
-      result = await checkSocialLinkMissions(walletAddress);
     } else {
       return errorResponse("Not found", 404);
     }

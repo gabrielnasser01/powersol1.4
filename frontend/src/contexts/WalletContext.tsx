@@ -1,7 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { getWallets } from '@wallet-standard/app';
-import type { Wallet as StandardWallet } from '@wallet-standard/base';
 import { solanaService, WalletAdapter } from '../services/solanaService';
 import { userStorage, userStatsStorage, ticketsStorage } from '../store/persist';
 import { getActiveAffiliateCode, getStoredAffiliateCode, initAffiliateTracking } from '../utils/affiliateTracking';
@@ -16,6 +14,16 @@ function isMobileDevice(): boolean {
 
 function isAndroid(): boolean {
   return /Android/i.test(navigator.userAgent);
+}
+
+function isInPhantomBrowser(): boolean {
+  const w = window as any;
+  return !!(w.phantom?.solana?.isPhantom);
+}
+
+function isInSolflareBrowser(): boolean {
+  const w = window as any;
+  return !!(w.solflare);
 }
 
 function buildUrlWithRef(baseHref: string): string {
@@ -59,31 +67,12 @@ interface PhantomProvider {
   off(event: string, callback: () => void): void;
 }
 
-export interface DiscoveredWallet {
-  name: string;
-  icon: string;
-  id: string;
-  standardWallet?: StandardWallet;
-}
-
-function isSolanaWallet(wallet: StandardWallet): boolean {
-  return wallet.chains?.some((c: string) => c.startsWith('solana:')) ?? false;
-}
-
-function getWalletIcon(wallet: StandardWallet): string {
-  if (typeof wallet.icon === 'string' && wallet.icon.length > 0) {
-    return wallet.icon;
-  }
-  return '';
-}
-
 interface WalletContextType {
   publicKey: string | null;
   connected: boolean;
   connecting: boolean;
   balance: number;
-  discoveredWallets: DiscoveredWallet[];
-  connect: (walletType?: 'phantom' | 'solflare' | 'standard', walletId?: string) => Promise<void>;
+  connect: (walletType?: 'phantom' | 'solflare' | 'manual', manualKey?: string) => Promise<void>;
   disconnect: () => Promise<void>;
   signTransaction: (transaction: Transaction) => Promise<Transaction>;
   signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
@@ -99,36 +88,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [balance, setBalance] = useState(0);
   const [provider, setProvider] = useState<PhantomProvider | null>(null);
-  const [discoveredWallets, setDiscoveredWallets] = useState<DiscoveredWallet[]>([]);
-  const standardWalletRef = useRef<StandardWallet | null>(null);
 
   useEffect(() => {
     initAffiliateTracking();
-  }, []);
-
-  useEffect(() => {
-    const walletsApi = getWallets();
-
-    const updateWallets = () => {
-      const allWallets = walletsApi.get();
-      const solanaWallets: DiscoveredWallet[] = allWallets
-        .filter(isSolanaWallet)
-        .filter(w => {
-          const name = w.name.toLowerCase();
-          return !name.includes('phantom') && !name.includes('solflare');
-        })
-        .map(w => ({
-          name: w.name,
-          icon: getWalletIcon(w),
-          id: `standard:${w.name}`,
-          standardWallet: w,
-        }));
-      setDiscoveredWallets(solanaWallets);
-    };
-
-    updateWallets();
-    const off = walletsApi.on('register', updateWallets);
-    return () => { off(); };
   }, []);
 
   const getPhantomProvider = (): PhantomProvider | null => {
@@ -165,74 +127,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [publicKey]);
 
-  useEffect(() => {
-    if (!publicKey || !connected) return;
-
-    const poll = setInterval(() => {
-      solanaService.getBalance(publicKey).then(setBalance).catch(() => {});
-    }, 15000);
-
-    const handleVisibility = () => {
-      if (!document.hidden && publicKey) {
-        solanaService.getBalance(publicKey).then(setBalance).catch(() => {});
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(poll);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [publicKey, connected]);
-
-  const connectStandardWallet = useCallback(async (walletId: string) => {
-    const wallet = discoveredWallets.find(w => w.id === walletId);
-    if (!wallet?.standardWallet) {
-      throw new Error('Wallet not found');
-    }
-
-    const stdWallet = wallet.standardWallet;
-    const connectFeature = (stdWallet.features as any)['standard:connect'];
-    if (!connectFeature) {
-      throw new Error('Wallet does not support connect');
-    }
-
-    const result = await connectFeature.connect();
-    const account = result.accounts?.[0];
-    if (!account) {
-      throw new Error('No account returned from wallet');
-    }
-
-    const pubKey = new PublicKey(account.address).toBase58();
-    standardWalletRef.current = stdWallet;
-    setProvider(null);
-    setPublicKey(pubKey);
-    setConnected(true);
-
-    userStorage.set({ publicKey: pubKey, connectedAt: Date.now() });
-    window.dispatchEvent(new CustomEvent('walletStorageChange'));
-    window.dispatchEvent(new CustomEvent('walletConnected'));
-
-    const referralCode = getActiveAffiliateCode();
-    if (referralCode) {
-      try {
-        await apiClient.login(pubKey, '', referralCode);
-      } catch (error) {
-        console.error('Failed to register referral:', error);
-      }
-    }
-
-    const bal = await solanaService.getBalance(pubKey);
-    setBalance(bal);
-    claimDailyLoginPoints(pubKey);
-  }, [discoveredWallets]);
-
-  const connect = useCallback(async (walletType: 'phantom' | 'solflare' | 'standard' = 'phantom', walletId?: string) => {
+  const connect = useCallback(async (walletType: 'phantom' | 'solflare' | 'manual' = 'phantom', manualKey?: string) => {
     setConnecting(true);
 
     try {
-      if (walletType === 'standard' && walletId) {
-        await connectStandardWallet(walletId);
+      if (walletType === 'manual' && manualKey) {
+        try {
+          new PublicKey(manualKey);
+        } catch {
+          throw new Error('Invalid public key');
+        }
+        setPublicKey(manualKey);
+        setConnected(true);
+        setProvider(null);
+
+        userStorage.set({ publicKey: manualKey, connectedAt: Date.now() });
+        window.dispatchEvent(new CustomEvent('walletStorageChange'));
+        window.dispatchEvent(new CustomEvent('walletConnected'));
+
+        const bal = await solanaService.getBalance(manualKey);
+        setBalance(bal);
         return;
       }
 
@@ -272,7 +186,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Wallet connected but no public key returned');
       }
 
-      standardWalletRef.current = null;
       setProvider(walletProvider);
       setPublicKey(pubKey);
       setConnected(true);
@@ -300,7 +213,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setConnecting(false);
     }
-  }, [connectStandardWallet]);
+  }, []);
 
   const claimDailyLoginPoints = async (walletAddress: string) => {
     try {
@@ -318,6 +231,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   };
 
   const disconnect = useCallback(async () => {
+    try {
+      if (provider) {
+        await provider.disconnect();
+      }
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+    }
+
     setProvider(null);
     setPublicKey(null);
     setConnected(false);
@@ -336,53 +257,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     ticketsStorage.clear();
     window.dispatchEvent(new CustomEvent('walletStorageChange'));
     window.dispatchEvent(new CustomEvent('missionPointsChange'));
-    window.dispatchEvent(new CustomEvent('walletDisconnected'));
-
-    try {
-      if (provider) {
-        await provider.disconnect();
-      }
-      if (standardWalletRef.current) {
-        const disconnectFeature = (standardWalletRef.current.features as any)['standard:disconnect'];
-        if (disconnectFeature) {
-          await disconnectFeature.disconnect();
-        }
-        standardWalletRef.current = null;
-      }
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-    }
   }, [provider]);
 
   const signTransaction = useCallback(async (transaction: Transaction): Promise<Transaction> => {
-    if (standardWalletRef.current) {
-      const signFeature = (standardWalletRef.current.features as any)['solana:signTransaction'];
-      if (!signFeature) {
-        throw new Error('Wallet does not support transaction signing');
-      }
-      const serialized = transaction.serialize({ requireAllSignatures: false, verifySignatures: false });
-      const result = await signFeature.signTransaction({ transaction: serialized, chain: 'solana:mainnet' });
-      return Transaction.from(result.signedTransaction);
-    }
     if (!provider) {
-      throw new Error('No wallet provider available. Connect a wallet for real transactions.');
+      throw new Error('No wallet provider available. Connect with Phantom or Solflare for real transactions.');
     }
     return provider.signTransaction(transaction);
   }, [provider]);
 
   const signAllTransactions = useCallback(async (transactions: Transaction[]): Promise<Transaction[]> => {
-    if (standardWalletRef.current) {
-      const results: Transaction[] = [];
-      for (const tx of transactions) {
-        results.push(await signTransaction(tx));
-      }
-      return results;
-    }
     if (!provider) {
       throw new Error('No wallet provider available');
     }
     return provider.signAllTransactions(transactions);
-  }, [provider, signTransaction]);
+  }, [provider]);
 
   const getWalletAdapter = useCallback((): WalletAdapter | null => {
     if (!publicKey || !connected) return null;
@@ -461,7 +350,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         connected,
         connecting,
         balance,
-        discoveredWallets,
         connect,
         disconnect,
         signTransaction,

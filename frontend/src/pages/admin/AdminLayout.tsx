@@ -64,8 +64,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="flex gap-1.5 sm:gap-2 mb-8 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+          className="flex gap-2 mb-8 overflow-x-auto pb-2"
         >
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -79,8 +78,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 to={item.path}
                 end={item.exact}
                 className={`
-                  flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg font-mono text-xs sm:text-sm
-                  border transition-all duration-300 whitespace-nowrap shrink-0
+                  flex items-center gap-2 px-4 py-2.5 rounded-lg font-mono text-sm
+                  border transition-all duration-300 whitespace-nowrap
                   ${isActive
                     ? 'border-red-500/50 bg-red-500/10 text-red-400'
                     : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
@@ -89,8 +88,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 style={isActive ? { boxShadow: '0 0 20px rgba(239, 68, 68, 0.15)' } : {}}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{item.label}</span>
-                <span className="sm:hidden">{item.label.split(' ')[0]}</span>
+                <span>{item.label}</span>
               </NavLink>
             );
           })}

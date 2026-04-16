@@ -82,7 +82,7 @@ export function PillarsAccordion() {
             Our Pillars
           </h2>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-            The core principles that make powerSOL the most innovative draw platform
+            The core principles that make powerSOL the most innovative lottery platform
           </p>
         </motion.div>
 

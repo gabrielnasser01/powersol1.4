@@ -291,7 +291,7 @@ export function GrandPrize() {
           transition={{ duration: 0.8 }}
           className="grid grid-cols-2 md:flex md:flex-row justify-center items-start gap-4 md:gap-6 mb-8 px-4 max-w-md md:max-w-none mx-auto"
         >
-          {/* Banner 1 - Special Event */}
+          {/* Banner 1 - Halloween */}
           <div className="flex flex-col items-center gap-3">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -299,28 +299,27 @@ export function GrandPrize() {
               transition={{ duration: 0.6, delay: 0 }}
               whileHover={{
                 scale: 1.05,
-                boxShadow: '0 0 30px #1a3a6e60',
+                boxShadow: '0 0 30px rgba(135, 206, 250, 0.6)',
               }}
               onClick={() => navigate('/special-event')}
-              className="rounded-2xl border cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
+              className="rounded-2xl border backdrop-blur-md cursor-pointer overflow-hidden w-full md:w-[200px] h-[100px] md:h-[120px]"
               style={{
-                background: 'linear-gradient(135deg, #1a3a6e30, #b2223420)',
-                borderColor: '#1a3a6e60',
-                boxShadow: '0 0 20px #1a3a6e30',
+                background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.35), rgba(135, 206, 250, 0.3))',
+                borderColor: 'rgba(135, 206, 250, 0.5)',
+                boxShadow: '0 0 20px rgba(135, 206, 250, 0.3)',
               }}
             >
               <div className="w-full h-full flex items-center justify-center p-2">
                 <img
-                  src="https://i.imgur.com/E9cayTO.png"
-                  alt="Special Event"
+                  src="https://i.imgur.com/484ahmV.png"
+                  alt="Valentine's Day"
                   className="w-full h-full object-contain"
-                  style={{ transform: 'scale(1.1)' }}
                 />
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold" style={{ color: '#1a3a6e' }}>Special Event</h3>
-              <p className="text-xs md:text-sm" style={{ color: '#b22234' }}>0.2 SOL</p>
+              <h3 className="text-sm md:text-lg font-bold text-sky-300">Special Event</h3>
+              <p className="text-xs md:text-sm text-sky-300/80">0.2 SOL</p>
             </div>
           </div>
 
@@ -383,7 +382,7 @@ export function GrandPrize() {
               </div>
             </motion.div>
             <div className="text-center">
-              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Monthly Jackpot</h3>
+              <h3 className="text-sm md:text-lg font-bold text-cyan-400">Montly Jackpot</h3>
               <p className="text-xs md:text-sm text-cyan-300/80">0.2 SOL</p>
             </div>
           </div>
@@ -444,7 +443,7 @@ export function GrandPrize() {
             Annual Grand Prize
           </h1>
           <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-            The ultimate annual draw event with the biggest prize pool of the year! 3 winners.
+            The ultimate annual lottery event with the biggest prize pool of the year! 3 winners.
           </p>
         </motion.div>
 
@@ -591,7 +590,7 @@ export function GrandPrize() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 min-h-screen"
               style={{ background: 'rgba(0, 0, 0, 0.9)' }}
               onClick={() => setShowPurchaseModal(false)}
             >
@@ -599,7 +598,7 @@ export function GrandPrize() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="max-w-md w-full p-5 sm:p-8 rounded-2xl border relative overflow-y-auto max-h-[90vh] sm:max-h-[85vh]"
+                className="max-w-lg w-full p-8 rounded-2xl border relative overflow-hidden"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(248, 249, 250, 0.08))',
                   borderColor: '#f8f9fa',
@@ -618,20 +617,20 @@ export function GrandPrize() {
                 </button>
 
                 {/* Header */}
-                <div className="text-center mb-5 sm:mb-8">
-                  <div
-                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl mx-auto mb-3 sm:mb-4 flex items-center justify-center"
+                <div className="text-center mb-8">
+                  <div 
+                    className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
                     style={{
                       background: 'linear-gradient(135deg, rgba(248, 249, 250, 0.3), rgba(233, 236, 239, 0.2))',
                       border: '2px solid #f8f9fa',
                       boxShadow: '0 0 30px rgba(248, 249, 250, 0.4)',
                     }}
                   >
-                    <Crown className="w-7 h-7 sm:w-8 sm:h-8" style={{ color: '#f8f9fa' }} />
+                    <Crown className="w-8 h-8" style={{ color: '#f8f9fa' }} />
                   </div>
-
-                  <h3
-                    className="text-xl sm:text-2xl font-bold mb-2"
+                  
+                  <h3 
+                    className="text-2xl font-bold mb-2"
                     style={{ 
                       color: '#ffffff',
                       fontFamily: 'Orbitron, monospace',
@@ -645,11 +644,11 @@ export function GrandPrize() {
                 </div>
 
                 {/* Amount Selector */}
-                <div className="mb-5 sm:mb-8">
+                <div className="mb-8">
                   <label className="block text-sm font-medium mb-3 text-center" style={{ color: '#ffffff' }}>
-                    Number of Entries (0.33 SOL each)
+                    Number of Entries (0.33 sol each)
                   </label>
-                  <div className="flex items-center justify-center space-x-4 sm:space-x-6">
+                  <div className="flex items-center justify-center space-x-6">
                     <motion.button
                       onClick={() => handleQuantityChange(-1)}
                       disabled={ticketAmount <= 1}
@@ -696,7 +695,7 @@ export function GrandPrize() {
                 </div>
 
                 {/* Total Cost */}
-                <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl text-center" style={{
+                <div className="mb-6 p-4 rounded-xl text-center" style={{
                   background: 'rgba(248, 249, 250, 0.1)',
                   border: '1px solid rgba(248, 249, 250, 0.3)'
                 }}>

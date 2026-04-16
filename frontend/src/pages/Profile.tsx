@@ -17,7 +17,7 @@ import { countries } from '../utils/countries';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { publicKey: walletPublicKey, connected, disconnect, refreshBalance } = useWallet();
+  const { publicKey: walletPublicKey, connected, disconnect } = useWallet();
   const toast = useToast();
   const { isEnabled: notificationsEnabled, enableNotifications, disableNotifications, checkForPrizes } = useNotifications(walletPublicKey);
   const [user, setUser] = useState(userStorage.get());
@@ -410,7 +410,7 @@ export function Profile() {
 
       if (result.success) {
         toast.success('Prize claimed successfully! SOL has been sent to your wallet.');
-        await Promise.all([loadPrizes(), refreshBalance()]);
+        await loadPrizes();
       } else {
         toast.error(result.error || 'Failed to claim prize. Please try again.');
       }
@@ -444,7 +444,7 @@ export function Profile() {
       if (result.success) {
         const solAmount = claimService.lamportsToSol(result.totalAmount);
         toast.success(`Successfully claimed ${solAmount.toFixed(4)} SOL from ${result.claimed} week(s)!`);
-        await Promise.all([loadAffiliateData(), refreshBalance()]);
+        await loadAffiliateData();
       } else {
         toast.error(`Failed to claim some rewards: ${result.errors.join(', ')}`);
       }

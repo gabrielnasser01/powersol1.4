@@ -75,12 +75,18 @@ async function handleTickets(req: Request, supabase: ReturnType<typeof createCli
   }
 
   if (req.method === "POST" && url.pathname.includes("/purchase")) {
-    if (!userId) throw new Error("Unauthorized");
+    console.log("[api/tickets/purchase] Request received", { userId });
+    if (!userId) {
+      console.warn("[api/tickets/purchase] Unauthorized - no userId");
+      throw new Error("Unauthorized");
+    }
 
     const body = await req.json();
     const { lottery_id, quantity, tx_signature } = body;
+    console.log("[api/tickets/purchase] Body", { lottery_id, quantity, tx_signature });
 
     if (!lottery_id || typeof quantity !== "number" || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+      console.warn("[api/tickets/purchase] Invalid parameters", { lottery_id, quantity });
       throw new Error("Invalid purchase parameters");
     }
 

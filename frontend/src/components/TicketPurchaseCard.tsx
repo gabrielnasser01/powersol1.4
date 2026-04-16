@@ -38,7 +38,7 @@ export function TicketPurchaseCard() {
 
   const checkOnChainLottery = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('blockchain_lotteries')
         .select('lottery_id')
         .eq('lottery_type', 'tri-daily')
@@ -47,15 +47,22 @@ export function TicketPurchaseCard() {
         .limit(1)
         .maybeSingle();
 
+      if (error) {
+        console.error('[TicketPurchase] Error loading current lottery round:', error);
+      }
+
       const round = data?.lottery_id || 1;
+      console.log('[TicketPurchase] Active tri-daily round resolved to:', round);
       setCurrentRound(round);
 
       const exists = await anchorService.checkLotteryExists({
         type: 'tri-daily',
         round,
       });
+      console.log('[TicketPurchase] anchorService.checkLotteryExists returned:', exists);
       setIsOnChain(exists);
-    } catch {
+    } catch (err) {
+      console.error('[TicketPurchase] checkOnChainLottery exception:', err);
       setIsOnChain(false);
     }
   };
@@ -65,6 +72,7 @@ export function TicketPurchaseCard() {
   };
 
   const saveTicketPurchase = async (walletAddress: string, qty: number, sol: number, sig: string) => {
+    console.log('[TicketPurchase] saveTicketPurchase START', { walletAddress, qty, sol, sig, currentRound });
     try {
       const insertData = {
         wallet_address: walletAddress,
@@ -75,6 +83,7 @@ export function TicketPurchaseCard() {
         lottery_round_id: currentRound,
       };
 
+      console.log('[TicketPurchase] Inserting ticket_purchases row', insertData);
       const { data: purchaseData, error: insertError } = await supabase
         .from('ticket_purchases')
         .insert(insertData)
@@ -82,7 +91,12 @@ export function TicketPurchaseCard() {
         .maybeSingle();
 
       if (insertError) {
-        console.error('Failed to save ticket purchase:', insertError);
+        console.error('[TicketPurchase] Failed to save ticket purchase:', {
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+          code: insertError.code,
+        });
 
         const { data: retryData, error: retryError } = await supabase
           .from('ticket_purchases')
@@ -91,32 +105,45 @@ export function TicketPurchaseCard() {
           .maybeSingle();
 
         if (retryError) {
-          console.error('Retry also failed:', retryError);
+          console.error('[TicketPurchase] Retry also failed:', {
+            message: retryError.message,
+            details: retryError.details,
+            hint: retryError.hint,
+            code: retryError.code,
+          });
           return null;
         }
 
+        console.log('[TicketPurchase] Retry succeeded', retryData);
         await ticketStorage.add(qty, 'tri-daily', currentRound);
         return retryData;
       }
 
+      console.log('[TicketPurchase] Insert succeeded', purchaseData);
       await ticketStorage.add(qty, 'tri-daily', currentRound);
 
       return purchaseData;
     } catch (error) {
-      console.error('Error saving ticket purchase:', error);
+      console.error('[TicketPurchase] Exception in saveTicketPurchase:', error);
       return null;
     }
   };
 
   const handlePurchase = async () => {
-    if (!connected || !publicKey) return;
+    console.log('[TicketPurchase] handlePurchase START', { connected, publicKey, isVerified, balance, quantity, totalSol, currentRound, isOnChain });
+    if (!connected || !publicKey) {
+      console.warn('[TicketPurchase] Aborted: wallet not connected');
+      return;
+    }
 
     if (!isVerified) {
+      console.log('[TicketPurchase] Aborted: age not verified, showing modal');
       setShowAgeModal(true);
       return;
     }
 
     if (balance < totalSol) {
+      console.warn('[TicketPurchase] Aborted: insufficient balance', { balance, totalSol });
       setError(`Insufficient SOL balance. You need ${totalSol.toFixed(2)} SOL but only have ${balance.toFixed(4)} SOL.`);
       return;
     }
@@ -131,15 +158,18 @@ export function TicketPurchaseCard() {
 
     try {
       const wallet = getWalletAdapter();
+      console.log('[TicketPurchase] Wallet adapter obtained:', !!wallet);
 
       if (wallet) {
         if (isOnChain) {
+          console.log('[TicketPurchase] Using ON-CHAIN path, round:', currentRound);
           const lotteryInfo: LotteryInfo = { type: 'tri-daily', round: currentRound };
 
           if (quantity === 1) {
             const result = await anchorService.purchaseTicketOnChain(wallet, lotteryInfo, currentAffiliateCode);
             signature = result.signature;
             ticketNumbers = [result.ticketNumber];
+            console.log('[TicketPurchase] On-chain single purchase complete', { signature, ticketNumbers });
           } else {
             const result = await anchorService.purchaseMultipleTicketsOnChain(
               wallet,
@@ -149,8 +179,10 @@ export function TicketPurchaseCard() {
             );
             signature = result.signatures[result.signatures.length - 1];
             ticketNumbers = result.ticketNumbers;
+            console.log('[TicketPurchase] On-chain multi purchase complete', { signature, ticketNumbers });
           }
         } else {
+          console.log('[TicketPurchase] Using OFF-CHAIN (direct transfer) path');
           const result = await solanaService.purchaseTicketsWithWallet(
             wallet,
             quantity,
@@ -158,6 +190,7 @@ export function TicketPurchaseCard() {
             'tri-daily'
           );
           signature = result.signature;
+          console.log('[TicketPurchase] Off-chain purchase complete', { signature });
         }
         transactionSucceeded = true;
       } else {
@@ -166,15 +199,17 @@ export function TicketPurchaseCard() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Transaction failed';
       setError(message);
-      console.error('Transaction failed:', err);
+      console.error('[TicketPurchase] Transaction failed:', err);
       setIsLoading(false);
       return;
     }
 
     if (transactionSucceeded && signature) {
+      console.log('[TicketPurchase] Transaction succeeded, persisting to database', { signature });
       setTxId(signature);
 
-      await saveTicketPurchase(publicKey, quantity, totalSol, signature);
+      const saveResult = await saveTicketPurchase(publicKey, quantity, totalSol, signature);
+      console.log('[TicketPurchase] saveTicketPurchase returned:', saveResult);
 
       if (isOnChain && ticketNumbers.length > 0) {
         try {

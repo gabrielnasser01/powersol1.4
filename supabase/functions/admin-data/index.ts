@@ -36,7 +36,15 @@ Deno.serve(async (req: Request) => {
     const action = url.searchParams.get("action");
     const adminWallet = url.searchParams.get("wallet");
 
+    console.log("[admin-data] Request received", {
+      method: req.method,
+      action,
+      adminWallet,
+      url: req.url,
+    });
+
     if (!adminWallet || !ADMIN_WALLETS.includes(adminWallet)) {
+      console.warn("[admin-data] Unauthorized request - wallet not in admin list", { adminWallet });
       return errorResponse("Unauthorized", 403);
     }
 
@@ -45,6 +53,7 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     if (action === "stats") {
+      console.log("[admin-data] Executing stats action");
       const [
         { count: userCount },
         { data: ticketData },
@@ -96,6 +105,14 @@ Deno.serve(async (req: Request) => {
         0
       );
 
+      console.log("[admin-data] stats computed", {
+        totalUsers: userCount,
+        ticketRows: (ticketData || []).length,
+        totalTickets,
+        totalRevenueSol,
+        totalDraws: drawCount,
+      });
+
       return jsonResponse({
         totalUsers: userCount || 0,
         totalTickets,
@@ -110,6 +127,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "users") {
+      console.log("[admin-data] Executing users action");
       const { data: users } = await supabase
         .from("users")
         .select("*")

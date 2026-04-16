@@ -1,4 +1,14 @@
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, ComputeBudgetProgram } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, TransactionInstruction, SystemProgram, LAMPORTS_PER_SOL, ComputeBudgetProgram } from '@solana/web3.js';
+
+const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+function buildUniqueMemoIx(): TransactionInstruction {
+  const nonce = `psol-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return new TransactionInstruction({
+    keys: [],
+    programId: MEMO_PROGRAM_ID,
+    data: Buffer.from(nonce, 'utf8'),
+  });
+}
 import { LOTTERY_WALLETS } from './walletBalanceService';
 import { TREASURY_WALLET, AFFILIATES_POOL_WALLET } from './anchorService';
 import { supabase } from '../lib/supabase';
@@ -94,6 +104,7 @@ class SolanaService {
     transaction.add(
       ComputeBudgetProgram.setComputeUnitPrice({ microLamports: uniquePriorityFee })
     );
+    transaction.add(buildUniqueMemoIx());
 
     transaction.add(
       SystemProgram.transfer({
@@ -152,6 +163,7 @@ class SolanaService {
       lastValidBlockHeight,
     })
       .add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: uniquePriorityFee }))
+      .add(buildUniqueMemoIx())
       .add(
         SystemProgram.transfer({
           fromPubkey: donor,
@@ -170,7 +182,7 @@ class SolanaService {
     });
     const signature = await this.connection.sendRawTransaction(
       signedTransaction.serialize(),
-      { skipPreflight: false, preflightCommitment: 'processed', maxRetries: 3 }
+      { skipPreflight: true, preflightCommitment: 'processed', maxRetries: 5 }
     );
     console.log('[solanaService] Transaction sent, signature:', signature);
 

@@ -1,29 +1,4 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-
-const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-
-function base58Encode(bytes: Uint8Array): string {
-  if (bytes.length === 0) return '';
-  const digits: number[] = [0];
-  for (let i = 0; i < bytes.length; i++) {
-    let carry = bytes[i];
-    for (let j = 0; j < digits.length; j++) {
-      carry += digits[j] << 8;
-      digits[j] = carry % 58;
-      carry = (carry / 58) | 0;
-    }
-    while (carry > 0) {
-      digits.push(carry % 58);
-      carry = (carry / 58) | 0;
-    }
-  }
-  let leadingZeros = 0;
-  for (let i = 0; i < bytes.length && bytes[i] === 0; i++) leadingZeros++;
-  let out = '';
-  for (let i = 0; i < leadingZeros; i++) out += '1';
-  for (let i = digits.length - 1; i >= 0; i--) out += BASE58_ALPHABET[digits[i]];
-  return out;
-}
 import { LOTTERY_WALLETS } from './walletBalanceService';
 import { TREASURY_WALLET, AFFILIATES_POOL_WALLET } from './anchorService';
 import { supabase } from '../lib/supabase';
@@ -106,7 +81,7 @@ class SolanaService {
     const affiliateCommission = Math.floor((totalLamports * commissionPct) / 100);
     const deltaAmount = affiliatesReserved - affiliateCommission;
 
-    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('finalized');
+    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
 
     const transaction = new Transaction({
       feePayer: buyer,
@@ -162,7 +137,7 @@ class SolanaService {
     const recipient = new PublicKey(recipientWallet || LOTTERY_WALLETS['tri-daily']);
     const lamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
-    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('finalized');
+    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
 
     const transaction = new Transaction({
       feePayer: donor,
@@ -180,48 +155,17 @@ class SolanaService {
   }
 
   async sendAndConfirmTransaction(signedTransaction: Transaction): Promise<string> {
-    const rawSigBytes = signedTransaction.signatures[0]?.signature;
-    const derivedSignature = rawSigBytes ? base58Encode(new Uint8Array(rawSigBytes)) : '';
+    const signature = await this.connection.sendRawTransaction(
+      signedTransaction.serialize(),
+      { skipPreflight: false, preflightCommitment: 'processed' }
+    );
 
-    let signature: string;
-    try {
-      signature = await this.connection.sendRawTransaction(
-        signedTransaction.serialize(),
-        { skipPreflight: false, preflightCommitment: 'processed', maxRetries: 0 }
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (/already been processed/i.test(msg) && derivedSignature) {
-        signature = derivedSignature;
-      } else {
-        throw err;
-      }
-    }
-
-    const txBlockhash = signedTransaction.recentBlockhash;
-    const txLastValidBlockHeight = signedTransaction.lastValidBlockHeight;
-    try {
-      if (txBlockhash && txLastValidBlockHeight) {
-        await this.connection.confirmTransaction({
-          signature,
-          blockhash: txBlockhash,
-          lastValidBlockHeight: txLastValidBlockHeight,
-        }, 'confirmed');
-      } else {
-        const latestBlockhash = await this.connection.getLatestBlockhash();
-        await this.connection.confirmTransaction({
-          signature,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        }, 'confirmed');
-      }
-    } catch (err) {
-      const status = await this.connection.getSignatureStatus(signature, { searchTransactionHistory: true });
-      const val = status.value;
-      if (!val || (val.err && val.confirmationStatus !== 'confirmed' && val.confirmationStatus !== 'finalized')) {
-        throw err;
-      }
-    }
+    const latestBlockhash = await this.connection.getLatestBlockhash();
+    await this.connection.confirmTransaction({
+      signature,
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    }, 'confirmed');
 
     return signature;
   }

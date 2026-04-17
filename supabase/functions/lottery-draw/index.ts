@@ -269,14 +269,8 @@ async function getNextDrawTimestampForType(supabase: any, lotteryType: string, c
 }
 
 async function executeDraw(supabase: any, lottery: any) {
-  console.log("[lottery-draw] executeDraw START", {
-    lottery_id: lottery.lottery_id,
-    lottery_type: lottery.lottery_type,
-    draw_timestamp: lottery.draw_timestamp,
-  });
   const config = LOTTERY_CONFIGS[lottery.lottery_type];
   if (!config) {
-    console.warn("[lottery-draw] No config for lottery_type:", lottery.lottery_type);
     await supabase
       .from("blockchain_lotteries")
       .update({ is_drawn: true, winning_ticket: null })
@@ -311,14 +305,7 @@ async function executeDraw(supabase: any, lottery: any) {
   const hasBlockchainTickets = blockchainTickets && blockchainTickets.length > 0;
   const hasPurchases = purchases && purchases.length > 0;
 
-  console.log("[lottery-draw] tickets found", {
-    lottery_id: lottery.lottery_id,
-    blockchain_tickets: blockchainTickets?.length || 0,
-    ticket_purchases: purchases?.length || 0,
-  });
-
   if (!hasBlockchainTickets && !hasPurchases) {
-    console.warn("[lottery-draw] No tickets for lottery", lottery.lottery_id);
     await supabase
       .from("blockchain_lotteries")
       .update({ is_drawn: true, winning_ticket: null })
